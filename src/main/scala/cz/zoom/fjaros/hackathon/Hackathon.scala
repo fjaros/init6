@@ -43,7 +43,11 @@ object Hackathon extends SparkApp {
     val couplesDf = sqlContext.read.format("jdbc").options(Map("url" -> (url + "?user=" + username), "dbtable" -> "couples")).load()
     val extDataDf = sqlContext.read.format("jdbc").options(Map("url" -> (url + "?user=" + username), "dbtable" -> "couple_extdata")).load()
 
-    // For my assignment, I wish to calculate for each agent's spanless rec id (their terminal) their average handling time and number of calls per month.
+//    couplesDf.show()
+//    extDataDf.show()
+//    exit
+
+    // For my assignment, I wish to calculate for each agent's SPANLESS_REC_ID(their agent id) their average handling time and number of calls per month.
     val agentStatsRdd: RDD[Row] = inTraditionalSpark(couplesDf.rdd, extDataDf.rdd)
     File("outputDir").deleteRecursively()
     agentStatsRdd.saveAsTextFile("outputDir")
@@ -51,9 +55,9 @@ object Hackathon extends SparkApp {
     println("Agent Stats Data Set:")
     agentStatsRdd.collect().foreach(println)
 
-    println(s"Correlation that agent number of calls per month is linear: ${linearCorrelation(agentStatsRdd)}")
+    //println(s"Correlation that agent number of calls per month is linear: ${linearCorrelation(agentStatsRdd)}")
 
-    println(s"Predict average call length of an agent in September: ${linearRegression(agentStatsRdd, 6 /* September */)} seconds")
+    //println(s"Predict average call length of an agent in September: ${linearRegression(agentStatsRdd, 6 /* September */)} seconds")
   }
 
   def linearCorrelation(agentStats: RDD[Row]) = {
@@ -129,14 +133,12 @@ object Hackathon extends SparkApp {
       .map(row => (row.getAs[Long]("cplid"), row.getAs[String]("value")))
 
     // Join them on couple id
-    keyedExtDataValue.join(keyedCouples)
+    keyedExtDataValue.join(keyedCouples) // [SEP_FILIP_JAROS,[1234,09-02-2015 09:30:00,09-02-2015 09:35:00,...]]
       // Get rid of couple id, we don't need it anymore.
       .map(_._2) // underscore just means "this"
 
-      // Calculate average couple length per month
-      // First, combine by key (this is basically a custom GROUP BY action)
-      // Additionally, we keep a counter of the length in the 2nd place of the end tuple.
-      .combineByKey(
+      // Calculate average couple length and number of couples handled per month
+      .combineByKey( // This is a GROUP BY action
         // Initialize. This will create an initializer function the FIRST time the KEY is seen in EACH PARTITION (NOT THE FIRST TIME IT IS SEEN IN THE RDD)
         (row: Row) => {
           SortedMap[String, LengthAndCount](parseMonth(row) -> LengthAndCount(row.getAs[Int]("length"), 1L))
@@ -153,10 +155,10 @@ object Hackathon extends SparkApp {
         (value1: SortedMap[String, LengthAndCount], value2: SortedMap[String, LengthAndCount]) => value1 ++ value2
       )
 
-      // But right now we only have Map of (Month -> Total Length of All Calls, call count))
+      // Now we have Rows such as: Row(SEP_FILIP_JAROS, Map("2015-03" -> Length = 52731.4, Count = 1000)
+      // We must take the average!
       .map(row => Row(row._1, row._2.map(monthStats => monthStats._1 -> LengthAndCount(monthStats._2.length / monthStats._2.count, monthStats._2.count))))
 
-      // Divide the total length by the total count for each agent
       // Sort by agent name
       .sortBy(_.getString(0))
 
@@ -165,13 +167,11 @@ object Hackathon extends SparkApp {
 
   def inSparkSQLWithSQL(couplesDf: DataFrame, extDataDf: DataFrame) = {
     // So you want to use Spark SQL? Good choice.
-    // Be prepared to take a slight performance hit. But who cares? You're running on a scalable cluster!
 
     // Register tables into our SQLContext
     couplesDf.registerTempTable("couples")
     extDataDf.registerTempTable("couple_extdata")
 
-    // Let's do it
     sqlContext.sql(
       "SELECT e.value, avg(c.length), count(e.value) FROM couples c JOIN " +
         "(SELECT e.cplid, e.value FROM couple_extdata e WHERE e.key = 'SPANLESS_REC_ID') e " +
