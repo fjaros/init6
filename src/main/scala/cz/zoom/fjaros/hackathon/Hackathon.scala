@@ -36,7 +36,7 @@ sealed trait SparkApp {
 object Hackathon extends SparkApp {
 
   def main(args: Array[String]) {
-    val url = "jdbc:postgresql://localhost:5432/callrec"
+    val url = "jdbc:postgresql://devcr024:5432/callrec"
     val username = "postgres"
 
     /* Sparkify! */
@@ -57,7 +57,55 @@ object Hackathon extends SparkApp {
 
     //println(s"Correlation that agent number of calls per month is linear: ${linearCorrelation(agentStatsRdd)}")
 
-    //println(s"Predict average call length of an agent in September: ${linearRegression(agentStatsRdd, 6 /* September */)} seconds")
+    println(s"Predict average call length of an agent in September: ${linearRegression(agentStatsRdd, 6 /* September */)} seconds")
+  }
+
+  // Helper case class for combineByKey. We could use a tuple but this is more readable.
+  case class LengthAndCount(length: Double, count: Long)
+
+  def inTraditionalSpark(couplesRdd: RDD[Row], extDataRdd: RDD[Row]): RDD[Row] = {
+    // Basically what Spark SQL does under the hood.
+    def parseMonth(row: Row) = row.getAs[Timestamp]("start_ts").toString.substring(0, 7)
+
+    // Create keyd RDDs (couple id -> couple)
+    val keyedCouples = couplesRdd.map(row => (row.getAs[Long]("id"), row))
+    val keyedExtDataValue = extDataRdd
+      // We're only interested in ext data SPANLESS_REC_ID
+      .filter(row => row.getAs[String]("key") == "SPANLESS_REC_ID")
+      // And only fields cplid, and value
+      .map(row => (row.getAs[Long]("cplid"), row.getAs[String]("value")))
+
+    // Join them on couple id
+    keyedExtDataValue.join(keyedCouples) // [SEP_FILIP_JAROS,[1234,101,09-02-2015 09:30:00,09-02-2015 09:35:00,...]]
+      // Get rid of couple id, we don't need it anymore.
+      .map(_._2) // underscore just means "this"
+
+      // Calculate average couple length and number of couples handled per month
+      .combineByKey( // This is a GROUP BY action
+        // Initialize. This will create an initializer function the FIRST time the KEY is seen in EACH PARTITION (NOT THE FIRST TIME IT IS SEEN IN THE RDD)
+        (row: Row) => {
+          SortedMap[String, LengthAndCount](parseMonth(row) -> LengthAndCount(row.getAs[Int]("length"), 1L))
+        },
+        // The key is seen again in THIS partition. Add the length and count to the initialized accumulator.
+        (value: SortedMap[String, LengthAndCount], row: Row) => {
+          val parsedMonth = parseMonth(row)
+          value + value.get(parsedMonth)
+            .fold(parsedMonth -> LengthAndCount(row.getAs[Int]("length"), 1L))(entry =>
+            parsedMonth -> LengthAndCount(entry.length + row.getAs[Int]("length"), entry.count + 1L)
+            )
+        },
+        // The key exists in multiple partitions. Use this function to merge the accumulated values of each partition together.
+        (value1: SortedMap[String, LengthAndCount], value2: SortedMap[String, LengthAndCount]) => value1 ++ value2
+      )
+
+      // Now we have Rows such as: Row(SEP_FILIP_JAROS, Map("2015-03" -> Length = 52731.4, Count = 1000)
+      // Now take the average
+      .map(row => Row(row._1, row._2.map(monthStats => monthStats._1 -> LengthAndCount(monthStats._2.length / monthStats._2.count, monthStats._2.count))))
+
+      // Sort by agent name
+      .sortBy(_.getString(0))
+
+    // We just found the average length of call of each agent. For the whole db in a Map->Reduce fashion.
   }
 
   def linearCorrelation(agentStats: RDD[Row]) = {
@@ -91,6 +139,10 @@ object Hackathon extends SparkApp {
   def linearRegression(agentStats: RDD[Row], month: Int) = {
     // Predict the average handling time per agent for the given month
     // Linear Regression with Stochastic Gradient Descent
+
+    // First we have to map the data into RDD[LabeledPoint]
+    // A Labeled Point is a case class (label, features) where label is the dependent variable, and features is a vector of ALL the independent variables.
+    // In this case the dependent variable is the agent's average handing time and the independent variable is the month.
     val dataSet = agentStats.map(row => row.getAs[Map[String, LengthAndCount]](1))
       .flatMap(_.map(entry => {
       LabeledPoint(entry._2.length,
@@ -111,58 +163,13 @@ object Hackathon extends SparkApp {
     linearReg.optimizer
       .setNumIterations(1000)
       .setStepSize(25) // This is kind of the "Average" step that we expect for our data
+
+    // And the data must be normalized!
     val scaler = new StandardScaler(withMean = true, withStd = true).fit(dataSet.map(_.features))
     val model = linearReg.run(dataSet.map(point => LabeledPoint(point.label, scaler.transform(point.features))))
 
+    // predict it for the next month (month 6 which = September)
     model.predict(scaler.transform(Vectors.dense(month)))
-  }
-
-  // Helper case class for combineByKey. We could use a tuple but this is more readable.
-  case class LengthAndCount(length: Double, count: Long)
-
-  def inTraditionalSpark(couplesRdd: RDD[Row], extDataRdd: RDD[Row]): RDD[Row] = {
-    // Basically what Spark SQL does under the hood.
-    def parseMonth(row: Row) = row.getAs[Timestamp]("start_ts").toString.substring(0, 7)
-
-    // Create keyd RDDs (couple id -> couple)
-    val keyedCouples = couplesRdd.map(row => (row.getAs[Long]("id"), row))
-    val keyedExtDataValue = extDataRdd
-      // We're only interested in ext data SPANLESS_REC_ID
-      .filter(row => row.getAs[String]("key") == "SPANLESS_REC_ID")
-      // And only fields cplid, and value
-      .map(row => (row.getAs[Long]("cplid"), row.getAs[String]("value")))
-
-    // Join them on couple id
-    keyedExtDataValue.join(keyedCouples) // [SEP_FILIP_JAROS,[1234,09-02-2015 09:30:00,09-02-2015 09:35:00,...]]
-      // Get rid of couple id, we don't need it anymore.
-      .map(_._2) // underscore just means "this"
-
-      // Calculate average couple length and number of couples handled per month
-      .combineByKey( // This is a GROUP BY action
-        // Initialize. This will create an initializer function the FIRST time the KEY is seen in EACH PARTITION (NOT THE FIRST TIME IT IS SEEN IN THE RDD)
-        (row: Row) => {
-          SortedMap[String, LengthAndCount](parseMonth(row) -> LengthAndCount(row.getAs[Int]("length"), 1L))
-        },
-        // The key is seen again in THIS partition. Add the length and count to the initialized accumulator.
-        (value: SortedMap[String, LengthAndCount], row: Row) => {
-          val parsedMonth = parseMonth(row)
-          value + value.get(parsedMonth)
-            .fold(parsedMonth -> LengthAndCount(row.getAs[Int]("length"), 1L))(entry =>
-              parsedMonth -> LengthAndCount(entry.length + row.getAs[Int]("length"), entry.count + 1L)
-            )
-        },
-        // The key exists in multiple partitions. Use this function to merge the accumulated values of each partition together.
-        (value1: SortedMap[String, LengthAndCount], value2: SortedMap[String, LengthAndCount]) => value1 ++ value2
-      )
-
-      // Now we have Rows such as: Row(SEP_FILIP_JAROS, Map("2015-03" -> Length = 52731.4, Count = 1000)
-      // We must take the average!
-      .map(row => Row(row._1, row._2.map(monthStats => monthStats._1 -> LengthAndCount(monthStats._2.length / monthStats._2.count, monthStats._2.count))))
-
-      // Sort by agent name
-      .sortBy(_.getString(0))
-
-    // We just found the average length of call of each agent. For the whole db in a Map->Reduce fashion.
   }
 
   def inSparkSQLWithSQL(couplesDf: DataFrame, extDataDf: DataFrame) = {
