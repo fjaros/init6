@@ -1,6 +1,6 @@
 package com.vilenet.channels
 
-import akka.actor.{ActorRef, Props}
+import akka.actor.{Terminated, ActorRef, Props}
 import com.vilenet.ViLeNetActor
 import com.vilenet.servers.RemoteEvent
 
@@ -44,7 +44,8 @@ object RemoteChannelsMultiMap {
   def apply() = new RemoteChannelsMultiMap()
 }
 
-class RemoteChannelsMultiMap extends mutable.HashMap[ActorRef, mutable.Set[ActorRef]] with mutable.MultiMap[ActorRef, ActorRef] {
+class RemoteChannelsMultiMap
+  extends mutable.HashMap[ActorRef, mutable.Set[ActorRef]] with mutable.MultiMap[ActorRef, ActorRef] {
 
   private val columbusToChannelMap = mutable.Map[ActorRef, ActorRef]()
 
@@ -60,7 +61,9 @@ class RemoteChannelsMultiMap extends mutable.HashMap[ActorRef, mutable.Set[Actor
 
   def +=(kv: (ActorRef, ActorRef)): this.type = addBinding(kv._1, kv._2)
   def +=(key: ActorRef): this.type = +=(key -> mutable.Set[ActorRef]())
-  def !(message: Any): Unit = keys.foreach(_ ! RemoteEvent(message))
+  def !(message: Any)(implicit self: ActorRef): Unit = keys.foreach(a => {
+    a ! RemoteEvent(message)
+  })
 
   def getByColumbus(columbus: ActorRef): Option[mutable.Set[ActorRef]] = {
     columbusToChannelMap.get(columbus).fold[Option[mutable.Set[ActorRef]]](None)(get)
@@ -97,6 +100,10 @@ class ChannelActor(name: String) extends ViLeNetActor {
 
 
   override def receive: Receive = {
+    case ChannelCreated(remoteChannelActor, _) =>
+      remoteUsers += remoteChannelActor
+      remoteChannelActor ! RemoteEvent(ChannelUsersLoad(self, users, localUsers))
+
     case ChannelUsersRequest(remoteChannelsActor) =>
       remoteChannelsActor ! ChannelUsersResponse(name, users, localUsers)
 
@@ -104,14 +111,21 @@ class ChannelActor(name: String) extends ViLeNetActor {
       remoteUsers.getByColumbus(columbus)
         .fold(log.info(s"Remote server terminated but not found as a users key $columbus"))(_.foreach(rem))
 
+    case Terminated(actor) =>
+      log.error(s"Terminated $actor")
+      rem(actor)
+      remoteUsers ! RemoteEvent(RemUser(actor))
+
     case AddLocalUser(actor, user) =>
       add(actor, user)
       localUsers += actor
 
     case RemoteEvent(event) =>
+      log.error(s"Channel $name RemoteEvent($event)")
       handleRemote(event)
 
     case event =>
+      log.error(s"Channel $name $event")
       handleLocal(event)
       remoteUsers ! event
   }
@@ -119,42 +133,47 @@ class ChannelActor(name: String) extends ViLeNetActor {
   def handleLocal: Receive = {
     case AddUser(actor, user) =>
       add(actor, user)
-      localUsers += actor
 
     case RemUser(actor) =>
+      log.error(s"RemUser $actor")
       rem(actor)
-      localUsers -= actor
 
   }
 
   def handleRemote: Receive = {
     case ChannelUsersLoad(remoteChannelActor, allUsers, remoteUsersLoad) =>
+      log.error(s"ChannelUsersLoad $remoteChannelActor $allUsers $remoteUsersLoad")
+      allUsers
+        .filterNot(tuple => users.contains(tuple._1))
+        .foreach(tuple => {
+          log.error(s"Adding User From Load $tuple")
+          users += tuple
+          localUsers ! UserIn(tuple._2)
+        })
       remoteUsers += remoteChannelActor -> remoteUsersLoad
-      allUsers.foreach(tuple => {
-        val actor = tuple._1
-        val user = tuple._2
+
+
+    case AddUser(actor, user) =>
+      log.error(s"Remote AddUser $actor $user")
+      if (!users.contains(actor)) {
         users += actor -> user
+        remoteUsers += sender()
         remoteUsers.get(sender()).fold(log.error(s"Remote user added but no remote channel actor found ${sender()}"))(_ += actor)
         val userJoined = UserJoined(user)
         localUsers
           .foreach(_ ! userJoined)
-      })
-
-    case AddUser(actor, user) =>
-      users += actor -> user
-      remoteUsers.get(sender()).fold(log.error(s"Remote user added but no remote channel actor found ${sender()}"))(_ += actor)
-      val userJoined = UserJoined(user)
-      localUsers
-        .foreach(_ ! userJoined)
+      }
 
     case RemUser(actor) =>
-      val user = users(actor)
-      users -= actor
-      remoteUsers.get(sender()).fold(log.error(s"Remote user added but no remote channel actor found ${sender()}"))(_ -= actor)
-      val userJoined = UserLeft(user)
-      localUsers
-        .foreach(_ ! userJoined)
-
+      log.error(s"Remote RemUser $actor")
+      if (users.contains(actor)) {
+        val user = users(actor)
+        users -= actor
+        remoteUsers.get(sender()).fold(log.error(s"Remote user removed but no remote channel actor found ${sender()}"))(_ -= actor)
+        val userLeft = UserLeft(user)
+        localUsers
+          .foreach(_ ! userLeft)
+      }
   }
 
   def add(actor: ActorRef, user: User) = {
@@ -163,21 +182,27 @@ class ChannelActor(name: String) extends ViLeNetActor {
       .foreach(_ ! userJoined)
 
     users += actor -> user
+    context.watch(actor)
     localUsers += actor
 
-    localUsers
-      .map(users(_))
-      .map(UserIn)
-      .foreach(actor ! _)
+    actor ! UserChannel(user, name)
+
+    users
+      .values
+      .foreach(localUsers ! UserIn(_))
   }
 
   def rem(actor: ActorRef) = {
     val userLeft = UserLeft(users(actor))
 
     users -= actor
+    context.unwatch(actor)
     localUsers -= actor
-
-    localUsers
-      .foreach(_ ! userLeft)
+    if (localUsers.isEmpty) {
+      channelsActor ! ChatEmptied(name)
+    } else {
+      localUsers
+        .foreach(_ ! userLeft)
+    }
   }
 }

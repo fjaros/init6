@@ -3,7 +3,6 @@ package com.vilenet.channels
 import akka.actor.{ActorRef, Props}
 import com.vilenet.Constants._
 import com.vilenet.{ViLeNetComponent, ViLeNetActor}
-import com.vilenet.coders.telnet.ChannelCommand
 import com.vilenet.servers.{RemoteEvent, ServerOnline, AddListener}
 import com.vilenet.utils.CaseInsensitiveHashMap
 
@@ -17,6 +16,7 @@ object ChannelsActor extends ViLeNetComponent {
 }
 
 case object GetChannels
+case class ChannelCreated(actor: ActorRef, name: String)
 case class GetChannelUsers(remoteActor: ActorRef)
 case class ReceivedChannel(channel: (String, ActorRef))
 
@@ -40,9 +40,13 @@ class ChannelsActor extends ViLeNetActor {
       remoteChannelsActor(actor) ! GetChannels
 
     case GetChannels =>
+      remoteChannelsActors += sender()
       channels
         .values
         .foreach(_ ! ChannelUsersRequest(sender()))
+
+    case ChannelCreated(actor, name) =>
+      getOrCreate(name) ! ChannelCreated(actor, name)
 
     case ChannelUsersResponse(name, allUsers, remoteUsers) =>
       channels.get(name).getOrElse({
@@ -51,32 +55,27 @@ class ChannelsActor extends ViLeNetActor {
         channelActor
       }) ! RemoteEvent(ChannelUsersLoad(sender(), allUsers, remoteUsers))
 
-    case RemoteEvent(UserSwitchedChat(actor, user, channel)) =>
-      log.error(s"$user switched chat $remoteChannelsActors")
-
-      channels.get(channel).getOrElse({
-        val channelActor = context.actorOf(ChannelActor(channel))
-        channels += channel -> channelActor
-        channelActor
-      }) ! RemoteEvent(AddUser(actor, user))
-
     case UserSwitchedChat(actor, user, channel) =>
       log.error(s"$user switched chat $remoteChannelsActors")
 
       channels.get(user.channel).fold()(_ ! RemUser(actor))
-
-      channels.get(channel).fold({
-        val channelActor = context.actorOf(ChannelActor(channel))
-        channels += channel -> channelActor
-        channelActor ! AddLocalUser(actor, user)
-        remoteChannelsActors.foreach(_ ! RemoteEvent(UserSwitchedChat(actor, user, channel)))
-      })(_ ! AddUser(actor, user))
-
-
+      
+      getOrCreate(channel) ! AddUser(actor, user)
+        
+      
     case ChatEmptied(channel) =>
       val lowerChannel = channel.toLowerCase
       context.stop(channels(lowerChannel))
       channels -= lowerChannel
 
+  }
+  
+  def getOrCreate(name: String) = {
+    channels.getOrElse(name, {
+      val channelActor = context.actorOf(ChannelActor(name))
+      channels += name -> channelActor
+      remoteChannelsActors.foreach(_ ! ChannelCreated(channelActor, name))
+      channelActor
+    })
   }
 }
