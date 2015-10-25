@@ -68,6 +68,7 @@ trait UserCommand extends Command {
   val fromUser: User
   val toUsername: String
 }
+trait UserToChannelCommand extends UserCommand
 trait ReturnableCommand extends Command
 
 case object EmptyCommand extends Command
@@ -125,7 +126,7 @@ case class ErrorMessage(message: String) extends Command
 case object DesignateCommand {
   def apply(fromUser: User, designatee: Option[String]): Command = DesignateCommand(fromUser, designatee.getOrElse(""))
 }
-case class DesignateCommand(fromUser: User, override val toUsername: String) extends UserCommand
+case class DesignateCommand(fromUser: User, override val toUsername: String) extends UserToChannelCommand
 
 case class ChatMessage(fromUser: User, message: String) extends ChannelCommand
 case object EmoteMessage {

@@ -2,6 +2,7 @@ package com.vilenet.channels
 
 import akka.actor.{Terminated, ActorRef, Props}
 import com.vilenet.ViLeNetActor
+import com.vilenet.coders.telnet.{EmoteMessage, ChatMessage}
 import com.vilenet.servers.RemoteEvent
 
 import scala.collection.mutable
@@ -61,9 +62,7 @@ class RemoteChannelsMultiMap
 
   def +=(kv: (ActorRef, ActorRef)): this.type = addBinding(kv._1, kv._2)
   def +=(key: ActorRef): this.type = +=(key -> mutable.Set[ActorRef]())
-  def !(message: Any)(implicit self: ActorRef): Unit = keys.foreach(a => {
-    a ! RemoteEvent(message)
-  })
+  def !(message: Any): Unit = keys.foreach(_ ! RemoteEvent(message))
 
   def getByColumbus(columbus: ActorRef): Option[mutable.Set[ActorRef]] = {
     columbusToChannelMap.get(columbus).fold[Option[mutable.Set[ActorRef]]](None)(get)
@@ -114,7 +113,7 @@ class ChannelActor(name: String) extends ViLeNetActor {
     case Terminated(actor) =>
       log.error(s"Terminated $actor")
       rem(actor)
-      remoteUsers ! RemoteEvent(RemUser(actor))
+      remoteUsers ! RemUser(actor)
 
     case AddLocalUser(actor, user) =>
       add(actor, user)
@@ -138,9 +137,24 @@ class ChannelActor(name: String) extends ViLeNetActor {
       log.error(s"RemUser $actor")
       rem(actor)
 
+    case ChatMessage(user, message) =>
+      localUsers
+        .filterNot(_ == sender())
+        .foreach(_ ! UserTalked(user, message))
+
+    case EmoteMessage(user, message) =>
+      localUsers
+        .foreach(_ ! UserEmote(user, message))
+
   }
 
   def handleRemote: Receive = {
+    case ChatMessage(user, message) =>
+      localUsers ! UserTalked(user, message)
+
+    case EmoteMessage(user, message) =>
+      localUsers ! UserEmote(user, message)
+
     case ChannelUsersLoad(remoteChannelActor, allUsers, remoteUsersLoad) =>
       log.error(s"ChannelUsersLoad $remoteChannelActor $allUsers $remoteUsersLoad")
       allUsers
@@ -185,11 +199,11 @@ class ChannelActor(name: String) extends ViLeNetActor {
     context.watch(actor)
     localUsers += actor
 
-    actor ! UserChannel(user, name)
+    actor ! UserChannel(user, name, self)
 
     users
       .values
-      .foreach(localUsers ! UserIn(_))
+      .foreach(actor ! UserIn(_))
   }
 
   def rem(actor: ActorRef) = {
@@ -198,7 +212,7 @@ class ChannelActor(name: String) extends ViLeNetActor {
     users -= actor
     context.unwatch(actor)
     localUsers -= actor
-    if (localUsers.isEmpty) {
+    if (users.isEmpty) {
       channelsActor ! ChatEmptied(name)
     } else {
       localUsers

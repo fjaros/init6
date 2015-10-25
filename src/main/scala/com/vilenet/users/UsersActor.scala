@@ -1,13 +1,15 @@
 package com.vilenet.users
 
-import akka.actor.{Props, ActorRef}
+import akka.actor.{Terminated, Props, ActorRef}
 import akka.io.Tcp.Event
-import com.vilenet.servers.AddListener
-import com.vilenet.{ViLeNetComponent, ViLeNetActor}
+import com.vilenet.coders.telnet.{UserToChannelCommand, Command, UserCommand}
+import com.vilenet.servers.{RemoteEvent, ServerOnline, AddListener}
+import com.vilenet.{Constants, ViLeNetComponent, ViLeNetActor}
 import com.vilenet.channels._
-import com.vilenet.coders.telnet.UserCommand
 import com.vilenet.Constants._
 import com.vilenet.utils.CaseInsensitiveHashMap
+
+import scala.collection.mutable
 
 /**
  * Created by filip on 9/28/15.
@@ -24,8 +26,11 @@ object UsersActor extends ViLeNetComponent {
 case object GetUsers
 case class ReceivedUser(user: (String, ActorRef))
 case class ReceivedUsers(users: CaseInsensitiveHashMap[ActorRef])
+case class UserToChannelCommandAck(userActor: ActorRef, command: UserToChannelCommand) extends Command
 
 class UsersActor extends ViLeNetActor {
+
+  var remoteUsersActors = mutable.HashSet[ActorRef]()
 
   val remoteUsersActor = (actor: ActorRef) =>
     system.actorSelection(s"akka.tcp://${actor.path.address.hostPort}/user/$VILE_NET_USERS_PATH")
@@ -35,7 +40,14 @@ class UsersActor extends ViLeNetActor {
   serverColumbus ! AddListener
 
   override def receive: Receive = {
+    case ServerOnline(columbus) =>
+      remoteUsersActor(columbus) ! GetUsers
+
+    case Terminated(actor) =>
+
+
     case GetUsers =>
+      remoteUsersActors += sender()
       sender() ! ReceivedUsers(users)
 
     case ReceivedUser(remoteUser) =>
@@ -45,20 +57,47 @@ class UsersActor extends ViLeNetActor {
       //log.error(s"Received remote users: $remoteUsers")
       users ++= remoteUsers
 
+    case command: UserToChannelCommand =>
+      sender() ! users.get(command.toUsername)
+        .fold[Command](UserError(Constants.USER_NOT_LOGGED_ON))(UserToChannelCommandAck(_, command))
+
+    case command: UserCommand =>
+      log.error(s"command sending $command")
+      users.get(command.toUsername)
+        .fold(sender() ! UserError(Constants.USER_NOT_LOGGED_ON))(x => {
+        log.error(s"users $users")
+        log.error(s"sending to $x from ${sender()}")
+        x ! (sender(), command)
+      })
+
+    case RemoteEvent(event) =>
+      handleRemote(event)
+
+    case event =>
+      log.error(s"event $event from ${sender()}")
+      handleLocal(event)
+      //remoteUsersActors.foreach(_ ! RemoteEvent(event))
+  }
+
+  def handleLocal: Receive = {
     case Add(connection, user) =>
-      //log.error(s"Add $user")
       val userActor = context.actorOf(UserActor(connection, user))
       users += user.name -> userActor
-//      if (remoteAddress.nonEmpty) {
-//        context.actorSelection(s"akka.tcp://$VILE_NET@$remoteAddress/user/$VILE_NET_USERS_PATH") ! ReceivedUser(user.name -> userActor)
-//      }
+      context.watch(userActor)
+      remoteUsersActors.foreach(_ ! RemoteEvent(Add(userActor, user)))
       sender() ! userActor
+
     case Rem(username) =>
       users.remove(username).fold()(context.stop)
-    case command: UserCommand =>
-      users.get(command.toUsername)
-        .fold(sender() ! UserError("Not logged on"))(_ ! (sender(), command))
+      remoteUsersActors.foreach(_ ! RemoteEvent(Rem(username)))
+  }
 
-    case x => //log.error(s"COMMAND $x")
+  def handleRemote: Receive = {
+    case Add(userActor, user) =>
+      context.watch(userActor)
+      users += user.name -> userActor
+
+    case Rem(username) =>
+      users.remove(username).fold()(context.stop)
   }
 }

@@ -17,6 +17,8 @@ case object GetUser
 
 class UserActor(connection: ActorRef, var user: User) extends ViLeNetActor {
 
+  var channelActor: ActorRef = _
+
   context.watch(connection)
 
   override def receive: Receive = {
@@ -25,7 +27,9 @@ class UserActor(connection: ActorRef, var user: User) extends ViLeNetActor {
         .fold()(message => {
         connection ! Write(message)
         channelEvent match {
-          case UserChannel(_, channel) => user = user.copy(channel = channel)
+          case UserChannel(_, channel, channelActor) =>
+            user = user.copy(channel = channel)
+            this.channelActor = channelActor
           case _ =>
         }
       })
@@ -51,13 +55,16 @@ class UserActor(connection: ActorRef, var user: User) extends ViLeNetActor {
              *  channel exists.
              */
             case JoinUserCommand(fromUser, channel) => channelsActor ! UserSwitchedChat(self, fromUser, channel)
-            case command: ChannelCommand => channelsActor ! command
+            case command: ChannelCommand => channelActor ! command
             case command: UserCommand => usersActor ! command
             case command: ReturnableCommand => TelnetEncoder(command).fold()(connection ! Write(_))
             case _ =>
           }
         case _ =>
       }
+    case command: UserToChannelCommandAck =>
+      log.error(s"UTCCA $command")
+      //channelActor ! command
     case Terminated(actor) =>
       context.stop(self)
     case x =>

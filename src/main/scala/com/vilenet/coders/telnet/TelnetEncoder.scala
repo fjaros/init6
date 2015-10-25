@@ -31,7 +31,7 @@ object TelnetEncoder extends AkkaEncoder {
         s"1005 TALK ${user.name} ${encodeFlags(user.flags)} ${'"'}$message${'"'}"
       case UserBroadcast(message) =>
         s"1006 BROADCAST ${'"'}$message${'"'}"
-      case UserChannel(user, channel) =>
+      case UserChannel(user, channel, _) =>
         s"1007 CHANNEL ${'"'}$channel${'"'}"
       case UserFlags(user) =>
         s"1009 USER ${user.name} ${encodeFlags(user.flags)} [${user.client}]"
