@@ -80,23 +80,6 @@ class ChannelActor(name: String) extends ViLeNetActor {
   // Linked Map of actor -> user. Actor can be local or remote.
   var users = mutable.LinkedHashMap[ActorRef, User]()
 
-  /*
-    USE CASES:
-      Add/Rem User:
-        - localUsers foreach send UserJoin/UserLeave
-        - remoteUsers foreach send RemoteAddUser/RemoteRemUser
-
-      Talk/Emote:
-        - localUsers foreach send talk/emote
-        - remoteUsers foreach send talk/emote
-
-      Server split:
-        - users foreach
-          if (user.serverColumbus == sender()) {
-            Rem(user)
-          }
-   */
-
 
   override def receive: Receive = {
     case ChannelCreated(remoteChannelActor, _) =>

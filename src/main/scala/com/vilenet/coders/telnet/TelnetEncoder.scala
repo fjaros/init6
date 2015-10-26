@@ -2,7 +2,7 @@ package com.vilenet.coders.telnet
 
 import akka.util.ByteString
 import com.vilenet.channels._
-import com.vilenet.coders.AkkaEncoder
+import com.vilenet.coders.Encoder
 import com.vilenet.connection.JustLoggedIn
 
 import scala.annotation.switch
@@ -10,14 +10,13 @@ import scala.annotation.switch
 /**
  * Created by filip on 9/20/15.
  */
-object TelnetEncoder extends AkkaEncoder {
+object TelnetEncoder extends Encoder {
 
   override implicit protected def encode(data: String): ByteString = super.encode(s"$data\r\n")
-  implicit private def encodeToOption(data: String): Option[ByteString] = Some(data)
 
   def apply(data: String): ByteString = data
 
-  def apply(data: Any): Option[ByteString] = {
+  override def apply(data: Any): Option[ByteString] = {
     (data: @switch) match {
       case UserIn(user) =>
         s"1001 USER ${user.name} ${encodeFlags(user.flags)} [${user.client}]"

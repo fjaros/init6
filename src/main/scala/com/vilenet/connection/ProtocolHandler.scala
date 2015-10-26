@@ -13,12 +13,11 @@ object ProtocolHandler {
 
 sealed trait ProtocolState
 case object Uninitialized extends ProtocolState
-case object Binary extends ProtocolState
-case object Telnet extends ProtocolState
+case object Initialized extends ProtocolState
 
 sealed trait ProtocolData
 case object EmptyProtocolData extends ProtocolData
-case class TelnetProtocolData(messageHandler: ActorRef, data: ByteString) extends ProtocolData
+case class ConnectionProtocolData(messageHandler: ActorRef, data: ByteString) extends ProtocolData
 
 class ProtocolHandler(clientAddress: InetSocketAddress, client: ActorRef) extends ViLeNetActor with FSM[ProtocolState, ProtocolData] {
 
@@ -34,13 +33,12 @@ class ProtocolHandler(clientAddress: InetSocketAddress, client: ActorRef) extend
     case Event(Received(data), _) =>
       data.head match {
         case BINARY =>
-          //goto (Binary) using data.tail
-          stop()
+          goto (Initialized) using ConnectionProtocolData(context.actorOf(BinaryMessageReceiver(clientAddress, client)), data.tail)
         case TELNET =>
           val dataTail = data.tail
           dataTail.head match {
             case TELNET_2 =>
-              goto (Telnet) using TelnetProtocolData(context.actorOf(TelnetMessageReceiver(clientAddress, client)), dataTail.tail)
+              goto (Initialized) using ConnectionProtocolData(context.actorOf(TelnetMessageReceiver(clientAddress, client)), dataTail.tail)
             case _ => stop()
           }
         case _ => stop()
@@ -48,25 +46,23 @@ class ProtocolHandler(clientAddress: InetSocketAddress, client: ActorRef) extend
     case _ => stop()
   }
 
-  when(Telnet) {
-    case Event(Received(data), protocolData: TelnetProtocolData) =>
+  when(Initialized) {
+    case Event(Received(data), protocolData: ConnectionProtocolData) =>
       protocolData.messageHandler ! Received(data)
       client ! ResumeReading
       stay()
-    case Event(x, protocolData: TelnetProtocolData) =>
+    case Event(x, protocolData: ConnectionProtocolData) =>
       protocolData.messageHandler ! x
       stop()
   }
 
   onTransition {
-    case Uninitialized -> Telnet =>
+    case Uninitialized -> Initialized =>
       nextStateData match {
-        case TelnetProtocolData(actor, data) =>
+        case ConnectionProtocolData(actor, data) =>
           self ! Received(data)
         case _ =>
       }
-    case Uninitialized -> Binary =>
-
     case _ => stop()
   }
 }

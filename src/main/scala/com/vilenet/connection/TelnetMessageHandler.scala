@@ -11,7 +11,7 @@ import com.vilenet.ViLeNetActor
 import com.vilenet.channels._
 import com.vilenet.coders.telnet.TelnetEncoder
 import com.vilenet.db.DAO
-import com.vilenet.users.{Add, UserActor}
+import com.vilenet.users.{TelnetProtocol, Add, UserActor}
 
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.Await
@@ -88,7 +88,7 @@ class TelnetMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
           //if (user.password == data.utf8String) {
             //val u = User(buffer.user, user.flags)
       val u = User(buffer.user, 0)
-            Await.result(usersActor ? Add(connection, u), timeout.duration) match {
+            Await.result(usersActor ? Add(connection, u, TelnetProtocol), timeout.duration) match {
                 case reply: ActorRef => goto (LoggedIn) using AuthenticatedUser(u, reply)
                 case _ => stop()
               }

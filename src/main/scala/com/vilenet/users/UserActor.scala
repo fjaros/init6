@@ -4,18 +4,25 @@ import akka.actor.{Terminated, ActorRef, Props}
 import akka.io.Tcp.{Received, Write}
 import com.vilenet.ViLeNetActor
 import com.vilenet.channels._
+import com.vilenet.coders.Encoder
+import com.vilenet.coders.binary.BinaryChatEncoder
 import com.vilenet.coders.telnet._
 
 /**
  * Created by filip on 9/27/15.
  */
 object UserActor {
-  def apply(connection: ActorRef, user: User) = Props(new UserActor(connection, user))
+  def apply(connection: ActorRef, user: User, protocol: Protocol) = Props(new UserActor(connection, user,
+    protocol match {
+      case BinaryProtocol => BinaryChatEncoder
+      case TelnetProtocol => TelnetEncoder
+  }))
 }
 
 case object GetUser
 
-class UserActor(connection: ActorRef, var user: User) extends ViLeNetActor {
+
+class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends ViLeNetActor {
 
   var channelActor: ActorRef = _
 
@@ -23,7 +30,7 @@ class UserActor(connection: ActorRef, var user: User) extends ViLeNetActor {
 
   override def receive: Receive = {
     case channelEvent: ChatEvent =>
-      TelnetEncoder(channelEvent)
+      encoder(channelEvent)
         .fold()(message => {
         connection ! Write(message)
         channelEvent match {
@@ -34,7 +41,7 @@ class UserActor(connection: ActorRef, var user: User) extends ViLeNetActor {
         }
       })
     case (actor: ActorRef, WhisperMessage(fromUser, toUsername, message)) =>
-      TelnetEncoder(UserWhisperedFrom(fromUser, message))
+      encoder(UserWhisperedFrom(fromUser, message))
         .fold()(msg => {
           connection ! Write(msg)
           actor !  UserWhisperedTo(user, message)
@@ -57,7 +64,7 @@ class UserActor(connection: ActorRef, var user: User) extends ViLeNetActor {
             case JoinUserCommand(fromUser, channel) => channelsActor ! UserSwitchedChat(self, fromUser, channel)
             case command: ChannelCommand => channelActor ! command
             case command: UserCommand => usersActor ! command
-            case command: ReturnableCommand => TelnetEncoder(command).fold()(connection ! Write(_))
+            case command: ReturnableCommand => encoder(command).fold()(connection ! Write(_))
             case _ =>
           }
         case _ =>

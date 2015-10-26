@@ -2,6 +2,7 @@ package com.vilenet.users
 
 import akka.actor.{Terminated, Props, ActorRef}
 import akka.io.Tcp.Event
+import com.vilenet.coders.Encoder
 import com.vilenet.coders.telnet.{UserToChannelCommand, Command, UserCommand}
 import com.vilenet.servers.{RemoteEvent, ServerOnline, AddListener}
 import com.vilenet.{Constants, ViLeNetComponent, ViLeNetActor}
@@ -14,7 +15,7 @@ import scala.collection.mutable
 /**
  * Created by filip on 9/28/15.
  */
-case class Add(connection: ActorRef, user: User) extends Event
+case class Add(connection: ActorRef, user: User, protocol: Protocol) extends Event
 case class Rem(username: String) extends Event
 
 case class WhisperTo(user: User, username: String, message: String) extends Event
@@ -22,6 +23,10 @@ case class WhisperTo(user: User, username: String, message: String) extends Even
 object UsersActor extends ViLeNetComponent {
   def apply() = system.actorOf(Props(new UsersActor), VILE_NET_USERS_PATH)
 }
+
+trait Protocol
+case object BinaryProtocol extends Protocol
+case object TelnetProtocol extends Protocol
 
 case object GetUsers
 case class ReceivedUser(user: (String, ActorRef))
@@ -80,11 +85,11 @@ class UsersActor extends ViLeNetActor {
   }
 
   def handleLocal: Receive = {
-    case Add(connection, user) =>
-      val userActor = context.actorOf(UserActor(connection, user))
+    case Add(connection, user, protocol) =>
+      val userActor = context.actorOf(UserActor(connection, user, protocol))
       users += user.name -> userActor
       context.watch(userActor)
-      remoteUsersActors.foreach(_ ! RemoteEvent(Add(userActor, user)))
+      remoteUsersActors.foreach(_ ! RemoteEvent(Add(userActor, user, protocol)))
       sender() ! userActor
 
     case Rem(username) =>
@@ -93,7 +98,7 @@ class UsersActor extends ViLeNetActor {
   }
 
   def handleRemote: Receive = {
-    case Add(userActor, user) =>
+    case Add(userActor, user, _) =>
       context.watch(userActor)
       users += user.name -> userActor
 
