@@ -2,8 +2,9 @@ package com.vilenet.channels
 
 import akka.actor.{Terminated, ActorRef, Props}
 import com.vilenet.ViLeNetActor
-import com.vilenet.coders.telnet.{EmoteMessage, ChatMessage}
+import com.vilenet.coders.telnet.{DesignateCommand, EmoteMessage, ChatMessage}
 import com.vilenet.servers.RemoteEvent
+import com.vilenet.users.{UserUpdated, UserToChannelCommandAck}
 
 import scala.collection.mutable
 
@@ -80,6 +81,9 @@ class ChannelActor(name: String) extends ViLeNetActor {
   // Linked Map of actor -> user. Actor can be local or remote.
   var users = mutable.LinkedHashMap[ActorRef, User]()
 
+  // Designate Users actor -> actor
+  var designatedUsers = mutable.HashMap[ActorRef, ActorRef]()
+
 
   override def receive: Receive = {
     case ChannelCreated(remoteChannelActor, _) =>
@@ -114,7 +118,13 @@ class ChannelActor(name: String) extends ViLeNetActor {
 
   def handleLocal: Receive = {
     case AddUser(actor, user) =>
-      add(actor, user)
+      add(actor,
+        if (users.isEmpty) {
+          user.copy(flags = user.flags | 0x02, channel = name)
+        } else {
+          user.copy(flags = user.flags & ~0x02, channel = name)
+        }
+      )
 
     case RemUser(actor) =>
       log.error(s"RemUser $actor")
@@ -129,6 +139,11 @@ class ChannelActor(name: String) extends ViLeNetActor {
       localUsers
         .foreach(_ ! UserEmote(user, message))
 
+    case userToChannel: UserToChannelCommandAck =>
+      userToChannel.command match {
+        case DesignateCommand(fromUser, toUsername) =>
+          designate(sender(), userToChannel.userActor)
+      }
   }
 
   def handleRemote: Receive = {
@@ -171,6 +186,8 @@ class ChannelActor(name: String) extends ViLeNetActor {
         localUsers
           .foreach(_ ! userLeft)
       }
+    case x =>
+      log.error(s"Unhandled remote command $x")
   }
 
   def add(actor: ActorRef, user: User) = {
@@ -190,16 +207,64 @@ class ChannelActor(name: String) extends ViLeNetActor {
   }
 
   def rem(actor: ActorRef) = {
-    val userLeft = UserLeft(users(actor))
+    val user = users(actor)
+    val userLeft = UserLeft(user)
 
     users -= actor
     context.unwatch(actor)
     localUsers -= actor
+    localUsers ! userLeft
+
+    /*
+    NEED TO SEND FLAG UPDATE TO USERS ACTOR AND USER ACTOR - most fix
+
+      SEND TO REMOTE
+    */
+    if (isOperator(user)) {
+      designatedUsers.get(actor).fold({
+        // Next user in channel gets op
+        val designateeActorOpt = users
+          .keys
+          .dropWhile(_ == actor)
+          .headOption
+          .fold()(designateeActor => {
+            val designatedUser = users(designateeActor)
+
+            val oppedUser = designatedUser.copy(flags = designatedUser.flags | 0x02)
+            users.put(designateeActor, oppedUser)
+            designatedUsers -= actor
+            designateeActor ! UserUpdated(oppedUser)
+            localUsers ! UserFlags(oppedUser)
+        })
+      })(designateeActor => {
+        users.get(designateeActor).fold()(designatedUser => {
+          val oppedUser = designatedUser.copy(flags = designatedUser.flags | 0x02)
+          users.put(designateeActor, oppedUser)
+          designatedUsers -= actor
+          designateeActor ! UserUpdated(oppedUser)
+          localUsers ! UserFlags(oppedUser)
+        })
+      })
+    }
+
     if (users.isEmpty) {
       channelsActor ! ChatEmptied(name)
-    } else {
-      localUsers
-        .foreach(_ ! userLeft)
     }
   }
+
+  def designate(fromActor: ActorRef, designatee: ActorRef) = {
+    users.get(fromActor).fold()(user => {
+      fromActor !
+        (if (isOperator(user)) {
+          users.get(designatee).fold[ChatEvent](UserError("Invalid user."))(designatedUser => {
+            designatedUsers += fromActor -> designatee
+            UserInfo(s"${designatedUser.name} is your new designated heir.")
+          })
+        } else {
+          UserError("You are not a channel operator.")
+        })
+    })
+  }
+
+  def isOperator(user: User) = (user.flags & 0x02) == 0x02
 }

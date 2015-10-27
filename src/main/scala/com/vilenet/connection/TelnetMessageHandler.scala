@@ -87,7 +87,7 @@ class TelnetMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
         //.fold(stop())(user =>
           //if (user.password == data.utf8String) {
             //val u = User(buffer.user, user.flags)
-      val u = User(buffer.user, 0)
+      val u = User(buffer.user, 0, client = "TAHC")
             Await.result(usersActor ? Add(connection, u, TelnetProtocol), timeout.duration) match {
                 case reply: ActorRef => goto (LoggedIn) using AuthenticatedUser(u, reply)
                 case _ => stop()
