@@ -168,10 +168,16 @@ class ChannelActor(name: String) extends ViLeNetActor {
     case AddUser(actor, user) =>
       log.error(s"Remote AddUser $actor $user")
       if (!users.contains(actor)) {
-        users += actor -> user
+        val newUser =
+          if (users.isEmpty) {
+            user.copy(flags = user.flags | 0x02, channel = name)
+          } else {
+            user.copy(flags = user.flags & ~0x02, channel = name)
+          }
+        users += actor -> newUser
         remoteUsers += sender()
         remoteUsers.get(sender()).fold(log.error(s"Remote user added but no remote channel actor found ${sender()}"))(_ += actor)
-        val userJoined = UserJoined(user)
+        val userJoined = UserJoined(newUser)
         localUsers
           .foreach(_ ! userJoined)
       }
@@ -185,6 +191,32 @@ class ChannelActor(name: String) extends ViLeNetActor {
         val userLeft = UserLeft(user)
         localUsers
           .foreach(_ ! userLeft)
+
+        if (isOperator(user)) {
+          designatedUsers.get(actor).fold({
+            // Next user in channel gets op
+            val designateeActorOpt = users
+              .keys
+              .headOption
+              .fold()(designateeActor => {
+              val designatedUser = users(designateeActor)
+
+              val oppedUser = designatedUser.copy(flags = designatedUser.flags | 0x02)
+              users.put(designateeActor, oppedUser)
+              designatedUsers -= actor
+              designateeActor ! UserUpdated(oppedUser)
+              localUsers ! UserFlags(oppedUser)
+            })
+          })(designateeActor => {
+            users.get(designateeActor).fold()(designatedUser => {
+              val oppedUser = designatedUser.copy(flags = designatedUser.flags | 0x02)
+              users.put(designateeActor, oppedUser)
+              designatedUsers -= actor
+              designateeActor ! UserUpdated(oppedUser)
+              localUsers ! UserFlags(oppedUser)
+            })
+          })
+        }
       }
     case x =>
       log.error(s"Unhandled remote command $x")
@@ -225,7 +257,6 @@ class ChannelActor(name: String) extends ViLeNetActor {
         // Next user in channel gets op
         val designateeActorOpt = users
           .keys
-          .dropWhile(_ == actor)
           .headOption
           .fold()(designateeActor => {
             val designatedUser = users(designateeActor)
