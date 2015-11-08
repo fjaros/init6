@@ -11,10 +11,9 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
-        <scala.version>2.10.4</scala.version>
-        <scala.suffix>_2.10</scala.suffix>
-        <akka.version>2.3.14</akka.version>
-        <scalabuff.version>1.4.0</scalabuff.version>
+        <scala.version.major>2.11</scala.version.major>
+        <scala.version>${scala.version.major}.7</scala.version>
+        <akka.version>2.4.0</akka.version>
     </properties>
 
     <build>
@@ -50,57 +49,6 @@
                     </args>
                 </configuration>
             </plugin>
-            <!--<plugin>-->
-                <!--<groupId>org.apache.maven.plugins</groupId>-->
-                <!--<artifactId>maven-antrun-plugin</artifactId>-->
-                <!--<version>1.8</version>-->
-                <!--<executions>-->
-                    <!--<execution>-->
-                        <!--<id>mkdir-generated-sources</id>-->
-                        <!--<goals>-->
-                            <!--<goal>run</goal>-->
-                        <!--</goals>-->
-                        <!--<phase>generate-sources</phase>-->
-                        <!--<configuration>-->
-                            <!--<target>-->
-                                <!--<mkdir dir="${project.build.directory}/generated-sources/protobuf"/>-->
-                            <!--</target>-->
-                        <!--</configuration>-->
-                    <!--</execution>-->
-                <!--</executions>-->
-            <!--</plugin>-->
-            <!--<plugin>-->
-                <!--<groupId>org.codehaus.mojo</groupId>-->
-                <!--<artifactId>exec-maven-plugin</artifactId>-->
-                <!--<executions>-->
-                    <!--<execution>-->
-                        <!--<id>generate-scala-protobuf-classes</id>-->
-                        <!--<goals>-->
-                            <!--<goal>java</goal>-->
-                        <!--</goals>-->
-                        <!--<phase>generate-sources</phase>-->
-                        <!--<configuration>-->
-                            <!--<mainClass>net.sandrogrzicic.scalabuff.compiler.ScalaBuff</mainClass>-->
-                            <!--<includePluginDependencies>true</includePluginDependencies>-->
-                            <!--<executableDependency>-->
-                                <!--<groupId>net.sandrogrzicic</groupId>-->
-                                <!--<artifactId>scalabuff-compiler${scala.suffix}</artifactId>-->
-                            <!--</executableDependency>-->
-                            <!--<arguments>-->
-                                <!--<argument>&#45;&#45;proto_path=${project.basedir}/src/main/resources/protobuf</argument>-->
-                                <!--<argument>&#45;&#45;scala_out=${project.build.directory}/generated-sources/protobuf</argument>-->
-                            <!--</arguments>-->
-                        <!--</configuration>-->
-                    <!--</execution>-->
-                <!--</executions>-->
-                <!--<dependencies>-->
-                    <!--<dependency>-->
-                        <!--<groupId>net.sandrogrzicic</groupId>-->
-                        <!--<artifactId>scalabuff-compiler${scala.suffix}</artifactId>-->
-                        <!--<version>${scalabuff.version}</version>-->
-                    <!--</dependency>-->
-                <!--</dependencies>-->
-            <!--</plugin>-->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>
@@ -142,17 +90,17 @@
 
         <dependency>
             <groupId>com.typesafe.akka</groupId>
-            <artifactId>akka-actor_2.10</artifactId>
+            <artifactId>akka-actor_${scala.version.major}</artifactId>
             <version>${akka.version}</version>
         </dependency>
         <dependency>
             <groupId>com.typesafe.akka</groupId>
-            <artifactId>akka-remote_2.10</artifactId>
+            <artifactId>akka-remote_${scala.version.major}</artifactId>
             <version>${akka.version}</version>
         </dependency>
         <dependency>
             <groupId>com.typesafe.akka</groupId>
-            <artifactId>akka-slf4j_2.10</artifactId>
+            <artifactId>akka-slf4j_${scala.version.major}</artifactId>
             <version>${akka.version}</version>
         </dependency>
         <dependency>
@@ -168,22 +116,22 @@
         </dependency>
         <dependency>
             <groupId>org.scalikejdbc</groupId>
-            <artifactId>scalikejdbc_2.10</artifactId>
-            <version>2.2.8</version>
+            <artifactId>scalikejdbc_${scala.version.major}</artifactId>
+            <version>2.2.9</version>
         </dependency>
 
         <!-- test dependencies -->
 
         <dependency>
             <groupId>org.scalatest</groupId>
-            <artifactId>scalatest_2.10</artifactId>
+            <artifactId>scalatest_${scala.version.major}</artifactId>
             <version>2.2.5</version>
             <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>com.typesafe.akka</groupId>
-            <artifactId>akka-testkit_2.10</artifactId>
+            <artifactId>akka-testkit_${scala.version.major}</artifactId>
             <version>${akka.version}</version>
             <scope>test</scope>
         </dependency>
