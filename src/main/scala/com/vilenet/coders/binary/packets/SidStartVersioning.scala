@@ -4,18 +4,15 @@ import akka.util.ByteString
 import com.vilenet.coders.binary.BinaryPacket
 
 /**
- * Created by filip on 10/25/15.
+ * Created by filip on 10/28/15.
  */
-object SidAuthInfo extends BinaryPacket {
+object SidStartVersioning extends BinaryPacket {
 
-  override val PACKET_ID: Byte = 0x50
+  override val PACKET_ID: Byte = 0x06
 
   def apply(): ByteString = {
     build(
       ByteString.newBuilder
-        .putInt(0)
-        .putInt(0xdeadbeef)
-        .putInt(0xdeadbeef)
         .putInt(0x4341AC00)
         .putInt(0x01C50B25)
         .putBytes("IX86ver3.mpq")

@@ -3,7 +3,6 @@ package com.vilenet.coders.telnet
 import akka.util.ByteString
 import com.vilenet.channels._
 import com.vilenet.coders.Encoder
-import com.vilenet.connection.JustLoggedIn
 
 import scala.annotation.switch
 
@@ -19,11 +18,11 @@ object TelnetEncoder extends Encoder {
   override def apply(data: Any): Option[ByteString] = {
     (data: @switch) match {
       case UserIn(user) =>
-        s"1001 USER ${user.name} ${encodeFlags(user.flags)} [${user.client}]"
+        s"1001 USER ${user.name} ${encodeFlags(user.flags)} [${encodeClient(user.client)}]"
       case UserJoined(user) =>
-        s"1002 JOIN ${user.name} ${encodeFlags(user.flags)} [${user.client}]"
+        s"1002 JOIN ${user.name} ${encodeFlags(user.flags)} [${encodeClient(user.client)}]"
       case UserLeft(user) =>
-        s"1003 LEAVE ${user.name}"
+        s"1003 LEAVE ${user.name} ${encodeFlags(user.flags)}"
       case UserWhisperedFrom(user, message) =>
         s"1004 WHISPER ${user.name} ${encodeFlags(user.flags)} ${'"'}$message${'"'}"
       case UserTalked(user, message) =>
@@ -33,7 +32,7 @@ object TelnetEncoder extends Encoder {
       case UserChannel(user, channel, _) =>
         s"1007 CHANNEL ${'"'}$channel${'"'}"
       case UserFlags(user) =>
-        s"1009 USER ${user.name} ${encodeFlags(user.flags)} [${user.client}]"
+        s"1009 USER ${user.name} ${encodeFlags(user.flags)} [${encodeClient(user.client)}]"
       case UserWhisperedTo(user, message) =>
         s"1010 WHISPER ${user.name} ${encodeFlags(user.flags)} ${'"'}$message${'"'}"
       case UserInfo(message) =>
@@ -49,6 +48,14 @@ object TelnetEncoder extends Encoder {
       case _ =>
         None
     }
+  }
+
+  private def encodeClient(client: String): String = {
+    val sb = new StringBuilder()
+    for (i <- client.length - 1 to 0 by -1) {
+      sb.append(client.charAt(i))
+    }
+    sb.toString()
   }
 
   private def encodeFlags(data: Long): String = {

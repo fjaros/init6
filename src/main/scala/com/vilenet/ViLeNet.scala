@@ -2,6 +2,7 @@ package com.vilenet
 
 import java.net.InetSocketAddress
 
+import akka.util.ByteString
 import com.vilenet.channels.ChannelsActor
 import com.vilenet.connection.ConnectionHandler
 import Constants.VILE_NET

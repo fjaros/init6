@@ -72,6 +72,8 @@ class RemoteChannelsMultiMap
 
 class ChannelActor(name: String) extends ViLeNetActor {
 
+  type PartialToRemote = PartialFunction[Any, Any]
+
   // Set of users in this channel on this server
   var localUsers = LocalUsersSet()
 
@@ -82,7 +84,7 @@ class ChannelActor(name: String) extends ViLeNetActor {
   var users = mutable.LinkedHashMap[ActorRef, User]()
 
   // Designate Users actor -> actor
-  var designatedUsers = mutable.HashMap[ActorRef, ActorRef]()
+  var designatedActors = mutable.HashMap[ActorRef, ActorRef]()
 
 
   override def receive: Receive = {
@@ -112,38 +114,47 @@ class ChannelActor(name: String) extends ViLeNetActor {
 
     case event =>
       log.error(s"Channel $name $event")
-      handleLocal(event)
-      remoteUsers ! event
+      val eventRemote = handleLocal(event)
+      log.error(s"Sending to remote $remoteUsers $eventRemote")
+      remoteUsers ! eventRemote
   }
 
-  def handleLocal: Receive = {
+  def handleLocal: PartialToRemote = {
     case AddUser(actor, user) =>
-      add(actor,
-        if (users.isEmpty) {
-          user.copy(flags = user.flags | 0x02, channel = name)
-        } else {
-          user.copy(flags = user.flags & ~0x02, channel = name)
-        }
+      val updatedUser = user.copy(
+        flags =
+          if (users.isEmpty) {
+            user.flags | 0x02
+          } else {
+            user.flags & ~0x02
+          },
+        channel = name
       )
+      add(actor, updatedUser)
+      AddUser(actor, updatedUser)
 
     case RemUser(actor) =>
       log.error(s"RemUser $actor")
       rem(actor)
+      RemUser(actor)
 
     case ChatMessage(user, message) =>
       localUsers
         .filterNot(_ == sender())
         .foreach(_ ! UserTalked(user, message))
+      ChatMessage(user, message)
 
     case EmoteMessage(user, message) =>
       localUsers
         .foreach(_ ! UserEmote(user, message))
+      EmoteMessage(user, message)
 
     case userToChannel: UserToChannelCommandAck =>
       userToChannel.command match {
         case DesignateCommand(fromUser, toUsername) =>
           designate(sender(), userToChannel.userActor)
       }
+      userToChannel
   }
 
   def handleRemote: Receive = {
@@ -168,16 +179,10 @@ class ChannelActor(name: String) extends ViLeNetActor {
     case AddUser(actor, user) =>
       log.error(s"Remote AddUser $actor $user")
       if (!users.contains(actor)) {
-        val newUser =
-          if (users.isEmpty) {
-            user.copy(flags = user.flags | 0x02, channel = name)
-          } else {
-            user.copy(flags = user.flags & ~0x02, channel = name)
-          }
-        users += actor -> newUser
+        users += actor -> user
         remoteUsers += sender()
         remoteUsers.get(sender()).fold(log.error(s"Remote user added but no remote channel actor found ${sender()}"))(_ += actor)
-        val userJoined = UserJoined(newUser)
+        val userJoined = UserJoined(user)
         localUsers
           .foreach(_ ! userJoined)
       }
@@ -192,30 +197,10 @@ class ChannelActor(name: String) extends ViLeNetActor {
         localUsers
           .foreach(_ ! userLeft)
 
-        if (isOperator(user)) {
-          designatedUsers.get(actor).fold({
-            // Next user in channel gets op
-            val designateeActorOpt = users
-              .keys
-              .headOption
-              .fold()(designateeActor => {
-              val designatedUser = users(designateeActor)
-
-              val oppedUser = designatedUser.copy(flags = designatedUser.flags | 0x02)
-              users.put(designateeActor, oppedUser)
-              designatedUsers -= actor
-              designateeActor ! UserUpdated(oppedUser)
-              localUsers ! UserFlags(oppedUser)
-            })
-          })(designateeActor => {
-            users.get(designateeActor).fold()(designatedUser => {
-              val oppedUser = designatedUser.copy(flags = designatedUser.flags | 0x02)
-              users.put(designateeActor, oppedUser)
-              designatedUsers -= actor
-              designateeActor ! UserUpdated(oppedUser)
-              localUsers ! UserFlags(oppedUser)
-            })
-          })
+        if (users.isEmpty) {
+          channelsActor ! ChatEmptied(name)
+        } else {
+          checkDesignatees(actor, user)
         }
       }
     case x =>
@@ -239,48 +224,19 @@ class ChannelActor(name: String) extends ViLeNetActor {
   }
 
   def rem(actor: ActorRef) = {
-    val user = users(actor)
-    val userLeft = UserLeft(user)
+    log.error(s"rem rem $users $localUsers $actor")
+    users.get(actor).fold()(user => {
+      users -= actor
+      context.unwatch(actor)
+      localUsers -= actor
+      localUsers ! UserLeft(user)
 
-    users -= actor
-    context.unwatch(actor)
-    localUsers -= actor
-    localUsers ! userLeft
-
-    /*
-    NEED TO SEND FLAG UPDATE TO USERS ACTOR AND USER ACTOR - most fix
-
-      SEND TO REMOTE
-    */
-    if (isOperator(user)) {
-      designatedUsers.get(actor).fold({
-        // Next user in channel gets op
-        val designateeActorOpt = users
-          .keys
-          .headOption
-          .fold()(designateeActor => {
-            val designatedUser = users(designateeActor)
-
-            val oppedUser = designatedUser.copy(flags = designatedUser.flags | 0x02)
-            users.put(designateeActor, oppedUser)
-            designatedUsers -= actor
-            designateeActor ! UserUpdated(oppedUser)
-            localUsers ! UserFlags(oppedUser)
-        })
-      })(designateeActor => {
-        users.get(designateeActor).fold()(designatedUser => {
-          val oppedUser = designatedUser.copy(flags = designatedUser.flags | 0x02)
-          users.put(designateeActor, oppedUser)
-          designatedUsers -= actor
-          designateeActor ! UserUpdated(oppedUser)
-          localUsers ! UserFlags(oppedUser)
-        })
-      })
-    }
-
-    if (users.isEmpty) {
-      channelsActor ! ChatEmptied(name)
-    }
+      if (users.isEmpty) {
+        channelsActor ! ChatEmptied(name)
+      } else {
+        checkDesignatees(actor, user)
+      }
+    })
   }
 
   def designate(fromActor: ActorRef, designatee: ActorRef) = {
@@ -288,7 +244,7 @@ class ChannelActor(name: String) extends ViLeNetActor {
       fromActor !
         (if (isOperator(user)) {
           users.get(designatee).fold[ChatEvent](UserError("Invalid user."))(designatedUser => {
-            designatedUsers += fromActor -> designatee
+            designatedActors += fromActor -> designatee
             UserInfo(s"${designatedUser.name} is your new designated heir.")
           })
         } else {
@@ -297,5 +253,23 @@ class ChannelActor(name: String) extends ViLeNetActor {
     })
   }
 
-  def isOperator(user: User) = (user.flags & 0x02) == 0x02
+  def checkDesignatees(forActor: ActorRef, actorUser: User) = {
+    if (isOperator(actorUser)) {
+      val designateeActor = designatedActors.getOrElse(forActor, users.head._1)
+      val designatedUser = users(designateeActor)
+
+      val oppedUser = opUser(designatedUser)
+      users.put(designateeActor, oppedUser)
+      designatedActors -= forActor
+      designateeActor ! UserUpdated(oppedUser)
+      localUsers ! UserFlags(oppedUser)
+    }
+  }
+
+  val OP_FLAGS = 0x02
+
+  def opUser(user: User) = user.copy(flags = user.flags | OP_FLAGS)
+  def deOpUser(user: User) = user.copy(flags = user.flags & ~OP_FLAGS)
+
+  def isOperator(user: User) = (user.flags & OP_FLAGS) == OP_FLAGS
 }

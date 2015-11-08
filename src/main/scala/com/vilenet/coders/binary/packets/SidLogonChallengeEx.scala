@@ -4,17 +4,17 @@ import akka.util.ByteString
 import com.vilenet.coders.binary.BinaryPacket
 
 /**
- * Created by filip on 10/25/15.
+ * Created by filip on 10/28/15.
  */
-object SidLogonResponse2 extends BinaryPacket {
+object SidLogonChallengeEx extends BinaryPacket {
 
-  override val PACKET_ID: Byte = 0x3A
+  override val PACKET_ID: Byte = 0x1D
 
   def apply(): ByteString = {
     build(
       ByteString.newBuilder
-        .putInt(0)
-        .putByte(0)
+        .putInt(0xdeadbeef)
+        .putInt(0xdeadbeef)
         .result()
     )
   }

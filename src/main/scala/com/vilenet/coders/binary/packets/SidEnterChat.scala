@@ -8,8 +8,10 @@ import com.vilenet.coders.binary.BinaryPacket
  */
 object SidEnterChat extends BinaryPacket {
 
+  override val PACKET_ID: Byte = 0x0A
+
   def apply(username: String, productId: String): ByteString = {
-    build(ID_SID_ENTER_CHAT,
+    build(
       ByteString.newBuilder
         .putBytes(username)
         .putBytes(productId)

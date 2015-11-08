@@ -60,7 +60,9 @@ class ProtocolHandler(clientAddress: InetSocketAddress, client: ActorRef) extend
     case Uninitialized -> Initialized =>
       nextStateData match {
         case ConnectionProtocolData(actor, data) =>
-          self ! Received(data)
+          if (data.nonEmpty) {
+            self ! Received(data)
+          }
         case _ =>
       }
     case _ => stop()

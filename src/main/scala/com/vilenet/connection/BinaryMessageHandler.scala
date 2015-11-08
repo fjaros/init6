@@ -30,9 +30,13 @@ case class PacketIdReceivedData(packetId: Byte, override val data: ByteString) e
 case class LengthReceivedData(packetId: Byte, packetLength: Int, override val data: ByteString) extends ReceiverData
 
 sealed trait BinaryState
+case object StartLoginState extends BinaryState
+case object ExpectingSidStartVersioning extends BinaryState
+case object ExpectingSidReportVersion extends BinaryState
+case object ExpectingSidLogonChallenge extends BinaryState
 case object ExpectingSidAuthInfo extends BinaryState
 case object ExpectingSidAuthCheck extends BinaryState
-case object ExpectingSidLogonResponse2 extends BinaryState
+case object ExpectingSidLogonResponse extends BinaryState
 case object ExpectingSidEnterChat extends BinaryState
 case object ExpectingSidJoinChannel extends BinaryState
 
@@ -55,7 +59,7 @@ object BinaryMessageReceiver {
   def apply(clientAddress: InetSocketAddress, connection: ActorRef) = Props(new BinaryMessageReceiver(clientAddress, connection))
 }
 
-class BinaryMessageReceiver(clientAddress: InetSocketAddress, connection: ActorRef) extends ViLeNetActor with FSM[PacketReceiverState, ReceiverData] with DeBuffer {
+class BinaryMessageReceiver(clientAddress: InetSocketAddress, connection: ActorRef) extends ViLeNetActor with FSM[PacketReceiverState, ReceiverData] {
 
   val HEADER_BYTE = 0xFF.toByte
   val HEADER_SIZE = 4
@@ -80,12 +84,12 @@ class BinaryMessageReceiver(clientAddress: InetSocketAddress, connection: ActorR
 
   when(ExpectingLength) {
     case Event(Received(data), PacketIdReceivedData(packetId, _)) =>
-      goto (ExpectingData) using LengthReceivedData(packetId, (data(1) << 8 | data(0)) - HEADER_SIZE, data.drop(2))
+      goto (ExpectingData) using LengthReceivedData(packetId, (data(1) << 8 & 0xff00 | data(0) & 0xff) - HEADER_SIZE, data.drop(2))
   }
 
   when(ExpectingData) {
     case Event(Received(data), LengthReceivedData(packetId, length, buffer)) =>
-      log.error(s"packet $packetId with length $length ${data.length}")
+      //log.error(s"packet $packetId with length $length ${data.length}")
       if (data.length >= length) {
         handler ! WithBinaryData(packetId, length, data.take(length).toArray)
         goto (ExpectingHeader) using HeaderReceivedData(data.drop(length))
@@ -114,12 +118,77 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
 
   implicit val timeout = Timeout(1, TimeUnit.MINUTES)
 
-  startWith(ExpectingSidAuthInfo, EmptyBinaryData)
+  startWith(StartLoginState, EmptyBinaryData)
   context.watch(connection)
+
+  val pingCookie: Int = 0xBADCABF
+  var pingTime: Long = 0
+  var ping: Int = -1
 
   var clientToken: Int = _
   var username: String = _
   var productId: String = _
+
+  when(StartLoginState) {
+    case Event(WithBinaryData(packetId, length, data), _) =>
+      if (packetId == 0x05) {
+        connection ! Write(SidLogonChallenge())
+        connection ! Write(SidPing(pingCookie))
+        pingTime = System.currentTimeMillis()
+        connection ! Write(SidStartVersioning())
+        goto(ExpectingSidStartVersioning)
+      } else if (packetId == 0x1E) {
+        connection ! Write(SidLogonChallengeEx())
+        connection ! Write(SidPing(pingCookie))
+        pingTime = System.currentTimeMillis()
+        connection ! Write(SidStartVersioning())
+        goto(ExpectingSidStartVersioning)
+      } else if (packetId == 0x50) {
+        productId = new String(data.slice(8, 12))
+        connection ! Write(SidPing(pingCookie))
+        pingTime = System.currentTimeMillis()
+        connection ! Write(SidAuthInfo())
+        goto(ExpectingSidAuthCheck)
+      } else {
+        stop()
+      }
+  }
+
+  when(ExpectingSidStartVersioning) {
+    case Event(WithBinaryData(packetId, length, data), _) =>
+      if (packetId == 0x06) {
+        productId = new String(data.slice(4, 8))
+        goto(ExpectingSidReportVersion)
+      } else {
+        stay()
+      }
+  }
+
+  when(ExpectingSidReportVersion) {
+    case Event(WithBinaryData(packetId, length, data), _) =>
+      if (packetId == 0x07) {
+        connection ! Write(SidReportVersion())
+        goto(ExpectingSidLogonResponse)
+      } else {
+        stay()
+      }
+  }
+
+  when(ExpectingSidLogonResponse) {
+    case Event(WithBinaryData(packetId, length, data), _) =>
+      if (packetId == 0x29 || packetId == 0x3A) {
+        username = new String(data.drop(7*4).takeWhile(_ != 0))
+        val u = User(username, 0, client = productId)
+        Await.result(usersActor ? Add(connection, u, BinaryProtocol), timeout.duration) match {
+          case reply: ActorRef =>
+            connection ! Write(SidLogonResponse2())
+            goto (ExpectingSidEnterChat) using WithActor(reply)
+          case _ => stop()
+        }
+      } else {
+        stay()
+      }
+  }
 
   when(ExpectingSidAuthInfo) {
     case Event(WithBinaryData(packetId, length, data), _) =>
@@ -138,23 +207,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
       if (packetId == 0x51) {
         clientToken = toDword(data)
         connection ! Write(SidAuthCheck())
-        goto(ExpectingSidLogonResponse2)
-      } else {
-        stay()
-      }
-  }
-
-  when(ExpectingSidLogonResponse2) {
-    case Event(WithBinaryData(packetId, length, data), _) =>
-      if (packetId == 0x3A) {
-        username = new String(data.drop(7*4).takeWhile(_ != 0))
-        val u = User(username, 0, client = productId)
-        Await.result(usersActor ? Add(connection, u, BinaryProtocol), timeout.duration) match {
-          case reply: ActorRef =>
-            connection ! Write(SidLogonResponse2())
-            goto (ExpectingSidEnterChat) using WithActor(reply)
-          case _ => stop()
-        }
+        goto(ExpectingSidLogonResponse)
       } else {
         stay()
       }
@@ -180,6 +233,14 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
       }
       stay()
   }
+
+//  whenUnhandled {
+//    case Event(WithBinaryData(packetId, length, data), WithActor(actor)) =>
+//      if (packetId == 0x25) {
+//        ping = Math.max(0, (System.currentTimeMillis() - pingTime).toInt)
+//      }
+//      stay()
+//  }
 
   onTermination {
     case _ =>

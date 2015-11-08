@@ -6,7 +6,7 @@ import com.vilenet.coders.binary.BinaryPacket
 /**
  * Created by filip on 10/25/15.
  */
-object SidLogonResponse2 extends BinaryPacket {
+object SidLogonResponse extends BinaryPacket {
 
   override val PACKET_ID: Byte = 0x3A
 
@@ -14,7 +14,6 @@ object SidLogonResponse2 extends BinaryPacket {
     build(
       ByteString.newBuilder
         .putInt(0)
-        .putByte(0)
         .result()
     )
   }

@@ -11,14 +11,10 @@ trait BinaryPacket {
 
   implicit val byteOrder = ByteOrder.LITTLE_ENDIAN
 
-  val ID_SID_ENTER_CHAT = 0x0A.toByte
-  val ID_SID_CHAT_EVENT = 0x0F.toByte
-  val ID_SID_LOGON_RESPONSE2 = 0x3A.toByte
-  val ID_SID_AUTH_INFO = 0x50.toByte
-  val ID_SID_AUTH_CHECK = 0x51.toByte
-
   val PACKET_HEADER = 0xFF.toByte
   val PACKET_HEADER_LENGTH = 4.toShort
+
+  val PACKET_ID: Byte
 
   implicit def stringToNTBytes(string: String): Array[Byte] = {
     Array.newBuilder[Byte]
@@ -27,10 +23,10 @@ trait BinaryPacket {
       .result()
   }
 
-  def build(packetId: Byte, data: ByteString) = {
+  def build(data: ByteString) = {
     ByteString.newBuilder
       .putByte(PACKET_HEADER)
-      .putByte(packetId)
+      .putByte(PACKET_ID)
       .putShort(data.length + PACKET_HEADER_LENGTH)
       .append(data)
       .result()

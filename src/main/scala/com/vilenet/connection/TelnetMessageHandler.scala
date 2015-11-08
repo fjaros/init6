@@ -43,6 +43,7 @@ class TelnetMessageReceiver(clientAddress: InetSocketAddress, connection: ActorR
 
   override def receive: Receive = {
     case Received(data) =>
+      //println(data.utf8String.replace('\r','~').replace('\n','|'))
       val readData = data.takeWhile(b => b != '\r' && b != '\n')
       if (data.length == readData.length) {
         // Split packet
@@ -58,7 +59,7 @@ class TelnetMessageReceiver(clientAddress: InetSocketAddress, connection: ActorR
       }
       val restOfData = data.drop(readData.length).dropWhile(b => b == '\r' || b == '\n')
       if (restOfData.nonEmpty) {
-        self ! Received(restOfData)
+        receive(Received(restOfData))
       }
     case _ =>
       handler ! Close

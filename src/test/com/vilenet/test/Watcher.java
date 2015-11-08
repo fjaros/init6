@@ -9,12 +9,12 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class Tester {
+public class Watcher {
 
-    static final String hostName = "54.193.49.146";
-    static final int portNumber = 6112;
-//    static final String hostName = "127.0.0.1";
-//    static final int portNumber = 7112;
+    //static final String hostName = "54.193.49.146";
+    //static final int portNumber = 6113;
+    static final String hostName = "127.0.0.1";
+    static final int portNumber = 7113;
 
     static AtomicInteger i = new AtomicInteger();
 
@@ -46,8 +46,15 @@ public class Tester {
                 send("/j vile");
                 System.out.println(i.addAndGet(1));
                 String s;
+
+                int joined =0;int left=0;
+
                 while ((s = in.readLine()) != null) {
-                    //System.out.println(s);
+                    if (s.startsWith("1002")) {
+                        System.out.println("Joined: " + ++joined);
+                    } else if (s.startsWith("1003")) {
+                        System.out.println("Left: " + ++left);
+                    }
                 }
             } catch (Exception e) {
 
@@ -63,11 +70,9 @@ public class Tester {
     }
 
     public static void main(String[] args) throws Exception {
-        int threads = 300;
-        ExecutorService e = Executors.newFixedThreadPool(threads+1);
-        for (int i = 0; i != threads; i++) {
-            e.submit(new Bot(args[0] + i));
-        }
+        int threads = 250;
+        ExecutorService e = Executors.newSingleThreadExecutor();
+        e.submit(new Bot("watcher"));
 
         Scanner stdIn = new Scanner(new BufferedReader(new InputStreamReader(System.in)));
         String s;

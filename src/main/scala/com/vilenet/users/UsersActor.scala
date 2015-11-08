@@ -1,8 +1,7 @@
 package com.vilenet.users
 
-import akka.actor.{Terminated, Props, ActorRef}
+import akka.actor.{Props, ActorRef}
 import akka.io.Tcp.Event
-import com.vilenet.coders.Encoder
 import com.vilenet.coders.telnet.{UserToChannelCommand, Command, UserCommand}
 import com.vilenet.servers.{RemoteEvent, ServerOnline, AddListener}
 import com.vilenet.{Constants, ViLeNetComponent, ViLeNetActor}
@@ -48,9 +47,6 @@ class UsersActor extends ViLeNetActor {
     case ServerOnline(columbus) =>
       remoteUsersActor(columbus) ! GetUsers
 
-    case Terminated(actor) =>
-
-
     case GetUsers =>
       remoteUsersActors += sender()
       sender() ! ReceivedUsers(users)
@@ -81,28 +77,25 @@ class UsersActor extends ViLeNetActor {
     case event =>
       log.error(s"event $event from ${sender()}")
       handleLocal(event)
-      //remoteUsersActors.foreach(_ ! RemoteEvent(event))
   }
 
   def handleLocal: Receive = {
     case Add(connection, user, protocol) =>
       val userActor = context.actorOf(UserActor(connection, user, protocol))
       users += user.name -> userActor
-      context.watch(userActor)
       remoteUsersActors.foreach(_ ! RemoteEvent(Add(userActor, user, protocol)))
       sender() ! userActor
 
     case Rem(username) =>
-      users.remove(username).fold()(context.stop)
+      users -= username
       remoteUsersActors.foreach(_ ! RemoteEvent(Rem(username)))
   }
 
   def handleRemote: Receive = {
     case Add(userActor, user, _) =>
-      context.watch(userActor)
       users += user.name -> userActor
 
     case Rem(username) =>
-      users.remove(username).fold()(context.stop)
+      users -= username
   }
 }

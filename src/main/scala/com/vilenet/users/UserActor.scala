@@ -86,6 +86,7 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
       channelActor ! command
 
     case Terminated(actor) =>
+      usersActor ! Rem(user.name)
       context.stop(self)
 
     case x =>

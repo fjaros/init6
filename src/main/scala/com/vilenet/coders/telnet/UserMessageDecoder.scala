@@ -30,7 +30,7 @@ object UserMessageDecoder {
           }
         })
       case _ =>
-        ChatMessage(user, byteString)
+        ChatMessage(user, byteString.take(250))
     }
   }
 

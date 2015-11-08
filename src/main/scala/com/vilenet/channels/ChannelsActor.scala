@@ -40,20 +40,26 @@ class ChannelsActor extends ViLeNetActor {
       remoteChannelsActor(columbus) ! GetChannels
 
     case GetChannels =>
+      log.error(s"GetChannels sender ${sender()} $channels")
       remoteChannelsActors += sender()
       channels
         .values
         .foreach(_ ! ChannelUsersRequest(sender()))
 
     case ChannelCreated(actor, name) =>
+      log.error(s"ChannelCreated $actor $name")
       getOrCreate(name) ! ChannelCreated(actor, name)
 
     case ChannelUsersResponse(name, allUsers, remoteUsers) =>
+      log.error(s"ChannelUsersResponse $name $allUsers $remoteUsers")
+      /*
       channels.get(name).getOrElse({
         val channelActor = context.actorOf(ChannelActor(name))
         channels += name -> channelActor
         channelActor
-      }) ! RemoteEvent(ChannelUsersLoad(sender(), allUsers, remoteUsers))
+      })
+      */
+      getOrCreate(name) ! RemoteEvent(ChannelUsersLoad(sender(), allUsers, remoteUsers))
 
     case UserSwitchedChat(actor, user, channel) =>
       log.error(s"$user switched chat $remoteChannelsActors")
@@ -72,7 +78,7 @@ class ChannelsActor extends ViLeNetActor {
   
   def getOrCreate(name: String) = {
     channels.getOrElse(name, {
-      val channelActor = context.actorOf(ChannelActor(name))
+      val channelActor = context.actorOf(ChannelActor(name).withDispatcher("channel-dispatcher"))
       channels += name -> channelActor
       remoteChannelsActors.foreach(_ ! ChannelCreated(channelActor, name))
       channelActor
