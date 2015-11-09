@@ -2,7 +2,8 @@ package com.vilenet.users
 
 import akka.actor.{Terminated, ActorRef, Props}
 import akka.io.Tcp.{Received, Write}
-import com.vilenet.{Constants, ViLeNetActor}
+import com.vilenet.connection.WriteOut
+import com.vilenet.ViLeNetActor
 import com.vilenet.channels._
 import com.vilenet.coders.Encoder
 import com.vilenet.coders.binary.BinaryChatEncoder
@@ -36,7 +37,7 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
     case channelEvent: ChatEvent =>
       encoder(channelEvent)
         .fold()(message => {
-        connection ! Write(message)
+        connection ! WriteOut(message)
         channelEvent match {
           case UserChannel(newUser, channel, channelActor) =>
             user = newUser
@@ -48,7 +49,7 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
     case (actor: ActorRef, WhisperMessage(fromUser, toUsername, message)) =>
       encoder(UserWhisperedFrom(fromUser, message))
         .fold()(msg => {
-          connection ! Write(msg)
+          connection ! WriteOut(msg)
           actor !  UserWhisperedTo(user, message)
         })
 
@@ -72,13 +73,14 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
               if (isOperator(user)) {
                 usersActor ! command
               } else {
-                connection ! Write(encoder(UserError("You are not a channel operator.")).get)
+                connection ! WriteOut(encoder(UserError("You are not a channel operator.")).get)
               }
             case command: UserCommand => usersActor ! command
-            case command: ReturnableCommand => encoder(command).fold()(connection ! Write(_))
+            case command: ReturnableCommand => encoder(command).fold()(connection ! WriteOut(_))
             case _ =>
           }
-        case _ =>
+        case x =>
+          log.error(s"### UserMessageDecoder Unhandled: $x")
       }
 
     case command: UserToChannelCommandAck =>
@@ -90,7 +92,7 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
       context.stop(self)
 
     case x =>
-      //log.error(s"Received weird $x")
+      log.error(s"### UserActor Unhandled: $x")
   }
 
   def isOperator(user: User) = (user.flags & 0x02) == 0x02

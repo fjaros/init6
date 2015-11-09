@@ -100,8 +100,8 @@ class TelnetMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
 
   when (LoggedIn) {
     case Event(JustLoggedIn, buffer: AuthenticatedUser) =>
-      connection ! Write(TelnetEncoder(s"ViLeNet Telnet Connection from [$clientAddress]"))
-      connection ! Write(TelnetEncoder(UserName(buffer.user.name)).get)
+      connection ! WriteOut(TelnetEncoder(s"ViLeNet Telnet Connection from [$clientAddress]"))
+      connection ! WriteOut(TelnetEncoder(UserName(buffer.user.name)).get)
       stay()
     case Event(Received(data), buffer: AuthenticatedUser) =>
       //log.error(s"Received $data")

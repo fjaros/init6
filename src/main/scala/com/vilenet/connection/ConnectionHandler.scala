@@ -5,10 +5,7 @@ import java.net.InetSocketAddress
 import akka.actor.{ActorRef, Props}
 import akka.io.Tcp.{ResumeAccepting, Bound, Bind, Connected, Register}
 import akka.io.{IO, Tcp}
-import com.vilenet.channels.ChannelsActor
-import com.vilenet.users.UsersActor
-import com.vilenet.{Constants, ViLeNetActor}
-import com.vilenet.servers.{SendBirth, ServerColumbus}
+import com.vilenet.ViLeNetActor
 
 
 /**

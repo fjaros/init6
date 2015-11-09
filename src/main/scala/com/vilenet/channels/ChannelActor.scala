@@ -63,7 +63,7 @@ class RemoteChannelsMultiMap
 
   def +=(kv: (ActorRef, ActorRef)): this.type = addBinding(kv._1, kv._2)
   def +=(key: ActorRef): this.type = +=(key -> mutable.Set[ActorRef]())
-  def !(message: Any): Unit = keys.foreach(_ ! RemoteEvent(message))
+  def !(message: Any)(implicit sender: ActorRef): Unit = keys.foreach(_ ! RemoteEvent(message))
 
   def getByColumbus(columbus: ActorRef): Option[mutable.Set[ActorRef]] = {
     columbusToChannelMap.get(columbus).fold[Option[mutable.Set[ActorRef]]](None)(get)
@@ -109,7 +109,7 @@ class ChannelActor(name: String) extends ViLeNetActor {
       localUsers += actor
 
     case RemoteEvent(event) =>
-      log.error(s"Channel $name RemoteEvent($event)")
+      log.error(s"Channel $name sender: ${sender()} RemoteEvent($event)")
       handleRemote(event)
 
     case event =>
@@ -139,6 +139,12 @@ class ChannelActor(name: String) extends ViLeNetActor {
       RemUser(actor)
 
     case ChatMessage(user, message) =>
+      if (message == "6969") {
+        log.error(s"###LOCAL: $localUsers")
+        log.error(s"###REMOTE: $remoteUsers")
+        log.error(s"###ALL: $users")
+      }
+
       localUsers
         .filterNot(_ == sender())
         .foreach(_ ! UserTalked(user, message))
@@ -177,10 +183,9 @@ class ChannelActor(name: String) extends ViLeNetActor {
 
 
     case AddUser(actor, user) =>
-      log.error(s"Remote AddUser $actor $user")
+      log.error(s"Remote AddUser sender: ${sender()} actor: $actor user: $user")
       if (!users.contains(actor)) {
         users += actor -> user
-        remoteUsers += sender()
         remoteUsers.get(sender()).fold(log.error(s"Remote user added but no remote channel actor found ${sender()}"))(_ += actor)
         val userJoined = UserJoined(user)
         localUsers
@@ -213,8 +218,8 @@ class ChannelActor(name: String) extends ViLeNetActor {
       .foreach(_ ! userJoined)
 
     users += actor -> user
-    context.watch(actor)
     localUsers += actor
+    context.watch(actor)
 
     actor ! UserChannel(user, name, self)
 
@@ -224,10 +229,10 @@ class ChannelActor(name: String) extends ViLeNetActor {
   }
 
   def rem(actor: ActorRef) = {
-    log.error(s"rem rem $users $localUsers $actor")
+    log.error(s"rem rem $actor")
     users.get(actor).fold()(user => {
-      users -= actor
       context.unwatch(actor)
+      users -= actor
       localUsers -= actor
       localUsers ! UserLeft(user)
 

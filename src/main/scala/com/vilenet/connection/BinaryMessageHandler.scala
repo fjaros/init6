@@ -4,7 +4,7 @@ import java.net.InetSocketAddress
 import java.util.concurrent.TimeUnit
 
 import akka.actor.{ActorRef, FSM, Props}
-import akka.io.Tcp.{Write, Received}
+import akka.io.Tcp.Received
 import akka.pattern.ask
 import akka.util.{Timeout, ByteString}
 import com.vilenet.ViLeNetActor
@@ -132,22 +132,22 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
   when(StartLoginState) {
     case Event(WithBinaryData(packetId, length, data), _) =>
       if (packetId == 0x05) {
-        connection ! Write(SidLogonChallenge())
-        connection ! Write(SidPing(pingCookie))
+        connection ! WriteOut(SidLogonChallenge())
+        connection ! WriteOut(SidPing(pingCookie))
         pingTime = System.currentTimeMillis()
-        connection ! Write(SidStartVersioning())
+        connection ! WriteOut(SidStartVersioning())
         goto(ExpectingSidStartVersioning)
       } else if (packetId == 0x1E) {
-        connection ! Write(SidLogonChallengeEx())
-        connection ! Write(SidPing(pingCookie))
+        connection ! WriteOut(SidLogonChallengeEx())
+        connection ! WriteOut(SidPing(pingCookie))
         pingTime = System.currentTimeMillis()
-        connection ! Write(SidStartVersioning())
+        connection ! WriteOut(SidStartVersioning())
         goto(ExpectingSidStartVersioning)
       } else if (packetId == 0x50) {
         productId = new String(data.slice(8, 12))
-        connection ! Write(SidPing(pingCookie))
+        connection ! WriteOut(SidPing(pingCookie))
         pingTime = System.currentTimeMillis()
-        connection ! Write(SidAuthInfo())
+        connection ! WriteOut(SidAuthInfo())
         goto(ExpectingSidAuthCheck)
       } else {
         stop()
@@ -167,7 +167,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
   when(ExpectingSidReportVersion) {
     case Event(WithBinaryData(packetId, length, data), _) =>
       if (packetId == 0x07) {
-        connection ! Write(SidReportVersion())
+        connection ! WriteOut(SidReportVersion())
         goto(ExpectingSidLogonResponse)
       } else {
         stay()
@@ -181,7 +181,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
         val u = User(username, 0, client = productId)
         Await.result(usersActor ? Add(connection, u, BinaryProtocol), timeout.duration) match {
           case reply: ActorRef =>
-            connection ! Write(SidLogonResponse2())
+            connection ! WriteOut(SidLogonResponse2())
             goto (ExpectingSidEnterChat) using WithActor(reply)
           case _ => stop()
         }
@@ -194,7 +194,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
     case Event(WithBinaryData(packetId, length, data), _) =>
       if (packetId == 0x50) {
         productId = new String(data.slice(8, 12))
-        connection ! Write(SidAuthInfo())
+        connection ! WriteOut(SidAuthInfo())
         goto(ExpectingSidAuthCheck)
       } else {
         stay()
@@ -206,7 +206,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
     case Event(WithBinaryData(packetId, length, data), _) =>
       if (packetId == 0x51) {
         clientToken = toDword(data)
-        connection ! Write(SidAuthCheck())
+        connection ! WriteOut(SidAuthCheck())
         goto(ExpectingSidLogonResponse)
       } else {
         stay()
@@ -216,7 +216,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
   when(ExpectingSidEnterChat) {
     case Event(WithBinaryData(packetId, length, data), _) =>
       if (packetId == 0x0A) {
-        connection ! Write(SidEnterChat(username, productId))
+        connection ! WriteOut(SidEnterChat(username, productId))
         goto(ExpectingSidJoinChannel) using stateData
       } else {
         stay()
