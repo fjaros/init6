@@ -63,7 +63,7 @@ public class Tester {
     }
 
     public static void main(String[] args) throws Exception {
-        int threads = 100;
+        int threads = 200;
         ExecutorService e = Executors.newFixedThreadPool(threads+1);
         for (int i = 0; i != threads; i++) {
             e.submit(new Bot(args[0] + i));

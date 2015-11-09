@@ -139,12 +139,6 @@ class ChannelActor(name: String) extends ViLeNetActor {
       RemUser(actor)
 
     case ChatMessage(user, message) =>
-      if (message == "6969") {
-        log.error(s"###LOCAL: $localUsers")
-        log.error(s"###REMOTE: $remoteUsers")
-        log.error(s"###ALL: $users")
-      }
-
       localUsers
         .filterNot(_ == sender())
         .foreach(_ ! UserTalked(user, message))
