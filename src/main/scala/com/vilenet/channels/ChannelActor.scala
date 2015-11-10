@@ -12,7 +12,13 @@ import scala.collection.mutable
  * Created by filip on 9/20/15.
  */
 object ChannelActor {
-  def apply(name: String) = Props(new ChannelActor(name))
+  // Channel Factory
+  def apply(name: String) = Props({
+    name.toLowerCase match {
+      case "the void" => new VoidedChannelActor("The Void")
+      case _ => new ChannelActor(name)
+    }
+  })
 }
 
 case class User(
@@ -39,7 +45,7 @@ object LocalUsersSet {
 }
 
 class LocalUsersSet extends mutable.HashSet[ActorRef] {
-  def !(message: Any): Unit = foreach(_ ! message)
+  def !(message: Any)(implicit sender: ActorRef): Unit = foreach(_ ! message)
 }
 
 object RemoteChannelsMultiMap {
@@ -121,17 +127,7 @@ class ChannelActor(name: String) extends ViLeNetActor {
 
   def handleLocal: PartialToRemote = {
     case AddUser(actor, user) =>
-      val updatedUser = user.copy(
-        flags =
-          if (users.isEmpty) {
-            user.flags | 0x02
-          } else {
-            user.flags & ~0x02
-          },
-        channel = name
-      )
-      add(actor, updatedUser)
-      AddUser(actor, updatedUser)
+      AddUser(actor, add(actor, user))
 
     case RemUser(actor) =>
       log.error(s"RemUser $actor")
@@ -139,9 +135,7 @@ class ChannelActor(name: String) extends ViLeNetActor {
       RemUser(actor)
 
     case ChatMessage(user, message) =>
-      localUsers
-        .filterNot(_ == sender())
-        .foreach(_ ! UserTalked(user, message))
+      onChatMessage(user, message)
       ChatMessage(user, message)
 
     case EmoteMessage(user, message) =>
@@ -159,67 +153,89 @@ class ChannelActor(name: String) extends ViLeNetActor {
 
   def handleRemote: Receive = {
     case ChatMessage(user, message) =>
-      localUsers ! UserTalked(user, message)
+      onRemoteChatMessage(user, message)
 
     case EmoteMessage(user, message) =>
-      localUsers ! UserEmote(user, message)
+      onEmoteMessage(user, message)
 
     case ChannelUsersLoad(remoteChannelActor, allUsers, remoteUsersLoad) =>
       log.error(s"ChannelUsersLoad $remoteChannelActor $allUsers $remoteUsersLoad")
-      allUsers
-        .filterNot(tuple => users.contains(tuple._1))
-        .foreach(tuple => {
-          log.error(s"Adding User From Load $tuple")
-          users += tuple
-          localUsers ! UserIn(tuple._2)
-        })
+      onChannelUsersLoad(remoteChannelActor, allUsers, remoteUsersLoad)
       remoteUsers += remoteChannelActor -> remoteUsersLoad
 
 
     case AddUser(actor, user) =>
       log.error(s"Remote AddUser sender: ${sender()} actor: $actor user: $user")
-      if (!users.contains(actor)) {
-        users += actor -> user
-        remoteUsers.get(sender()).fold(log.error(s"Remote user added but no remote channel actor found ${sender()}"))(_ += actor)
-        val userJoined = UserJoined(user)
-        localUsers
-          .foreach(_ ! userJoined)
-      }
+      remoteAdd(actor, user)
 
     case RemUser(actor) =>
       log.error(s"Remote RemUser $actor")
-      if (users.contains(actor)) {
-        val user = users(actor)
-        users -= actor
-        remoteUsers.get(sender()).fold(log.error(s"Remote user removed but no remote channel actor found ${sender()}"))(_ -= actor)
-        val userLeft = UserLeft(user)
-        localUsers
-          .foreach(_ ! userLeft)
+      remoteRem(actor)
 
-        if (users.isEmpty) {
-          channelsActor ! ChatEmptied(name)
-        } else {
-          checkDesignatees(actor, user)
-        }
-      }
     case x =>
       log.error(s"Unhandled remote command $x")
   }
 
+  def onChannelUsersLoad(remoteChannelActor: ActorRef, allUsers: mutable.Map[ActorRef, User], remoteUsersLoad: mutable.Set[ActorRef]) = {
+    allUsers
+      .filterNot(tuple => users.contains(tuple._1))
+      .foreach(tuple => {
+        log.error(s"Adding User From Load $tuple")
+        users += tuple
+        localUsers ! UserIn(tuple._2)
+      })
+  }
+
+  def onChatMessage(user: User, message: String) = {
+    localUsers
+      .filterNot(_ == sender())
+      .foreach(_ ! UserTalked(user, message))
+  }
+
+  def onRemoteChatMessage(user: User, message: String) = {
+    localUsers ! UserTalked(user, message)
+  }
+
+  def onEmoteMessage(user: User, message: String) = {
+    localUsers ! UserEmote(user, message)
+  }
+
   def add(actor: ActorRef, user: User) = {
-    val userJoined = UserJoined(user)
+    val updatedUser = user.copy(
+      flags =
+        if (users.isEmpty) {
+          user.flags | 0x02
+        } else {
+          user.flags & ~0x02
+        },
+      channel = name
+    )
+
+    val userJoined = UserJoined(updatedUser)
     localUsers
       .foreach(_ ! userJoined)
 
-    users += actor -> user
+    users += actor -> updatedUser
     localUsers += actor
     context.watch(actor)
 
-    actor ! UserChannel(user, name, self)
+    actor ! UserChannel(updatedUser, name, self)
 
     users
       .values
       .foreach(actor ! UserIn(_))
+
+    updatedUser
+  }
+
+  def remoteAdd(actor: ActorRef, user: User) = {
+    if (!users.contains(actor)) {
+      users += actor -> user
+      remoteUsers.get(sender()).fold(log.error(s"Remote user added but no remote channel actor found ${sender()}"))(_ += actor)
+      val userJoined = UserJoined(user)
+      localUsers
+        .foreach(_ ! userJoined)
+    }
   }
 
   def rem(actor: ActorRef) = {
@@ -238,6 +254,23 @@ class ChannelActor(name: String) extends ViLeNetActor {
     })
   }
 
+  def remoteRem(actor: ActorRef) = {
+    if (users.contains(actor)) {
+      val user = users(actor)
+      users -= actor
+      remoteUsers.get(sender()).fold(log.error(s"Remote user removed but no remote channel actor found ${sender()}"))(_ -= actor)
+      val userLeft = UserLeft(user)
+      localUsers
+        .foreach(_ ! userLeft)
+
+      if (users.isEmpty) {
+        channelsActor ! ChatEmptied(name)
+      } else {
+        checkDesignatees(actor, user)
+      }
+    }
+  }
+
   def designate(fromActor: ActorRef, designatee: ActorRef) = {
     users.get(fromActor).fold()(user => {
       fromActor !
@@ -253,7 +286,8 @@ class ChannelActor(name: String) extends ViLeNetActor {
   }
 
   def checkDesignatees(forActor: ActorRef, actorUser: User) = {
-    if (isOperator(actorUser)) {
+    // O(n) alert - check if there is another op already and if so then ignore designatee.
+    if (isOperator(actorUser) && !existsOperator) {
       val designateeActor = designatedActors.getOrElse(forActor, users.head._1)
       val designatedUser = users(designateeActor)
 
@@ -263,6 +297,17 @@ class ChannelActor(name: String) extends ViLeNetActor {
       designateeActor ! UserUpdated(oppedUser)
       localUsers ! UserFlags(oppedUser)
     }
+  }
+
+  def existsOperator: Boolean = {
+    users
+      .values
+      .foreach(user => {
+        if (isOperator(user)) {
+          return true
+        }
+      })
+    false
   }
 
   val OP_FLAGS = 0x02

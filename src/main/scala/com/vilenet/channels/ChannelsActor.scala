@@ -52,13 +52,6 @@ class ChannelsActor extends ViLeNetActor {
 
     case ChannelUsersResponse(name, allUsers, remoteUsers) =>
       log.error(s"ChannelUsersResponse $name $allUsers $remoteUsers")
-      /*
-      channels.get(name).getOrElse({
-        val channelActor = context.actorOf(ChannelActor(name))
-        channels += name -> channelActor
-        channelActor
-      })
-      */
       getOrCreate(name) ! RemoteEvent(ChannelUsersLoad(sender(), allUsers, remoteUsers))
 
     case UserSwitchedChat(actor, user, channel) =>
