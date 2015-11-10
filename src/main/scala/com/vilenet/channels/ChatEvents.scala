@@ -1,7 +1,7 @@
 package com.vilenet.channels
 
 import akka.actor.ActorRef
-import com.vilenet.coders.telnet.{ReturnableCommand, Command}
+import com.vilenet.coders.{ReturnableCommand, Command}
 
 /**
  * Created by filip on 9/20/15.
@@ -18,6 +18,7 @@ case class UserChannel(user: User, channelName: String, channelActor: ActorRef) 
 case class UserFlags(user: User) extends ChatEvent
 case class UserWhisperedTo(user: User, message: String) extends ChatEvent
 case class UserInfo(message: String) extends ChatEvent with ReturnableCommand
+case class UserInfoArray(message: Array[String]) extends ChatEvent with ReturnableCommand
 case class UserError(message: String) extends ChatEvent
 case object UserNull extends ChatEvent
 case class UserName(name: String) extends ChatEvent

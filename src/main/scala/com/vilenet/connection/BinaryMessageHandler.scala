@@ -7,7 +7,8 @@ import akka.actor.{ActorRef, FSM, Props}
 import akka.io.Tcp.Received
 import akka.pattern.ask
 import akka.util.{Timeout, ByteString}
-import com.vilenet.ViLeNetActor
+import com.vilenet.coders.binary.BinaryChatEncoder
+import com.vilenet.{Constants, ViLeNetActor}
 import com.vilenet.channels._
 import com.vilenet.coders.binary.hash.{DoubleHash, BrokenSHA1}
 import com.vilenet.coders.binary.packets._
@@ -226,6 +227,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
   when(ExpectingSidJoinChannel) {
     case Event(WithBinaryData(packetId, length, data), WithActor(actor)) =>
       if (packetId == 0x0C) {
+        connection ! WriteOut(BinaryChatEncoder(UserInfoArray(Constants.MOTD)).get)
         actor ! Received(ByteString(s"/j ${new String(data.drop(4).takeWhile(_ != 0))}"))
       } else if (packetId == 0x0E) {
         actor ! Received(ByteString(data.slice(0, data.length - 1)))

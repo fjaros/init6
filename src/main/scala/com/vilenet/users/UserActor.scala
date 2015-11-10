@@ -5,7 +5,7 @@ import akka.io.Tcp.{Received, Write}
 import com.vilenet.connection.WriteOut
 import com.vilenet.ViLeNetActor
 import com.vilenet.channels._
-import com.vilenet.coders.Encoder
+import com.vilenet.coders._
 import com.vilenet.coders.binary.BinaryChatEncoder
 import com.vilenet.coders.telnet._
 
@@ -56,6 +56,10 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
     case (actor: ActorRef, WhoisCommand(fromUser, username)) =>
       actor ! UserInfo(s"${user.name} is using ${user.client} in the channel ${user.channel}.")
 
+    case KickCommand(fromUser, _) =>
+      self ! UserInfo(s"${fromUser.name} kicked you out of the channel!")
+      channelsActor ! UserSwitchedChat(self, user, "The Void")
+
     case Received(data) =>
       UserMessageDecoder(user, data) match {
         case command: Command =>
@@ -95,5 +99,5 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
       log.error(s"### UserActor Unhandled: $x")
   }
 
-  def isOperator(user: User) = (user.flags & 0x02) == 0x02
+  def isOperator(user: User) = (user.flags & 0x02) == 0x02 || (user.flags & 0x01) == 0x01
 }

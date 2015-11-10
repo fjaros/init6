@@ -2,7 +2,7 @@ package com.vilenet.channels
 
 import akka.actor.{Terminated, ActorRef, Props}
 import com.vilenet.ViLeNetActor
-import com.vilenet.coders.telnet.{DesignateCommand, EmoteMessage, ChatMessage}
+import com.vilenet.coders._
 import com.vilenet.servers.RemoteEvent
 import com.vilenet.users.{UserUpdated, UserToChannelCommandAck}
 
@@ -16,6 +16,7 @@ object ChannelActor {
   def apply(name: String) = Props({
     name.toLowerCase match {
       case "the void" => new VoidedChannelActor("The Void")
+      case "vile" => new PublicChannelActor("ViLe")
       case _ => new ChannelActor(name)
     }
   })
@@ -69,7 +70,12 @@ class RemoteChannelsMultiMap
 
   def +=(kv: (ActorRef, ActorRef)): this.type = addBinding(kv._1, kv._2)
   def +=(key: ActorRef): this.type = +=(key -> mutable.Set[ActorRef]())
-  def !(message: Any)(implicit sender: ActorRef): Unit = keys.foreach(_ ! RemoteEvent(message))
+  def !(message: Any)(implicit sender: ActorRef): Unit = {
+    message match {
+      case Unit =>
+      case _ => keys.foreach(_ ! RemoteEvent(message))
+    }
+  }
 
   def getByColumbus(columbus: ActorRef): Option[mutable.Set[ActorRef]] = {
     columbusToChannelMap.get(columbus).fold[Option[mutable.Set[ActorRef]]](None)(get)
@@ -126,6 +132,10 @@ class ChannelActor(name: String) extends ViLeNetActor {
   }
 
   def handleLocal: PartialToRemote = {
+    case BlizzMe(user) =>
+      blizzMe(user)
+      (sender(), BlizzMe(user))
+
     case AddUser(actor, user) =>
       AddUser(actor, add(actor, user))
 
@@ -139,24 +149,38 @@ class ChannelActor(name: String) extends ViLeNetActor {
       ChatMessage(user, message)
 
     case EmoteMessage(user, message) =>
-      localUsers
-        .foreach(_ ! UserEmote(user, message))
+      onEmoteMessage(user, message)
       EmoteMessage(user, message)
+
+    case InfoMessage(message) =>
+      onInfoMessage(message)
+      InfoMessage(message)
 
     case userToChannel: UserToChannelCommandAck =>
       userToChannel.command match {
+        case KickCommand(fromUser, toUsername) =>
+          kick(sender(), userToChannel.userActor)
         case DesignateCommand(fromUser, toUsername) =>
           designate(sender(), userToChannel.userActor)
+          userToChannel
       }
-      userToChannel
+      //userToChannel
   }
 
   def handleRemote: Receive = {
+    case (actor: ActorRef, BlizzMe(user)) =>
+      val blizzedUser = user.copy(flags = user.flags | 0x01)
+      users.put(actor, blizzedUser)
+      localUsers ! UserFlags(blizzedUser)
+
     case ChatMessage(user, message) =>
       onRemoteChatMessage(user, message)
 
     case EmoteMessage(user, message) =>
       onEmoteMessage(user, message)
+
+    case InfoMessage(message) =>
+      onInfoMessage(message)
 
     case ChannelUsersLoad(remoteChannelActor, allUsers, remoteUsersLoad) =>
       log.error(s"ChannelUsersLoad $remoteChannelActor $allUsers $remoteUsersLoad")
@@ -190,6 +214,10 @@ class ChannelActor(name: String) extends ViLeNetActor {
     localUsers
       .filterNot(_ == sender())
       .foreach(_ ! UserTalked(user, message))
+  }
+
+  def onInfoMessage(message: String) = {
+    localUsers ! UserInfo(message)
   }
 
   def onRemoteChatMessage(user: User, message: String) = {
@@ -271,6 +299,27 @@ class ChannelActor(name: String) extends ViLeNetActor {
     }
   }
 
+  def kick(fromActor: ActorRef, kicked: ActorRef) = {
+    users.get(fromActor).fold()(user => {
+      if (isOperator(user)) {
+        users.get(kicked).fold(fromActor ! UserError("Invalid user."))(kickedUser => {
+          self ! InfoMessage(s"${kickedUser.name} was kicked out of the channel by ${user.name}.")
+          kicked ! KickCommand(user, kickedUser.name)
+        })
+      } else {
+        fromActor ! UserError("You are not a channel operator.")
+      }
+    })
+  }
+
+  def blizzMe(user: User) = {
+    val blizzedUser = user.copy(flags = user.flags | 0x01)
+
+    users.put(sender(), blizzedUser)
+    sender() ! UserUpdated(blizzedUser)
+    localUsers ! UserFlags(blizzedUser)
+  }
+
   def designate(fromActor: ActorRef, designatee: ActorRef) = {
     users.get(fromActor).fold()(user => {
       fromActor !
@@ -310,10 +359,11 @@ class ChannelActor(name: String) extends ViLeNetActor {
     false
   }
 
+  val BLIZZ_FLAGS = 0x01
   val OP_FLAGS = 0x02
 
   def opUser(user: User) = user.copy(flags = user.flags | OP_FLAGS)
   def deOpUser(user: User) = user.copy(flags = user.flags & ~OP_FLAGS)
 
-  def isOperator(user: User) = (user.flags & OP_FLAGS) == OP_FLAGS
+  def isOperator(user: User) = (user.flags & OP_FLAGS) == OP_FLAGS || (user.flags & BLIZZ_FLAGS) == BLIZZ_FLAGS
 }

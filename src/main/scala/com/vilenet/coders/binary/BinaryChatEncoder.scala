@@ -36,6 +36,10 @@ object BinaryChatEncoder extends Encoder {
         SidChatEvent(0x0A, user.flags, user.ping, user.name, message)
       case UserInfo(message) =>
         SidChatEvent(0x12, 0,0, "", message)
+      case UserInfoArray(messages) =>
+        messages
+          .map(SidChatEvent(0x12, 0,0, "", _))
+          .reduceLeft((m1, m2) => m1 ++ m2)
       case UserError(message) =>
         SidChatEvent(0x13, 0,0, "", message)
       case UserEmote(user, message) =>

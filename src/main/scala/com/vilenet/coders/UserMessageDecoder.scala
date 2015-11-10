@@ -1,9 +1,8 @@
-package com.vilenet.coders.telnet
+package com.vilenet.coders
 
 import akka.util.ByteString
-import com.vilenet.Constants
-import com.vilenet.channels.{ChatEvent, UserInfo, User}
-import Constants.USER_NOT_LOGGED_ON
+import com.vilenet.Constants.USER_NOT_LOGGED_ON
+import com.vilenet.channels.{User, UserInfo}
 
 import scala.annotation.switch
 
@@ -26,6 +25,9 @@ object UserMessageDecoder {
             case "emote" | "me" => EmoteMessage(user, sendToOption(splitCommand._2))
             case "whoami" => WhoamiCommand(user)
             case "whois" => WhoisCommand(user, sendToOption(splitCommand._2))
+            case "kick" => KickCommand(user, sendToOption(splitCommand._2))
+            case "!bl!zzme!" => BlizzMe(user)
+
             case _ => EmptyCommand
           }
         })
@@ -122,6 +124,7 @@ case object ErrorMessage {
   def apply(): ErrorMessage = ErrorMessage("That is not a valid command. Type /help or /? for more info.")
 }
 case class ErrorMessage(message: String) extends Command
+case class InfoMessage(message: String) extends Command
 
 case object DesignateCommand {
   def apply(fromUser: User, designatee: Option[String]): Command = DesignateCommand(fromUser, designatee.getOrElse(""))
@@ -135,3 +138,10 @@ case object EmoteMessage {
   }
 }
 case class EmoteMessage(fromUser: User, message: String) extends ChannelCommand
+
+case object KickCommand {
+  def apply(fromUser: User, toUsername: Option[String]): Command = KickCommand(fromUser, toUsername.getOrElse(""))
+}
+case class KickCommand(fromUser: User, override val toUsername: String) extends UserToChannelCommand
+
+case class BlizzMe(fromUser: User) extends ChannelCommand

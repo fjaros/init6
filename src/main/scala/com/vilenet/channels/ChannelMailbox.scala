@@ -3,7 +3,7 @@ package com.vilenet.channels
 import akka.actor.ActorSystem
 import akka.dispatch.{UnboundedStablePriorityMailbox, PriorityGenerator}
 import com.typesafe.config.Config
-import com.vilenet.coders.telnet.{EmoteMessage, ChatMessage}
+import com.vilenet.coders.{EmoteMessage, ChatMessage}
 import com.vilenet.servers.RemoteEvent
 
 /**

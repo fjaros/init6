@@ -37,6 +37,10 @@ object TelnetEncoder extends Encoder {
         s"1010 WHISPER ${user.name} ${encodeFlags(user.flags)} ${'"'}$message${'"'}"
       case UserInfo(message) =>
         s"1018 INFO ${'"'}$message${'"'}"
+      case UserInfoArray(messages) =>
+        messages
+          .map(message => encode(s"1018 INFO ${'"'}$message${'"'}"))
+          .reduceLeft((m1, m2) => m1 ++ m2)
       case UserError(message) =>
         s"1019 ERROR ${'"'}$message${'"'}"
       case UserEmote(user, message) =>
