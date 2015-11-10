@@ -103,6 +103,8 @@ class ProtocolHandler(clientAddress: InetSocketAddress, client: ActorRef) extend
         case ConnectionProtocolData(actor, data) =>
           if (data.nonEmpty) {
             self ! Received(data)
+          } else {
+            client ! ResumeReading
           }
         case _ =>
       }
