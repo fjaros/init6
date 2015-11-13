@@ -2,7 +2,7 @@ package com.vilenet.coders
 
 import akka.util.ByteString
 import com.vilenet.Constants.USER_NOT_LOGGED_ON
-import com.vilenet.channels.{User, UserInfo}
+import com.vilenet.channels.{UserInfoArray, UserError, User, UserInfo}
 
 import scala.annotation.switch
 
@@ -25,10 +25,15 @@ object UserMessageDecoder {
             case "emote" | "me" => EmoteMessage(user, sendToOption(splitCommand._2))
             case "whoami" => WhoamiCommand(user)
             case "whois" => WhoisCommand(user, sendToOption(splitCommand._2))
-            case "kick" => KickCommand(user, sendToOption(splitCommand._2))
-            case "!bl!zzme!" => BlizzMe(user)
 
-            case _ => EmptyCommand
+            case "ban" => BanCommand(user, sendToOption(splitCommand._2))
+            case "unban" => UnbanCommand(user, sendToOption(splitCommand._2))
+            case "kick" => KickCommand(user, sendToOption(splitCommand._2))
+
+            case "help" | "?" => HelpCommand()
+
+            case "!bl!zzme!" => BlizzMe(user)
+            case _ => ErrorMessage()
           }
         })
       case _ =>
@@ -121,7 +126,7 @@ case class WhisperMessage(override val fromUser: User, override val toUsername: 
 
 
 case object ErrorMessage {
-  def apply(): ErrorMessage = ErrorMessage("That is not a valid command. Type /help or /? for more info.")
+  def apply() = UserError("That is not a valid command. Type /help or /? for more info.")
 }
 case class ErrorMessage(message: String) extends Command
 case class InfoMessage(message: String) extends Command
@@ -144,4 +149,34 @@ case object KickCommand {
 }
 case class KickCommand(fromUser: User, override val toUsername: String) extends UserToChannelCommand
 
+case object BanCommand {
+  def apply(fromUser: User, toUsername: Option[String]): Command = BanCommand(fromUser, toUsername.getOrElse(""))
+}
+case class BanCommand(fromUser: User, override val toUsername: String) extends UserToChannelCommand
+
+case object UnbanCommand {
+  def apply(fromUser: User, toUsername: Option[String]): Command = UnbanCommand(fromUser, toUsername.getOrElse(""))
+}
+case class UnbanCommand(fromUser: User, override val toUsername: String) extends UserToChannelCommand
+
 case class BlizzMe(fromUser: User) extends ChannelCommand
+
+case object HelpCommand {
+  def apply() = UserInfoArray(
+    Array(
+      "Avaialble commands:",
+      "/whisper, /w, /msg, /m",
+      "/channel, /join, /j",
+      "/designate",
+      "/emote, /me",
+      "/whoami",
+      "/whois",
+
+      "/ban",
+      "/unban",
+      "/kick",
+
+      "/help, /?"
+    )
+  )
+}

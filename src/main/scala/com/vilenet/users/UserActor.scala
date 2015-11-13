@@ -56,6 +56,10 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
     case (actor: ActorRef, WhoisCommand(fromUser, username)) =>
       actor ! UserInfo(s"${user.name} is using ${user.client} in the channel ${user.channel}.")
 
+    case BanCommand(fromUser, _) =>
+      self ! UserInfo(s"${fromUser.name} kicked you out of the channel!")
+      channelsActor ! UserSwitchedChat(self, user, "The Void")
+
     case KickCommand(fromUser, _) =>
       self ! UserInfo(s"${fromUser.name} kicked you out of the channel!")
       channelsActor ! UserSwitchedChat(self, user, "The Void")

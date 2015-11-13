@@ -5,6 +5,7 @@ import com.vilenet.ViLeNetActor
 import com.vilenet.coders._
 import com.vilenet.servers.RemoteEvent
 import com.vilenet.users.{UserUpdated, UserToChannelCommandAck}
+import com.vilenet.utils.CaseInsensitiveFiniteHashSet
 
 import scala.collection.mutable
 
@@ -77,12 +78,16 @@ class RemoteChannelsMultiMap
     }
   }
 
+  def tell(message: Any, sender: ActorRef): Unit = {
+    this.!(message)(sender)
+  }
+
   def getByColumbus(columbus: ActorRef): Option[mutable.Set[ActorRef]] = {
     columbusToChannelMap.get(columbus).fold[Option[mutable.Set[ActorRef]]](None)(get)
   }
 }
 
-class ChannelActor(name: String) extends ViLeNetActor {
+class ChannelActor(name: String, limit: Int = 200) extends ViLeNetActor {
 
   type PartialToRemote = PartialFunction[Any, Any]
 
@@ -97,6 +102,9 @@ class ChannelActor(name: String) extends ViLeNetActor {
 
   // Designate Users actor -> actor
   var designatedActors = mutable.HashMap[ActorRef, ActorRef]()
+
+  // Banned users
+  var bannedUsers = CaseInsensitiveFiniteHashSet(200)
 
 
   override def receive: Receive = {
@@ -128,7 +136,7 @@ class ChannelActor(name: String) extends ViLeNetActor {
       log.error(s"Channel $name $event")
       val eventRemote = handleLocal(event)
       log.error(s"Sending to remote $remoteUsers $eventRemote")
-      remoteUsers ! eventRemote
+      remoteUsers.tell(eventRemote, sender())
   }
 
   def handleLocal: PartialToRemote = {
@@ -137,7 +145,10 @@ class ChannelActor(name: String) extends ViLeNetActor {
       (sender(), BlizzMe(user))
 
     case AddUser(actor, user) =>
-      AddUser(actor, add(actor, user))
+      add(actor, user) match {
+        case value: User => AddUser(actor, value)
+        case _ =>
+      }
 
     case RemUser(actor) =>
       log.error(s"RemUser $actor")
@@ -158,9 +169,15 @@ class ChannelActor(name: String) extends ViLeNetActor {
 
     case userToChannel: UserToChannelCommandAck =>
       userToChannel.command match {
-        case KickCommand(fromUser, toUsername) =>
+        case BanCommand(fromUser, _) =>
+          ban(sender(), userToChannel.userActor, userToChannel.realUsername)
+          userToChannel
+        case UnbanCommand(fromUser, _) =>
+          unban(sender(), userToChannel.realUsername)
+          userToChannel
+        case KickCommand(fromUser, _) =>
           kick(sender(), userToChannel.userActor)
-        case DesignateCommand(fromUser, toUsername) =>
+        case DesignateCommand(fromUser, _) =>
           designate(sender(), userToChannel.userActor)
           userToChannel
       }
@@ -196,6 +213,16 @@ class ChannelActor(name: String) extends ViLeNetActor {
       log.error(s"Remote RemUser $actor")
       remoteRem(actor)
 
+    case userToChannel: UserToChannelCommandAck =>
+      userToChannel.command match {
+        case BanCommand(fromUser, _) =>
+          ban(sender(), userToChannel.userActor, userToChannel.realUsername)
+        case UnbanCommand(fromUser, _) =>
+          unban(sender(), userToChannel.realUsername)
+        case DesignateCommand(fromUser, _) =>
+          designate(sender(), userToChannel.userActor)
+      }
+
     case x =>
       log.error(s"Unhandled remote command $x")
   }
@@ -229,31 +256,38 @@ class ChannelActor(name: String) extends ViLeNetActor {
   }
 
   def add(actor: ActorRef, user: User) = {
-    val updatedUser = user.copy(
-      flags =
-        if (users.isEmpty) {
-          user.flags | 0x02
-        } else {
-          user.flags & ~0x02
-        },
-      channel = name
-    )
+    if (users.size >= limit) {
+      actor ! UserError("Channel is full.")
+    } else if (bannedUsers(user.name)) {
+      actor ! UserError("You are banned from that channel.")
+    } else {
 
-    val userJoined = UserJoined(updatedUser)
-    localUsers
-      .foreach(_ ! userJoined)
+      val updatedUser = user.copy(
+        flags =
+          if (users.isEmpty) {
+            user.flags | 0x02
+          } else {
+            user.flags & ~0x02
+          },
+        channel = name
+      )
 
-    users += actor -> updatedUser
-    localUsers += actor
-    context.watch(actor)
+      val userJoined = UserJoined(updatedUser)
+      localUsers
+        .foreach(_ ! userJoined)
 
-    actor ! UserChannel(updatedUser, name, self)
+      users += actor -> updatedUser
+      localUsers += actor
+      context.watch(actor)
 
-    users
-      .values
-      .foreach(actor ! UserIn(_))
+      actor ! UserChannel(updatedUser, name, self)
 
-    updatedUser
+      users
+        .values
+        .foreach(actor ! UserIn(_))
+
+      updatedUser
+    }
   }
 
   def remoteAdd(actor: ActorRef, user: User) = {
@@ -308,6 +342,40 @@ class ChannelActor(name: String) extends ViLeNetActor {
         })
       } else {
         fromActor ! UserError("You are not a channel operator.")
+      }
+    })
+  }
+
+  def ban(fromActor: ActorRef, bannedActor: ActorRef, bannedUsername: String) = {
+    // At this point we can assume banned is logged on
+    users.get(fromActor).fold()(user => {
+      if (isOperator(user)) {
+        bannedUsers += bannedUsername
+        users.get(bannedActor).fold({
+          bannedUsers += bannedUsername
+          localUsers ! UserInfo(s"$bannedUsername was banned by ${user.name}.")
+        })(bannedUser => {
+          if (isOperator(bannedUser)) {
+            fromActor ! UserError("You can't ban a channel operator.")
+          } else {
+            bannedUsers += bannedUsername
+            bannedActor ! BanCommand(user, bannedUser.name)
+            localUsers ! UserInfo(s"$bannedUsername was banned by ${user.name}.")
+          }
+        })
+      }
+    })
+  }
+
+  def unban(fromActor: ActorRef, unbannedUsername: String) = {
+    users.get(fromActor).fold()(user => {
+      if (isOperator(user)) {
+        if (bannedUsers(unbannedUsername)) {
+          bannedUsers -= unbannedUsername
+          localUsers ! UserInfo(s"$unbannedUsername was unbanned by ${user.name}.")
+        } else {
+          fromActor ! UserError("That user is not banned.")
+        }
       }
     })
   }

@@ -14,7 +14,7 @@ public class Tester {
     static final String hostName = "54.193.49.146";
     static final int portNumber = 6112;
 //    static final String hostName = "127.0.0.1";
-//    static final int portNumber = 7112;
+//    static final int portNumber = 6112;
 
     static AtomicInteger i = new AtomicInteger();
 

@@ -7,7 +7,7 @@ import com.vilenet.servers.{RemoteEvent, ServerOnline, AddListener}
 import com.vilenet.{Constants, ViLeNetComponent, ViLeNetActor}
 import com.vilenet.channels._
 import com.vilenet.Constants._
-import com.vilenet.utils.CaseInsensitiveHashMap
+import com.vilenet.utils.RealKeyedCaseInsensitiveHashMap
 
 import scala.collection.mutable
 
@@ -29,8 +29,8 @@ case object TelnetProtocol extends Protocol
 
 case object GetUsers
 case class ReceivedUser(user: (String, ActorRef))
-case class ReceivedUsers(users: CaseInsensitiveHashMap[ActorRef])
-case class UserToChannelCommandAck(userActor: ActorRef, command: UserToChannelCommand) extends Command
+case class ReceivedUsers(users: RealKeyedCaseInsensitiveHashMap[ActorRef])
+case class UserToChannelCommandAck(userActor: ActorRef, realUsername: String, command: UserToChannelCommand) extends Command
 
 class UsersActor extends ViLeNetActor {
 
@@ -39,7 +39,7 @@ class UsersActor extends ViLeNetActor {
   val remoteUsersActor = (actor: ActorRef) =>
     system.actorSelection(s"akka.tcp://${actor.path.address.hostPort}/user/$VILE_NET_USERS_PATH")
 
-  var users = CaseInsensitiveHashMap[ActorRef]()
+  var users = RealKeyedCaseInsensitiveHashMap[ActorRef]()
 
   serverColumbus ! AddListener
 
@@ -59,8 +59,8 @@ class UsersActor extends ViLeNetActor {
       users ++= remoteUsers
 
     case command: UserToChannelCommand =>
-      sender() ! users.get(command.toUsername)
-        .fold[Command](UserError(Constants.USER_NOT_LOGGED_ON))(UserToChannelCommandAck(_, command))
+      sender() ! users.getWithRealKey(command.toUsername)
+        .fold[Command](UserError(Constants.USER_NOT_LOGGED_ON))(keyedUser => UserToChannelCommandAck(keyedUser._2, keyedUser._1, command))
 
     case command: UserCommand =>
       log.error(s"command sending $command")
