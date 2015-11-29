@@ -9,7 +9,7 @@ object CaseInsensitiveFiniteHashSet {
   def apply(limit: Int) = new CaseInsensitiveFiniteHashSet(limit)
 }
 
-class CaseInsensitiveFiniteHashSet(limit: Int) extends mutable.LinkedHashSet[String] {
+sealed class CaseInsensitiveFiniteHashSet(limit: Int) extends mutable.LinkedHashSet[String] {
 
   override def contains(elem: String): Boolean = super.contains(elem.toLowerCase)
   override def remove(elem: String): Boolean = super.remove(elem.toLowerCase)

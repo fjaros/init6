@@ -58,7 +58,7 @@ class ProtocolHandler(clientAddress: InetSocketAddress, client: ActorRef) extend
       client ! ResumeReading
       stay()
     case Event(WriteOut(data), protocolData: ConnectionProtocolData) =>
-      log.error(s"### WriteOut1: $client ${data.utf8String}")
+      //log.error(s"### WriteOut1: $client ${data.utf8String}")
       client ! Write(data, Ack)
       goto (InitializedBuffering)
     case Event(x, protocolData: ConnectionProtocolData) =>
@@ -76,11 +76,11 @@ class ProtocolHandler(clientAddress: InetSocketAddress, client: ActorRef) extend
       client ! ResumeReading
       stay()
     case Event(WriteOut(data), _) =>
-      log.error(s"### WriteOut2: $client ${data.utf8String}")
+     // log.error(s"### WriteOut2: $client ${data.utf8String}")
       buffer :+= data
       stay()
     case Event(Ack, _) =>
-      log.error(s"### Ack: $client ${buffer.size}")
+      //log.error(s"### Ack: $client ${buffer.size}")
       buffer
         .headOption
         .fold(goto(Initialized))(data => {

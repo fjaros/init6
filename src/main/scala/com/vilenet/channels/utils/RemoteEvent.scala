@@ -1,4 +1,4 @@
-package com.vilenet.servers
+package com.vilenet.channels.utils
 
 /**
  * Created by filip on 10/18/15.

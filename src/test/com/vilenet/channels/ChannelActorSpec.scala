@@ -2,7 +2,7 @@ package com.vilenet.channels
 
 import akka.actor.ActorRef
 import akka.testkit.TestActorRef
-import com.vilenet.servers.RemoteEvent
+import com.vilenet.channels.utils.RemoteEvent
 import com.vilenet.users.UserUpdated
 import com.vilenet.{MockActor, ViLeNetTestComponent}
 import org.scalatest._

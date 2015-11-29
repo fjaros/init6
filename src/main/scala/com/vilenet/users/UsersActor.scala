@@ -2,8 +2,9 @@ package com.vilenet.users
 
 import akka.actor.{Props, ActorRef}
 import akka.io.Tcp.Event
+import com.vilenet.channels.utils.RemoteEvent
 import com.vilenet.coders.{UserToChannelCommand, UserCommand, Command}
-import com.vilenet.servers.{RemoteEvent, ServerOnline, AddListener}
+import com.vilenet.servers.{ServerOnline, AddListener}
 import com.vilenet.{Constants, ViLeNetComponent, ViLeNetActor}
 import com.vilenet.channels._
 import com.vilenet.Constants._

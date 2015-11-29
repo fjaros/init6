@@ -3,8 +3,8 @@ package com.vilenet.channels
 import akka.actor.ActorSystem
 import akka.dispatch.{UnboundedStablePriorityMailbox, PriorityGenerator}
 import com.typesafe.config.Config
+import com.vilenet.channels.utils.RemoteEvent
 import com.vilenet.coders.{EmoteMessage, ChatMessage}
-import com.vilenet.servers.RemoteEvent
 
 /**
   * Created by filip on 11/7/15.

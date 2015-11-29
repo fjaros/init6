@@ -2,6 +2,7 @@ package com.vilenet.users
 
 import akka.actor.{Terminated, ActorRef, Props}
 import akka.io.Tcp.{Received, Write}
+import com.vilenet.Constants._
 import com.vilenet.connection.WriteOut
 import com.vilenet.ViLeNetActor
 import com.vilenet.channels._
@@ -56,12 +57,12 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
     case (actor: ActorRef, WhoisCommand(fromUser, username)) =>
       actor ! UserInfo(s"${user.name} is using ${user.client} in the channel ${user.channel}.")
 
-    case BanCommand(fromUser, _) =>
-      self ! UserInfo(s"${fromUser.name} kicked you out of the channel!")
+    case BanCommand(kicking) =>
+      self ! UserInfo(YOU_KICKED(kicking))
       channelsActor ! UserSwitchedChat(self, user, "The Void")
 
-    case KickCommand(fromUser, _) =>
-      self ! UserInfo(s"${fromUser.name} kicked you out of the channel!")
+    case KickCommand(kicking) =>
+      self ! UserInfo(YOU_KICKED(kicking))
       channelsActor ! UserSwitchedChat(self, user, "The Void")
 
     case Received(data) =>
@@ -75,20 +76,23 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
              *  A command being sent to the user's channel can be done via actor selection, since we can guarantee the
              *  channel exists.
              */
-            case JoinUserCommand(fromUser, channel) => channelsActor ! UserSwitchedChat(self, fromUser, channel)
+            case JoinUserCommand(fromUser, channel) =>
+              if (!user.channel.equalsIgnoreCase(channel)) {
+                channelsActor ! UserSwitchedChat(self, fromUser, channel)
+              }
             case command: ChannelCommand => channelActor ! command
             case command: UserToChannelCommand =>
               if (isOperator(user)) {
                 usersActor ! command
               } else {
-                connection ! WriteOut(encoder(UserError("You are not a channel operator.")).get)
+                connection ! WriteOut(encoder(UserError(NOT_OPERATOR)).get)
               }
             case command: UserCommand => usersActor ! command
             case command: ReturnableCommand => encoder(command).fold()(connection ! WriteOut(_))
             case _ =>
           }
         case x =>
-          log.error(s"### UserMessageDecoder Unhandled: $x")
+          //log.error(s"### UserMessageDecoder Unhandled: $x")
       }
 
     case command: UserToChannelCommandAck =>
@@ -100,7 +104,7 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
       context.stop(self)
 
     case x =>
-      log.error(s"### UserActor Unhandled: $x")
+      //log.error(s"### UserActor Unhandled: $x")
   }
 
   def isOperator(user: User) = (user.flags & 0x02) == 0x02 || (user.flags & 0x01) == 0x01

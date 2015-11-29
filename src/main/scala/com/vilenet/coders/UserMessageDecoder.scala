@@ -11,7 +11,7 @@ import scala.annotation.switch
  */
 object UserMessageDecoder {
 
-  implicit def decode(byteString: ByteString): String = byteString.utf8String
+  private implicit def decode(byteString: ByteString): String = byteString.utf8String
 
   def apply(user: User, byteString: ByteString) = {
     (byteString.head: @switch) match {
@@ -26,9 +26,9 @@ object UserMessageDecoder {
             case "whoami" => WhoamiCommand(user)
             case "whois" => WhoisCommand(user, sendToOption(splitCommand._2))
 
-            case "ban" => BanCommand(user, sendToOption(splitCommand._2))
-            case "unban" => UnbanCommand(user, sendToOption(splitCommand._2))
-            case "kick" => KickCommand(user, sendToOption(splitCommand._2))
+            case "ban" => BanCommand(sendToOption(splitCommand._2))
+            case "unban" => UnbanCommand(sendToOption(splitCommand._2))
+            case "kick" => KickCommand(sendToOption(splitCommand._2))
 
             case "help" | "?" => HelpCommand()
 
@@ -75,7 +75,9 @@ trait UserCommand extends Command {
   val fromUser: User
   val toUsername: String
 }
-trait UserToChannelCommand extends UserCommand
+trait UserToChannelCommand extends Command {
+  val toUsername: String
+}
 trait ReturnableCommand extends Command
 
 case object EmptyCommand extends Command
@@ -145,19 +147,19 @@ case object EmoteMessage {
 case class EmoteMessage(fromUser: User, message: String) extends ChannelCommand
 
 case object KickCommand {
-  def apply(fromUser: User, toUsername: Option[String]): Command = KickCommand(fromUser, toUsername.getOrElse(""))
+  def apply(toUsername: Option[String]): Command = KickCommand(toUsername.getOrElse(""))
 }
-case class KickCommand(fromUser: User, override val toUsername: String) extends UserToChannelCommand
+case class KickCommand(override val toUsername: String) extends UserToChannelCommand
 
 case object BanCommand {
-  def apply(fromUser: User, toUsername: Option[String]): Command = BanCommand(fromUser, toUsername.getOrElse(""))
+  def apply(toUsername: Option[String]): Command = BanCommand(toUsername.getOrElse(""))
 }
-case class BanCommand(fromUser: User, override val toUsername: String) extends UserToChannelCommand
+case class BanCommand(override val toUsername: String) extends UserToChannelCommand
 
 case object UnbanCommand {
-  def apply(fromUser: User, toUsername: Option[String]): Command = UnbanCommand(fromUser, toUsername.getOrElse(""))
+  def apply(toUsername: Option[String]): Command = UnbanCommand(toUsername.getOrElse(""))
 }
-case class UnbanCommand(fromUser: User, override val toUsername: String) extends UserToChannelCommand
+case class UnbanCommand(override val toUsername: String) extends UserToChannelCommand
 
 case class BlizzMe(fromUser: User) extends ChannelCommand
 

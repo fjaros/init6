@@ -2,8 +2,9 @@ package com.vilenet.channels
 
 import akka.actor.{ActorRef, Props}
 import com.vilenet.Constants._
+import com.vilenet.channels.utils.RemoteEvent
 import com.vilenet.{ViLeNetComponent, ViLeNetActor}
-import com.vilenet.servers.{RemoteEvent, ServerOnline, AddListener}
+import com.vilenet.servers.{ServerOnline, AddListener}
 import com.vilenet.utils.CaseInsensitiveHashMap
 
 import scala.collection.mutable
@@ -19,6 +20,7 @@ case object GetChannels
 case class ChannelCreated(actor: ActorRef, name: String)
 case class GetChannelUsers(remoteActor: ActorRef)
 case class ReceivedChannel(channel: (String, ActorRef))
+case class UserAdded(actor: ActorRef, channel: String)
 
 
 
@@ -57,11 +59,11 @@ class ChannelsActor extends ViLeNetActor {
     case UserSwitchedChat(actor, user, channel) =>
       log.error(s"$user switched chat $remoteChannelsActors")
 
-      channels.get(user.channel).fold()(_ ! RemUser(actor))
-      
       getOrCreate(channel) ! AddUser(actor, user)
-        
-      
+
+    case UserAdded(actor, channel) =>
+      channels.get(channel).fold(log.error(s"Channel $channel not found"))(_ ! RemUser(actor))
+
     case ChatEmptied(channel) =>
       val lowerChannel = channel.toLowerCase
       context.stop(channels(lowerChannel))
@@ -71,7 +73,7 @@ class ChannelsActor extends ViLeNetActor {
   
   def getOrCreate(name: String) = {
     channels.getOrElse(name, {
-      val channelActor = context.actorOf(ChannelActor(name).withDispatcher("channel-dispatcher"))
+      val channelActor = context.actorOf(ChannelActor(name).withDispatcher(CHANNEL_DISPATCHER))
       channels += name -> channelActor
       remoteChannelsActors.foreach(_ ! ChannelCreated(channelActor, name))
       channelActor
