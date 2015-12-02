@@ -14,6 +14,7 @@ sealed class CaseInsensitiveHashMap[B] extends mutable.HashMap[String, B] {
   override def +=(kv: (String, B)): this.type = super.+=(kv.copy(kv._1.toLowerCase, kv._2))
   override def -=(key: String): this.type = super.-=(key.toLowerCase)
   override def apply(key: String): B = get(key).get
+  override def contains(key: String): Boolean = super.contains(key.toLowerCase)
   override def get(key: String): Option[B] = super.get(key.toLowerCase)
   override def remove(key: String): Option[B] = super.remove(key.toLowerCase)
 }

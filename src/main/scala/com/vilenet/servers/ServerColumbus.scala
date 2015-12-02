@@ -1,7 +1,7 @@
 package com.vilenet.servers
 
 
-import akka.actor.{Props, ActorRef}
+import akka.actor.{Terminated, Props, ActorRef}
 import com.vilenet.Constants._
 import com.vilenet.{ViLeNetComponent, ViLeNetActor}
 
@@ -25,7 +25,7 @@ case object SplitMe
 
 
 object ServerColumbus extends ViLeNetComponent {
-  def apply(remoteServer: String) = system.actorOf(Props(new ServerColumbus(Array(remoteServer))), VILE_NET_SERVERS_PATH)
+  def apply(remoteServer: String): ActorRef = ServerColumbus(Array(remoteServer))
   def apply(remoteServers: Array[String]) = system.actorOf(Props(new ServerColumbus(remoteServers)), VILE_NET_SERVERS_PATH)
 }
 
@@ -51,9 +51,11 @@ class ServerColumbus(remoteServers: Array[String]) extends ViLeNetActor {
       remoteServers.foreach(server => system.actorSelection(buildPath(server)) ! ServerOnline)
 
     case ServerOnline =>
-      listeners.foreach(_ ! ServerOnline(sender()))
-      servers += sender()
-      sender() ! ServerOnlineAck
+      val remoteServer = sender()
+      context.watch(remoteServer)
+      listeners.foreach(_ ! ServerOnline(remoteServer))
+      servers += remoteServer
+      remoteServer ! ServerOnlineAck
 
     case ServerOnlineAck =>
       listeners.foreach(_ ! ServerOnline(sender()))
@@ -61,25 +63,34 @@ class ServerColumbus(remoteServers: Array[String]) extends ViLeNetActor {
 
 
     case ServerOffline =>
-      servers -= sender()
-      listeners.foreach(_ ! ServerOffline(sender()))
-      sendServersOffline()
+      val remoteServer = sender()
+      context.unwatch(remoteServer)
+      servers -= remoteServer
+      listeners.foreach(_ ! ServerOffline(remoteServer))
+      sendServersOffline(remoteServer)
+
+    case Terminated(actor) =>
+      val remoteServer = sender()
+      context.unwatch(remoteServer)
+      servers -= remoteServer
+      listeners.foreach(_ ! ServerOffline(remoteServer))
+      sendServersOffline(remoteServer)
 
     case AddListener =>
       listeners += sender()
-      sendServersOnline()
+      sendServersOnline(sender())
 
     case SplitMe =>
-      sendServersOffline()
+      sendServersOffline(sender())
   }
 
 
-  def sendServersOnline() =
+  def sendServersOnline(remoteServer: ActorRef) =
     servers
-      .filter(sender() != _)
-      .foreach(sender() ! ServerOnline(_))
+      .filterNot(_ == remoteServer)
+      .foreach(remoteServer ! ServerOnline(_))
 
-  def sendServersOffline() =
+  def sendServersOffline(remoteServer: ActorRef) =
     servers
-      .foreach(sender() ! ServerOffline(_))
+      .foreach(remoteServer ! ServerOffline(_))
 }

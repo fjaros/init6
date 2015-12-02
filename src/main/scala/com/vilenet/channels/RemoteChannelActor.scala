@@ -2,8 +2,7 @@ package com.vilenet.channels
 
 import akka.actor.{Terminated, ActorRef}
 import com.vilenet.channels.utils.{RemoteChannelsMultiMap, RemoteEvent}
-import com.vilenet.coders.{DesignateCommand, EmoteMessage, ChatMessage}
-import com.vilenet.users.UserToChannelCommandAck
+import com.vilenet.coders.{EmoteMessage, ChatMessage}
 
 import scala.collection.mutable
 
@@ -18,6 +17,7 @@ trait RemoteChannelActor extends ChannelActor {
   override def receiveEvent: Receive = {
     case ChannelCreated(remoteChannelActor, _) =>
       println(s"ChannelCreated $remoteChannelActor")
+      context.watch(remoteChannelActor)
       remoteUsers += remoteChannelActor
       remoteChannelActor ! RemoteEvent(ChannelUsersLoad(self, users, localUsers))
 
@@ -25,13 +25,14 @@ trait RemoteChannelActor extends ChannelActor {
       println(s"ChannelUsersRequest $remoteChannelsActor")
       remoteChannelsActor ! ChannelUsersResponse(name, users, localUsers)
 
-    case ServerTerminated(columbus) =>
-      remoteUsers.getByColumbus(columbus)
-        .fold(log.info(s"Remote server terminated but not found as a users key $columbus"))(_.foreach(rem))
-
     case RemoteEvent(event) =>
       println(s"Received Remote $event ${this.getClass.toString}")
       receiveRemoteEvent(event)
+
+    case event: Terminated =>
+      println(s"REMOTECHANNELACTOR TERMINATED ${event.actor}")
+      remoteUsers.get(event.actor).fold(super.receiveEvent(event))(_.foreach(remoteRem))
+
     case event =>
       super.receiveEvent(event)
       //println(s"Sending $event to $remoteUsers")
@@ -42,6 +43,7 @@ trait RemoteChannelActor extends ChannelActor {
     case ChannelUsersLoad(remoteChannelActor, allUsers, remoteUsersLoad) =>
       log.error(s"ChannelUsersLoad $remoteChannelActor $allUsers $remoteUsersLoad")
       onChannelUsersLoad(remoteChannelActor, allUsers, remoteUsersLoad)
+      remoteUsersLoad.foreach(context.watch)
       remoteUsers += remoteChannelActor -> remoteUsersLoad
 
     case AddUser(actor, user) => remoteAdd(actor, user)
@@ -80,12 +82,16 @@ trait RemoteChannelActor extends ChannelActor {
 
   def remoteAdd(actor: ActorRef, user: User): Unit = {
     println(s"REMOTEADD $name ${user.name}")
+    context.watch(actor)
     users += actor -> user
   }
 
   def remoteRem(actor: ActorRef): Option[User] = {
     val userOpt = users.get(actor)
-    userOpt.fold()(_ => users -= actor)
+    userOpt.fold()(_ => {
+      context.unwatch(actor)
+      users -= actor
+    })
 
     if (users.isEmpty) {
       channelsActor ! ChatEmptied(name)

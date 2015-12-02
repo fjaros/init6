@@ -10,12 +10,12 @@ object SidEnterChat extends BinaryPacket {
 
   override val PACKET_ID: Byte = 0x0A
 
-  def apply(username: String, productId: String): ByteString = {
+  def apply(username: String, oldUsername: String, productId: String): ByteString = {
     build(
       ByteString.newBuilder
         .putBytes(username)
         .putBytes(productId)
-        .putBytes(username)
+        .putBytes(oldUsername)
         .result()
     )
   }

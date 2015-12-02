@@ -12,7 +12,7 @@ import com.vilenet.{Constants, ViLeNetActor}
 import com.vilenet.channels._
 import com.vilenet.coders.binary.hash.{DoubleHash, BrokenSHA1}
 import com.vilenet.coders.binary.packets._
-import com.vilenet.users.{BinaryProtocol, Add}
+import com.vilenet.users.{UsersUserAdded, BinaryProtocol, Add}
 
 import scala.concurrent.Await
 
@@ -128,6 +128,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
 
   var clientToken: Int = _
   var username: String = _
+  var oldUsername: String = _
   var productId: String = _
 
   when(StartLoginState) {
@@ -178,12 +179,13 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
   when(ExpectingSidLogonResponse) {
     case Event(WithBinaryData(packetId, length, data), _) =>
       if (packetId == 0x29 || packetId == 0x3A) {
-        username = new String(data.drop(7*4).takeWhile(_ != 0))
-        val u = User(username, 0, client = productId)
+        oldUsername = new String(data.drop(7*4).takeWhile(_ != 0))
+        val u = User(oldUsername, 0, client = productId)
         Await.result(usersActor ? Add(connection, u, BinaryProtocol), timeout.duration) match {
-          case reply: ActorRef =>
+          case UsersUserAdded(userActor, user) =>
+            username = user.name
             connection ! WriteOut(SidLogonResponse2())
-            goto (ExpectingSidEnterChat) using WithActor(reply)
+            goto (ExpectingSidEnterChat) using WithActor(userActor)
           case _ => stop()
         }
       } else {
@@ -217,7 +219,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
   when(ExpectingSidEnterChat) {
     case Event(WithBinaryData(packetId, length, data), _) =>
       if (packetId == 0x0A) {
-        connection ! WriteOut(SidEnterChat(username, productId))
+        connection ! WriteOut(SidEnterChat(username, oldUsername, productId))
         goto(ExpectingSidJoinChannel) using stateData
       } else {
         stay()

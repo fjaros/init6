@@ -4,7 +4,7 @@ import akka.actor.{ActorRef, Props}
 import com.vilenet.Constants._
 import com.vilenet.channels.utils.RemoteEvent
 import com.vilenet.{ViLeNetComponent, ViLeNetActor}
-import com.vilenet.servers.{ServerOnline, AddListener}
+import com.vilenet.servers.{ServerOffline, ServerOnline, AddListener}
 import com.vilenet.utils.CaseInsensitiveHashMap
 
 import scala.collection.mutable
@@ -16,7 +16,7 @@ object ChannelsActor extends ViLeNetComponent {
   def apply() = system.actorOf(Props(new ChannelsActor), VILE_NET_CHANNELS_PATH)
 }
 
-case object GetChannels
+case class GetChannels(columbus: ActorRef)
 case class ChannelCreated(actor: ActorRef, name: String)
 case class GetChannelUsers(remoteActor: ActorRef)
 case class ReceivedChannel(channel: (String, ActorRef))
@@ -39,9 +39,15 @@ class ChannelsActor extends ViLeNetActor {
   override def receive: Receive = {
     case ServerOnline(columbus) =>
       log.error(s"GetChannelsActor: $columbus")
-      remoteChannelsActor(columbus) ! GetChannels
+      remoteChannelsActor(columbus) ! GetChannels(columbus)
 
-    case GetChannels =>
+    case ServerOffline(columbus) =>
+      log.error(s"ServerOffline: $columbus")
+      channels
+        .values
+        .foreach(_ ! ServerOffline(columbus))
+
+    case GetChannels(columbus) =>
       log.error(s"GetChannels sender ${sender()} $channels")
       remoteChannelsActors += sender()
       channels

@@ -1,7 +1,7 @@
 package com.vilenet.coders
 
 import akka.util.ByteString
-import com.vilenet.Constants.USER_NOT_LOGGED_ON
+import com.vilenet.Constants._
 import com.vilenet.channels.{UserInfoArray, UserError, User, UserInfo}
 
 import scala.annotation.switch
@@ -24,7 +24,7 @@ object UserMessageDecoder {
             case "designate" => DesignateCommand(user, sendToOption(splitCommand._2))
             case "emote" | "me" => EmoteMessage(user, sendToOption(splitCommand._2))
             case "whoami" => WhoamiCommand(user)
-            case "whois" => WhoisCommand(user, sendToOption(splitCommand._2))
+            case "whois" | "whereis" => WhoisCommand(user, sendToOption(splitCommand._2))
 
             case "ban" => BanCommand(sendToOption(splitCommand._2))
             case "unban" => UnbanCommand(sendToOption(splitCommand._2))
@@ -84,11 +84,17 @@ case object EmptyCommand extends Command
 
 case object WhoamiCommand {
   def apply(user: User): Command =
-    UserInfo(s"You are ${user.name}, using ${encodeClient(user.client)} in the channel ${user.channel}.")
+    UserInfo(WHOAMI(user.name, encodeClient(user.client), user.channel))
 
   def encodeClient(client: String) = {
     (client: @switch) match {
       case "CHAT" => "Chat"
+      case "LTRD" => "Diablo"
+      case "RHSD" => "Diablo Shareware"
+      case "RHSS" => "Starcraft Shareware"
+      case "RATS" => "Starcraft"
+      case "PXES" => "Starcraft Broodwar"
+      case "NB2W" => "Warcraft II Battle.net Edition"
       case _ => "Unknown"
     }
   }
@@ -111,7 +117,7 @@ case class WhoisCommand(override val fromUser: User, override val toUsername: St
 
 case object JoinUserCommand {
   def apply(fromUser: User, channel: Option[String]): Command = {
-    channel.fold[Command](ErrorMessage("What channel do you want to join?"))(JoinUserCommand(fromUser, _))
+    channel.fold[Command](ErrorMessage(NO_CHANNEL_INPUT))(JoinUserCommand(fromUser, _))
   }
 }
 case class JoinUserCommand(override val fromUser: User, channel: String) extends ChannelCommand
@@ -119,7 +125,7 @@ case class JoinUserCommand(override val fromUser: User, channel: String) extends
 
 case object WhisperMessage {
   def apply(opt: Option[(User, String, String)]): Command = {
-    opt.fold[Command](ErrorMessage("That user is not logged on."))(WhisperMessage(_))
+    opt.fold[Command](ErrorMessage(USER_NOT_LOGGED_ON))(WhisperMessage(_))
   }
 
   def apply(opt: (User, String, String)): WhisperMessage = WhisperMessage(opt._1, opt._2, opt._3)
@@ -128,7 +134,7 @@ case class WhisperMessage(override val fromUser: User, override val toUsername: 
 
 
 case object ErrorMessage {
-  def apply() = UserError("That is not a valid command. Type /help or /? for more info.")
+  def apply() = UserError(INVALID_COMMAND)
 }
 case class ErrorMessage(message: String) extends Command
 case class InfoMessage(message: String) extends Command
