@@ -1,6 +1,6 @@
 package com.vilenet.channels
 
-import akka.actor.{Terminated, Props, ActorRef}
+import akka.actor.{PoisonPill, Terminated, Props, ActorRef}
 import com.vilenet.Constants._
 import com.vilenet.ViLeNetActor
 import com.vilenet.channels.utils.{RemoteEvent, LocalUsersSet}
@@ -99,6 +99,7 @@ trait ChannelActor extends ViLeNetActor {
     users.get(actor).fold()(_ => users -= actor)
     if (users.isEmpty) {
       channelsActor ! ChatEmptied(name)
+      self ! PoisonPill
     }
     userOpt
   }

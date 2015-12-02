@@ -72,7 +72,6 @@ class ChannelsActor extends ViLeNetActor {
 
     case ChatEmptied(channel) =>
       val lowerChannel = channel.toLowerCase
-      context.stop(channels(lowerChannel))
       channels -= lowerChannel
 
   }

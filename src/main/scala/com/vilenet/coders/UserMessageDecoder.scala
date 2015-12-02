@@ -88,13 +88,18 @@ case object WhoamiCommand {
 
   def encodeClient(client: String) = {
     (client: @switch) match {
-      case "CHAT" => "Chat"
+      case "CHAT" => "a Chat Client"
       case "LTRD" => "Diablo"
       case "RHSD" => "Diablo Shareware"
       case "RHSS" => "Starcraft Shareware"
+      case "RTSJ" => "Starcraft Japanese"
       case "RATS" => "Starcraft"
       case "PXES" => "Starcraft Broodwar"
-      case "NB2W" => "Warcraft II Battle.net Edition"
+      case "NB2W" => "Warcraft II"
+      case "VD2D" => "Diablo II"
+      case "PX2D" => "Diablo II Lord of Destruction"
+      case "3RAW" => "Warcraft III"
+      case "PX3W" => "Warcraft III The Frozen Throne"
       case _ => "Unknown"
     }
   }

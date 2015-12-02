@@ -55,7 +55,7 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
         })
 
     case (actor: ActorRef, WhoisCommand(fromUser, username)) =>
-      actor ! UserInfo(s"${user.name} is using ${user.client} in the channel ${user.channel}.")
+      actor ! UserInfo(s"${user.name} is using ${WhoamiCommand.encodeClient(user.client)} in the channel ${user.channel}.")
 
     case BanCommand(kicking) =>
       self ! UserInfo(YOU_KICKED(kicking))

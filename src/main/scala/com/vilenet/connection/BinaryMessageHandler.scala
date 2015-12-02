@@ -15,6 +15,7 @@ import com.vilenet.coders.binary.packets._
 import com.vilenet.users.{UsersUserAdded, BinaryProtocol, Add}
 
 import scala.concurrent.Await
+import scala.util.Random
 
 sealed trait PacketReceiverState
 case object ExpectingHeader extends PacketReceiverState
@@ -122,7 +123,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
   startWith(StartLoginState, EmptyBinaryData)
   context.watch(connection)
 
-  val pingCookie: Int = 0xBADCABF
+  val pingCookie: Int = Random.nextInt
   var pingTime: Long = 0
   var ping: Int = -1
 
