@@ -29,6 +29,8 @@ object UserMessageDecoder {
             case "ban" => BanCommand(sendToOption(splitCommand._2))
             case "unban" => UnbanCommand(sendToOption(splitCommand._2))
             case "kick" => KickCommand(sendToOption(splitCommand._2))
+            case "squelch" | "ignore" => SquelchCommand(user, sendToOption(splitCommand._2))
+            case "unsquelch" | "unignore" => UnsquelchCommand(user, sendToOption(splitCommand._2))
 
             case "help" | "?" => HelpCommand()
 
@@ -171,6 +173,32 @@ case object UnbanCommand {
   def apply(toUsername: Option[String]): Command = UnbanCommand(toUsername.getOrElse(""))
 }
 case class UnbanCommand(override val toUsername: String) extends UserToChannelCommand
+
+case object SquelchCommand {
+  def apply(fromUser: User, toUsername: Option[String]): Command = {
+    toUsername.fold[Command](SquelchCommand(""))(username =>
+      if (fromUser.name.equalsIgnoreCase(username)) {
+        UserError(YOU_CANT_SQUELCH)
+      } else {
+        SquelchCommand(username)
+      }
+    )
+  }
+}
+case class SquelchCommand(override val toUsername: String) extends UserToChannelCommand
+
+case object UnsquelchCommand {
+  def apply(fromUser: User, toUsername: Option[String]): Command = {
+    toUsername.fold[Command](UnsquelchCommand(""))(username =>
+      if (fromUser.name.equalsIgnoreCase(username)) {
+        EmptyCommand
+      } else {
+        UnsquelchCommand(username)
+      }
+    )
+  }
+}
+case class UnsquelchCommand(override val toUsername: String) extends UserToChannelCommand
 
 case class BlizzMe(fromUser: User) extends ChannelCommand
 

@@ -2,7 +2,8 @@ package com.vilenet.channels
 
 import akka.actor.{Terminated, ActorRef}
 import com.vilenet.Constants._
-import com.vilenet.coders.{EmoteMessage, ChatMessage}
+import com.vilenet.coders.{UnsquelchCommand, SquelchCommand, EmoteMessage, ChatMessage}
+import com.vilenet.users.{UserUpdated, UserToChannelCommandAck}
 
 /**
   * Created by filip on 11/15/15.
@@ -14,6 +15,20 @@ trait ChattableChannelActor extends RemoteChattableChannelActor {
       onChatMessage(user, message)
     case EmoteMessage(user, message) =>
       onEmoteMessage(user, message)
+
+    case command: UserToChannelCommandAck =>
+      command.command match {
+        case SquelchCommand(_) =>
+          sender() ! UserInfo(USER_SQUELCHED(command.realUsername))
+          sender() ! UserSquelched(command.realUsername)
+          users.get(command.userActor).fold()(user => sender() ! UserFlags(Flags.squelch(user)))
+        case UnsquelchCommand(_) =>
+          sender() ! UserInfo(USER_UNSQUELCHED(command.realUsername))
+          sender() ! UserUnsquelched(command.realUsername)
+          users.get(command.userActor).fold()(user => sender() ! UserFlags(Flags.unsquelch(user)))
+        case _ =>
+      }
+      super.receiveEvent(command)
   }: Receive)
     .orElse(super.receiveEvent)
 

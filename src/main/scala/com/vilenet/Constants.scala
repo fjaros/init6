@@ -27,8 +27,11 @@ object Constants {
   val USER_KICKED = (kicking: String, kicked: String) => s"$kicked was kicked out of the channel by $kicking."
   val USER_BANNED = (banning: String, banned: String) => s"$banned was banned by $banning."
   val USER_UNBANNED = (unbanning: String, unbanned: String) => s"$unbanned was unbanned by $unbanning."
+  val USER_SQUELCHED = (squelched: String) => s"$squelched has been squelched."
+  val USER_UNSQUELCHED = (unsquelched: String) => s"$unsquelched has been unsquelched."
   val YOU_KICKED = (kicking: String) => s"$kicking kicked you out of the channel!"
   val YOU_BANNED = "You are banned from that channel."
+  val YOU_CANT_SQUELCH = "You can't squelch yourself."
 
   val WHOAMI = (username: String, client: String, channel: String) => s"You are $username, using $client in the channel $channel."
 
@@ -43,8 +46,7 @@ object Constants {
   "",
   "LATEST PATCH INFO:",
   " ~~~ ",
-  "- IMPLEMENTED /ban and /unban . ",
-  "- IMPLEMENTED channel limit (200) users.",
+  " ^ _ ^ SQUELCH IMPLEMENTED ^ _ ^",
   " ~~~ ",
   "",
   " ===== Join us in channel ViLe ===== ",

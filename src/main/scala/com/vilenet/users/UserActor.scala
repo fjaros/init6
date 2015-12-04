@@ -9,6 +9,7 @@ import com.vilenet.channels._
 import com.vilenet.coders._
 import com.vilenet.coders.binary.BinaryChatEncoder
 import com.vilenet.coders.telnet._
+import com.vilenet.utils.{CaseInsensitiveHashSet, CaseInsensitiveFiniteHashSet}
 
 /**
  * Created by filip on 9/27/15.
@@ -28,24 +29,52 @@ case class UserUpdated(user: User)
 class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends ViLeNetActor {
 
   var channelActor: ActorRef = _
+  var squelchedUsers = CaseInsensitiveHashSet()
 
   context.watch(connection)
+
+  def checkSquelched(user: User) = {
+    if (squelchedUsers.contains(user.name)) {
+      Flags.squelch(user)
+    } else {
+      Flags.unsquelch(user)
+    }
+  }
+
+  def encodeAndSend(chatEvent: ChatEvent) = {
+    encoder(chatEvent)
+      .fold()(message => connection ! WriteOut(message))
+  }
 
   override def receive: Receive = {
     case UserUpdated(newUser) =>
       user = newUser
 
+    case UserSquelched(username) =>
+      squelchedUsers += username
+
+    case UserUnsquelched(username) =>
+      squelchedUsers -= username
+
+    case UserIn(user) =>
+      encodeAndSend(UserIn(checkSquelched(user)))
+
+    case UserJoined(user) =>
+      encodeAndSend(UserJoined(checkSquelched(user)))
+
+    case channelEvent: SquelchableTalkEvent =>
+      if (!squelchedUsers.contains(channelEvent.user.name)) {
+        encodeAndSend(channelEvent)
+      }
+
     case channelEvent: ChatEvent =>
-      encoder(channelEvent)
-        .fold()(message => {
-        connection ! WriteOut(message)
-        channelEvent match {
-          case UserChannel(newUser, channel, channelActor) =>
-            user = newUser
-            this.channelActor = channelActor
-          case _ =>
-        }
-      })
+      channelEvent match {
+        case UserChannel(newUser, channel, channelActor) =>
+          user = newUser
+          this.channelActor = channelActor
+        case _ =>
+      }
+      encodeAndSend(channelEvent)
 
     case (actor: ActorRef, WhisperMessage(fromUser, toUsername, message)) =>
       encoder(UserWhisperedFrom(fromUser, message))
@@ -81,12 +110,7 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
                 channelsActor ! UserSwitchedChat(self, fromUser, channel)
               }
             case command: ChannelCommand => channelActor ! command
-            case command: UserToChannelCommand =>
-              if (isOperator(user)) {
-                usersActor ! command
-              } else {
-                connection ! WriteOut(encoder(UserError(NOT_OPERATOR)).get)
-              }
+            case command: UserToChannelCommand => usersActor ! command
             case command: UserCommand => usersActor ! command
             case command: ReturnableCommand => encoder(command).fold()(connection ! WriteOut(_))
             case _ =>

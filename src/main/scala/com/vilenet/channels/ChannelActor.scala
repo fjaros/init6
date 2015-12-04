@@ -48,23 +48,6 @@ trait ChannelActor extends ViLeNetActor {
 
   val name: String
 
-  object Flags {
-    val ADMIN = 0x01
-    val OP = 0x02
-
-    private val CAN_BAN = ADMIN | OP
-
-    private def is(user: User, flag: Int) = (user.flags & flag) == flag
-
-    def canBan(user: User) = ((user.flags & CAN_BAN) ^ CAN_BAN) != CAN_BAN
-
-    def op(user: User): User = user.copy(flags = user.flags | OP)
-    def deOp(user: User): User = user.copy(flags = user.flags & ~OP)
-
-    def isAdmin(user: User): Boolean = is(user, ADMIN)
-    def isOp(user: User): Boolean = is(user, OP)
-  }
-
   val limit = 200
 
   // Set of users in this channel on this server
@@ -87,7 +70,6 @@ trait ChannelActor extends ViLeNetActor {
 
     users += actor -> newUser
     println(s"### ACTOR ${newUser.name} $name")
-    //Thread.dumpStack()
     actor ! UserChannel(newUser, name, self)
     newUser
   }

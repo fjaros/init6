@@ -13,17 +13,21 @@ trait BannableChannelActor extends RemoteBannableChannelActor {
 
   override def receiveEvent = ({
     case command: UserToChannelCommandAck =>
-      operatorAction(sender(),
-        command.command match {
-          case KickCommand(kicked) =>
-            kickAction(sender(), command.userActor)
-          case BanCommand(banned) =>
-            banAction(sender(), command.userActor, command.realUsername)
-          case UnbanCommand(unbanned) =>
-            unbanAction(sender(), unbanned)
-          case _ => super.receiveEvent(command)
+      users.get(sender()).fold()(user => {
+        if (Flags.canBan(user)) {
+          command.command match {
+            case KickCommand(kicked) =>
+              kickAction(sender(), command.userActor)
+            case BanCommand(banned) =>
+              banAction(sender(), command.userActor, command.realUsername)
+            case UnbanCommand(unbanned) =>
+              unbanAction(sender(), unbanned)
+            case _ => super.receiveEvent(command)
+          }
+        } else {
+          super.receiveEvent(command)
         }
-      )
+      })
   }: Receive).orElse(super.receiveEvent)
 
   override def add(actor: ActorRef, user: User): User = {
@@ -43,18 +47,6 @@ trait BannableChannelActor extends RemoteBannableChannelActor {
 
       localUsers ! UserInfo(USER_KICKED(kicking, kickedUser.name))
       kickedActor ! KickCommand(kicking)
-    })
-  }
-
-  def operatorAction(actor: ActorRef, action: => Any) = {
-    users.get(actor).fold({
-      log.error("")
-    })(user => {
-      if (Flags.canBan(user)) {
-        action
-      } else {
-        actor ! UserError(NOT_OPERATOR)
-      }
     })
   }
 

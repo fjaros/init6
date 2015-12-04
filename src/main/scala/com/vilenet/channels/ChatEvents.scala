@@ -7,12 +7,15 @@ import com.vilenet.coders.{ReturnableCommand, Command}
  * Created by filip on 9/20/15.
  */
 trait ChatEvent extends Command
+trait SquelchableTalkEvent extends ChatEvent {
+  val user: User
+}
 
 case class UserIn(user: User) extends ChatEvent
 case class UserJoined(user: User) extends ChatEvent
 case class UserLeft(user: User) extends ChatEvent
-case class UserWhisperedFrom(user: User, message: String) extends ChatEvent
-case class UserTalked(user: User, message: String) extends ChatEvent
+case class UserWhisperedFrom(override val user: User, message: String) extends SquelchableTalkEvent
+case class UserTalked(override val user: User, message: String) extends SquelchableTalkEvent
 case class UserBroadcast(message: String) extends ChatEvent
 case class UserChannel(user: User, channelName: String, channelActor: ActorRef) extends ChatEvent
 case class UserFlags(user: User) extends ChatEvent
@@ -22,8 +25,10 @@ case class UserInfoArray(message: Array[String]) extends ChatEvent with Returnab
 case class UserError(message: String) extends ChatEvent with ReturnableCommand
 case object UserNull extends ChatEvent
 case class UserName(name: String) extends ChatEvent
-case class UserEmote(user: User, message: String) extends ChatEvent
+case class UserEmote(override val user: User, message: String) extends SquelchableTalkEvent
 
+case class UserSquelched(user: String) extends ChatEvent
+case class UserUnsquelched(user: String) extends ChatEvent
 case class UserSentChat(user: String, message: String) extends ChatEvent
 case class UserSentEmote(user: String, message: String) extends ChatEvent
 case class Designate(user: String, mesasge: String) extends ChatEvent
