@@ -18,7 +18,7 @@ trait BinaryPacket {
 
   implicit def stringToNTBytes(string: String): Array[Byte] = {
     Array.newBuilder[Byte]
-      .++=(string.getBytes)
+      .++=(string.map(_.toByte))
       .+=(0)
       .result()
   }

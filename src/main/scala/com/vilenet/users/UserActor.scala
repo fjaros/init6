@@ -110,9 +110,11 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
                 channelsActor ! UserSwitchedChat(self, fromUser, channel)
               }
             case command: ChannelCommand => channelActor ! command
+            case ChannelsCommand => channelsActor ! ChannelsCommand
             case command: UserToChannelCommand => usersActor ! command
             case command: UserCommand => usersActor ! command
             case command: ReturnableCommand => encoder(command).fold()(connection ! WriteOut(_))
+            case command: TopCommand => usersActor ! command
             case _ =>
           }
         case x =>

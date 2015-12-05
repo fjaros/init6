@@ -3,6 +3,7 @@ package com.vilenet.channels
 import akka.actor.{ActorRef, Props}
 import com.vilenet.Constants._
 import com.vilenet.channels.utils.RemoteEvent
+import com.vilenet.coders.ChannelsCommand
 import com.vilenet.{ViLeNetComponent, ViLeNetActor}
 import com.vilenet.servers.{ServerOffline, ServerOnline, AddListener}
 import com.vilenet.utils.CaseInsensitiveHashMap
@@ -74,6 +75,11 @@ class ChannelsActor extends ViLeNetActor {
       val lowerChannel = channel.toLowerCase
       channels -= lowerChannel
 
+    case ChannelsCommand =>
+      sender() ! UserInfo(CHANNEL_LIST(channels.size))
+      channels
+        .values
+        .foreach(_ ! ChannelsCommand(sender()))
   }
   
   def getOrCreate(name: String) = {

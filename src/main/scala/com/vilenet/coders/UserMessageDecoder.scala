@@ -1,5 +1,6 @@
 package com.vilenet.coders
 
+import akka.actor.ActorRef
 import akka.util.ByteString
 import com.vilenet.Constants._
 import com.vilenet.channels.{UserInfoArray, UserError, User, UserInfo}
@@ -10,8 +11,9 @@ import scala.annotation.switch
  * Created by filip on 9/21/15.
  */
 object UserMessageDecoder {
+  val CHARSET = "windows-1252"
 
-  private implicit def decode(byteString: ByteString): String = byteString.utf8String
+  private implicit def decode(byteString: ByteString): String = new String(byteString.toArray, CHARSET)
 
   def apply(user: User, byteString: ByteString) = {
     (byteString.head: @switch) match {
@@ -31,6 +33,9 @@ object UserMessageDecoder {
             case "kick" => KickCommand(sendToOption(splitCommand._2))
             case "squelch" | "ignore" => SquelchCommand(user, sendToOption(splitCommand._2))
             case "unsquelch" | "unignore" => UnsquelchCommand(user, sendToOption(splitCommand._2))
+
+            case "top" => TopCommand(sendToOption(splitCommand._2))
+            case "channels" | "list" => ChannelsCommand
 
             case "help" | "?" => HelpCommand()
 
@@ -84,13 +89,21 @@ trait ReturnableCommand extends Command
 
 case object EmptyCommand extends Command
 
+case object ChannelsCommand extends Command
+case class ChannelsCommand(actor: ActorRef) extends Command
+
+case object TopCommand {
+  def apply(which: Option[String]): Command = TopCommand(which.getOrElse("all").toLowerCase)
+}
+case class TopCommand(which: String) extends Command
+
 case object WhoamiCommand {
   def apply(user: User): Command =
     UserInfo(WHOAMI(user.name, encodeClient(user.client), user.channel))
 
   def encodeClient(client: String) = {
     (client: @switch) match {
-      case "CHAT" => "a Chat Client"
+      case "CHAT" | "TAHC" => "a Chat Client"
       case "LTRD" => "Diablo"
       case "RHSD" => "Diablo Shareware"
       case "RHSS" => "Starcraft Shareware"
@@ -216,6 +229,9 @@ case object HelpCommand {
       "/ban",
       "/unban",
       "/kick",
+
+      "/top, /top chat, /top binary",
+      "/channels",
 
       "/help, /?"
     )

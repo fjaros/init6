@@ -3,12 +3,12 @@ package com.vilenet.users
 import akka.actor.{Terminated, Props, ActorRef}
 import akka.io.Tcp.Event
 import com.vilenet.channels.utils.RemoteEvent
-import com.vilenet.coders.{UserToChannelCommand, UserCommand, Command}
+import com.vilenet.coders._
 import com.vilenet.servers.{ServerOffline, ServerOnline, AddListener}
 import com.vilenet.{Constants, ViLeNetComponent, ViLeNetActor}
 import com.vilenet.channels._
 import com.vilenet.Constants._
-import com.vilenet.utils.RealKeyedCaseInsensitiveHashMap
+import com.vilenet.utils.{FiniteArrayBuffer, RealKeyedCaseInsensitiveHashMap}
 
 import scala.collection.mutable
 
@@ -43,6 +43,12 @@ class UsersActor extends ViLeNetActor {
 
   var users = RealKeyedCaseInsensitiveHashMap[ActorRef]()
   var reverseUsers = mutable.HashMap[ActorRef, String]()
+
+  var topMap = Map(
+    "binary" -> FiniteArrayBuffer[User](),
+    "chat" -> FiniteArrayBuffer[User](),
+    "all" -> FiniteArrayBuffer[User]()
+  )
 
   serverColumbus ! AddListener
 
@@ -80,6 +86,14 @@ class UsersActor extends ViLeNetActor {
         x ! (sender(), command)
       })
 
+    case TopCommand(which) =>
+      val topList = topMap(which)
+      sender() ! UserInfo(s"Showing the top ${topList.getInitialSize} $which connections:")
+      for (i <- 1 to topList.size) {
+        val user = topList(i - 1)
+        sender() ! UserInfo(s"$i. ${TOP_LIST(user.name, WhoamiCommand.encodeClient(user.client))}")
+      }
+
     case Terminated(actor) =>
       println(s"TERMINATED $actor $reverseUsers")
       reverseUsers.get(actor).fold()(username => {
@@ -104,6 +118,13 @@ class UsersActor extends ViLeNetActor {
       val newUser = getRealUser(user)
       val userActor = context.actorOf(UserActor(connection, newUser, protocol))
       context.watch(userActor)
+      topMap(
+        newUser.client match {
+          case "CHAT" | "TAHC" => "chat"
+          case _ => "binary"
+        }
+      ) += newUser
+      topMap("all") += newUser
       users += newUser.name -> userActor
       reverseUsers += userActor -> newUser.name
       remoteUsersActors.foreach(_ ! RemoteEvent(Add(userActor, newUser, protocol)))
