@@ -2,9 +2,8 @@ package com.vilenet.channels
 
 import akka.actor.ActorRef
 import com.vilenet.Constants._
-import com.vilenet.coders.{UnbanCommand, BanCommand, KickCommand}
+import com.vilenet.coders.{OperableCommand, UnbanCommand, BanCommand, KickCommand}
 import com.vilenet.users.UserToChannelCommandAck
-import com.vilenet.utils.CaseInsensitiveFiniteHashSet
 
 /**
   * Created by filip on 11/24/15.
@@ -21,14 +20,18 @@ trait BannableChannelActor extends RemoteBannableChannelActor {
             case BanCommand(banned) =>
               banAction(sender(), command.userActor, command.realUsername)
             case UnbanCommand(unbanned) =>
-              unbanAction(sender(), unbanned)
+              unbanAction(sender(), command.realUsername)
             case _ => super.receiveEvent(command)
           }
         } else {
-          super.receiveEvent(command)
+          command.command match {
+            case command: OperableCommand => sender() ! UserError(NOT_OPERATOR)
+            case _ => super.receiveEvent(command)
+          }
         }
       })
-  }: Receive).orElse(super.receiveEvent)
+  }: Receive)
+    .orElse(super.receiveEvent)
 
   override def add(actor: ActorRef, user: User): User = {
     if (bannedUsers(user.name)) {
@@ -43,10 +46,14 @@ trait BannableChannelActor extends RemoteBannableChannelActor {
     users.get(kickedActor).fold(
       kickingActor ! UserError(INVALID_USER)
     )(kickedUser => {
-      val kicking = users(kickingActor).name
+      if (Flags.canBan(kickedUser)) {
+        kickingActor ! UserError(CANNOT_KICK_OPERATOR)
+      } else {
+        val kicking = users(kickingActor).name
 
-      localUsers ! UserInfo(USER_KICKED(kicking, kickedUser.name))
-      kickedActor ! KickCommand(kicking)
+        localUsers ! UserInfo(USER_KICKED(kicking, kickedUser.name))
+        kickedActor ! KickCommand(kicking)
+      }
     })
   }
 
@@ -75,9 +82,17 @@ trait BannableChannelActor extends RemoteBannableChannelActor {
     if (bannedUsers(unbanned)) {
       bannedUsers -= unbanned
       super.unbanAction(unbanningActor, unbanned)
-      localUsers ! UserInfo(USER_UNBANNED(unbanned, unbanning))
+      localUsers ! UserInfo(USER_UNBANNED(unbanning, unbanned))
     } else {
       unbanningActor ! UserError(NOT_BANNED)
+    }
+  }
+
+  override def whoCommand(actor: ActorRef, user: User) = {
+    if (!bannedUsers(user.name)) {
+      super.whoCommand(actor, user)
+    } else {
+      actor ! UserError(NOT_ALLOWED_TO_VIEW)
     }
   }
 }

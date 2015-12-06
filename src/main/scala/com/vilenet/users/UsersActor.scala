@@ -66,14 +66,15 @@ class UsersActor extends ViLeNetActor {
       reverseUsers += remoteUser._2 -> remoteUser._1
 
     case ReceivedUsers(remoteUsers) =>
-      //log.error(s"Received remote users: $remoteUsers")
       remoteUsers
         .values
         .foreach(context.watch)
-      users ++= remoteUsers
+      users ++= remoteUsers.map(tuple => remoteUsers.getWithRealKey(tuple._1).getOrElse(tuple))
       reverseUsers ++= remoteUsers.map(tuple => tuple._2 -> tuple._1)
 
     case command: UserToChannelCommand =>
+      users.keys.map(users.getWithRealKey).foreach(println)
+
       sender() ! users.getWithRealKey(command.toUsername)
         .fold[Command](UserError(Constants.USER_NOT_LOGGED_ON))(keyedUser => UserToChannelCommandAck(keyedUser._2, keyedUser._1, command))
 

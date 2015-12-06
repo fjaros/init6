@@ -3,7 +3,7 @@ package com.vilenet.channels
 import akka.actor.{ActorRef, Props}
 import com.vilenet.Constants._
 import com.vilenet.channels.utils.RemoteEvent
-import com.vilenet.coders.ChannelsCommand
+import com.vilenet.coders.{WhoCommandToChannel, WhoCommand, ChannelsCommand}
 import com.vilenet.{ViLeNetComponent, ViLeNetActor}
 import com.vilenet.servers.{ServerOffline, ServerOnline, AddListener}
 import com.vilenet.utils.CaseInsensitiveHashMap
@@ -80,6 +80,9 @@ class ChannelsActor extends ViLeNetActor {
       channels
         .values
         .foreach(_ ! ChannelsCommand(sender()))
+
+    case WhoCommand(user, channel) =>
+      channels.get(channel).fold(sender() ! UserErrorArray(CHANNEL_NOT_EXIST))(_ ! WhoCommandToChannel(sender(), user))
   }
   
   def getOrCreate(name: String) = {

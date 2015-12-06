@@ -1,5 +1,7 @@
 package com.vilenet.channels
 
+import akka.actor.ActorRef
+
 /**
   * Created by filip on 11/12/15.
   */
@@ -10,9 +12,12 @@ object PrivateChannelActor {
 sealed class PrivateChannelActor(channelName: String)
   extends ChattableChannelActor
   with BannableChannelActor
-  with OperableChannelActor // To op if empty
-  with NonOperableChannelActor // To de op
+  with OperableChannelActor
   with FullableChannelActor {
 
   override val name = channelName
+
+  override def add(actor: ActorRef, user: User): User = {
+    super.add(actor, Flags.deOp(user))
+  }
 }

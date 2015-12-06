@@ -1,5 +1,7 @@
 package com.vilenet.channels
 
+import akka.actor.ActorRef
+import com.vilenet.Constants._
 import com.vilenet.coders.EmoteMessage
 
 /**
@@ -10,7 +12,7 @@ object VoidedChannelActor {
 }
 
 sealed class VoidedChannelActor(channelName: String)
-  extends ChannelActor {
+  extends NonOperableChannelActor {
 
   override val name = channelName
 
@@ -18,4 +20,14 @@ sealed class VoidedChannelActor(channelName: String)
     case EmoteMessage(_, message) => sender() ! UserEmote(users(sender()), message)
   }: Receive)
     .orElse(super.receiveEvent)
+
+  override def add(actor: ActorRef, user: User): User = {
+    val addedUser = super.add(actor, user)
+    actor ! UserInfo(NO_CHAT_PRIVILEGES)
+    addedUser
+  }
+
+  override def whoCommand(actor: ActorRef, user: User) = {
+    // No-op
+  }
 }

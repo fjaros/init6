@@ -25,4 +25,12 @@ sealed class AdminChannelActor(channelName: String)
       user
     }
   }
+
+  override def whoCommand(actor: ActorRef, user: User) = {
+    if (Flags.isAdmin(user)) {
+      super.whoCommand(actor, user)
+    } else {
+      actor ! UserError(NOT_ALLOWED_TO_VIEW)
+    }
+  }
 }

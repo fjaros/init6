@@ -5,8 +5,6 @@ import com.vilenet.Constants._
 import com.vilenet.coders.DesignateCommand
 import com.vilenet.users.{UserToChannelCommandAck, UserUpdated}
 
-import scala.collection.mutable
-
 /**
   * Created by filip on 11/24/15.
   */
@@ -79,17 +77,12 @@ trait OperableChannelActor extends RemoteOperableChannelActor {
         val oppedUser = Flags.op(designatedUser)
         users += designateeActor -> oppedUser
         designatedActors -= actor
-        //designateeActor ! UserUpdated(oppedUser)
         localUsers ! UserFlags(oppedUser)
       }
     })
 
     userOpt
   }
-
-//  def remoteDesignate(actor: ActorRef, designatee: ActorRef) = {
-//    designatedActors += actor -> designatee
-//  }
 
   def existsOperator(): Boolean = {
     // O(n) sadface

@@ -3,7 +3,7 @@ package com.vilenet.coders
 import akka.actor.ActorRef
 import akka.util.ByteString
 import com.vilenet.Constants._
-import com.vilenet.channels.{UserInfoArray, UserError, User, UserInfo}
+import com.vilenet.channels._
 
 import scala.annotation.switch
 
@@ -18,7 +18,7 @@ object UserMessageDecoder {
   def apply(user: User, byteString: ByteString) = {
     (byteString.head: @switch) match {
       case '/' =>
-        splitToOption(byteString.tail).fold[Command](ErrorMessage())(splitCommand => {
+        splitToOption(byteString.tail).fold[Command](UserError())(splitCommand => {
           (splitCommand._1: @switch) match {
             case "whisper" | "w" | "msg" | "m" =>
               WhisperMessage(splitToOption(splitCommand._2).map(tuple => (user, tuple._1, tuple._2)))
@@ -27,6 +27,7 @@ object UserMessageDecoder {
             case "emote" | "me" => EmoteMessage(user, sendToOption(splitCommand._2))
             case "whoami" => WhoamiCommand(user)
             case "whois" | "whereis" => WhoisCommand(user, sendToOption(splitCommand._2))
+            case "who" => WhoCommand(user, sendToOption(splitCommand._2))
 
             case "ban" => BanCommand(sendToOption(splitCommand._2))
             case "unban" => UnbanCommand(sendToOption(splitCommand._2))
@@ -40,7 +41,7 @@ object UserMessageDecoder {
             case "help" | "?" => HelpCommand()
 
             case "!bl!zzme!" => BlizzMe(user)
-            case _ => ErrorMessage()
+            case _ => UserError()
           }
         })
       case _ =>
@@ -85,6 +86,7 @@ trait UserCommand extends Command {
 trait UserToChannelCommand extends Command {
   val toUsername: String
 }
+trait OperableCommand extends Command
 trait ReturnableCommand extends Command
 
 case object EmptyCommand extends Command
@@ -93,7 +95,14 @@ case object ChannelsCommand extends Command
 case class ChannelsCommand(actor: ActorRef) extends Command
 
 case object TopCommand {
-  def apply(which: Option[String]): Command = TopCommand(which.getOrElse("all").toLowerCase)
+  def apply(which: Option[String]): Command = {
+    val topOption = which.fold("all")(_.toLowerCase)
+    topOption match {
+      case "chat" | "binary" | "all" => TopCommand(topOption)
+      case "" => TopCommand("all")
+      case _ => UserError()
+    }
+  }
 }
 case class TopCommand(which: String) extends Command
 
@@ -124,7 +133,7 @@ case class WhoamiCommand(message: String) extends ReturnableCommand
 case object WhoisCommand extends Command {
 
   def apply(fromUser: User, username: Option[String]): Command = {
-    username.fold[Command](ErrorMessage(USER_NOT_LOGGED_ON))(username => {
+    username.fold[Command](UserError(USER_NOT_LOGGED_ON))(username => {
       if (fromUser.name.toLowerCase == username) {
         WhoamiCommand(fromUser)
       } else {
@@ -135,9 +144,15 @@ case object WhoisCommand extends Command {
 }
 case class WhoisCommand(override val fromUser: User, override val toUsername: String) extends UserCommand
 
+object WhoCommand {
+  def apply(fromUser: User, channel: Option[String]): Command = WhoCommand(fromUser, channel.getOrElse(fromUser.channel))
+}
+case class WhoCommand(fromUser: User, channel: String) extends Command
+case class WhoCommandToChannel(actor: ActorRef, fromUser: User) extends Command
+
 case object JoinUserCommand {
   def apply(fromUser: User, channel: Option[String]): Command = {
-    channel.fold[Command](ErrorMessage(NO_CHANNEL_INPUT))(JoinUserCommand(fromUser, _))
+    channel.fold[Command](UserError(NO_CHANNEL_INPUT))(JoinUserCommand(fromUser, _))
   }
 }
 case class JoinUserCommand(override val fromUser: User, channel: String) extends ChannelCommand
@@ -145,19 +160,13 @@ case class JoinUserCommand(override val fromUser: User, channel: String) extends
 
 case object WhisperMessage {
   def apply(opt: Option[(User, String, String)]): Command = {
-    opt.fold[Command](ErrorMessage(USER_NOT_LOGGED_ON))(WhisperMessage(_))
+    opt.fold[Command](UserError(USER_NOT_LOGGED_ON))(WhisperMessage(_))
   }
 
   def apply(opt: (User, String, String)): WhisperMessage = WhisperMessage(opt._1, opt._2, opt._3)
 }
 case class WhisperMessage(override val fromUser: User, override val toUsername: String, message: String) extends UserCommand
 
-
-case object ErrorMessage {
-  def apply() = UserError(INVALID_COMMAND)
-}
-case class ErrorMessage(message: String) extends Command
-case class InfoMessage(message: String) extends Command
 
 case object DesignateCommand {
   def apply(fromUser: User, designatee: Option[String]): Command = DesignateCommand(fromUser, designatee.getOrElse(""))
@@ -175,17 +184,17 @@ case class EmoteMessage(fromUser: User, message: String) extends ChannelCommand
 case object KickCommand {
   def apply(toUsername: Option[String]): Command = KickCommand(toUsername.getOrElse(""))
 }
-case class KickCommand(override val toUsername: String) extends UserToChannelCommand
+case class KickCommand(override val toUsername: String) extends UserToChannelCommand with OperableCommand
 
 case object BanCommand {
   def apply(toUsername: Option[String]): Command = BanCommand(toUsername.getOrElse(""))
 }
-case class BanCommand(override val toUsername: String) extends UserToChannelCommand
+case class BanCommand(override val toUsername: String) extends UserToChannelCommand with OperableCommand
 
 case object UnbanCommand {
   def apply(toUsername: Option[String]): Command = UnbanCommand(toUsername.getOrElse(""))
 }
-case class UnbanCommand(override val toUsername: String) extends UserToChannelCommand
+case class UnbanCommand(override val toUsername: String) extends UserToChannelCommand with OperableCommand
 
 case object SquelchCommand {
   def apply(fromUser: User, toUsername: Option[String]): Command = {

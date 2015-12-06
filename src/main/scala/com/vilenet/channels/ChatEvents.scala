@@ -1,6 +1,7 @@
 package com.vilenet.channels
 
 import akka.actor.ActorRef
+import com.vilenet.Constants._
 import com.vilenet.coders.{ReturnableCommand, Command}
 
 /**
@@ -22,7 +23,8 @@ case class UserFlags(user: User) extends ChatEvent
 case class UserWhisperedTo(user: User, message: String) extends ChatEvent
 case class UserInfo(message: String) extends ChatEvent with ReturnableCommand
 case class UserInfoArray(message: Array[String]) extends ChatEvent with ReturnableCommand
-case class UserError(message: String) extends ChatEvent with ReturnableCommand
+case class UserError(message: String = INVALID_COMMAND) extends ChatEvent with ReturnableCommand
+case class UserErrorArray(message: Array[String]) extends ChatEvent with ReturnableCommand
 case object UserNull extends ChatEvent
 case class UserName(name: String) extends ChatEvent
 case class UserEmote(override val user: User, message: String) extends SquelchableTalkEvent

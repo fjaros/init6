@@ -4,7 +4,7 @@ import akka.actor.{PoisonPill, Terminated, Props, ActorRef}
 import com.vilenet.Constants._
 import com.vilenet.ViLeNetActor
 import com.vilenet.channels.utils.{RemoteEvent, LocalUsersSet}
-import com.vilenet.coders.ChannelsCommand
+import com.vilenet.coders.{WhoCommandToChannel, WhoCommand, ChannelsCommand}
 import com.vilenet.users.UserToChannelCommandAck
 
 import scala.annotation.switch
@@ -70,7 +70,6 @@ trait ChannelActor extends ViLeNetActor {
     val newUser = user.copy(channel = name)
 
     users += actor -> newUser
-    println(s"### ACTOR ${newUser.name} $name")
     actor ! UserChannel(newUser, name, self)
     newUser
   }
@@ -93,6 +92,24 @@ trait ChannelActor extends ViLeNetActor {
     case Terminated(actor) => rem(actor)
     case ChannelsCommand(actor) =>
       actor ! UserInfo(CHANNEL_INFO(name, users.size))
+    case WhoCommandToChannel(actor, user) => whoCommand(actor, user)
     case event =>
+  }
+
+  def whoCommand(actor: ActorRef, user: User) = {
+    val usernames = users
+      .values
+      .map(user => {
+        if (Flags.isOp(user)) {
+          s"[${user.name.toUpperCase}]"
+        } else {
+          user.name
+        }
+      })
+      .grouped(2)
+      .map(_.mkString(", "))
+
+    actor ! UserInfo(WHO_CHANNEL(name))
+    usernames.foreach(actor ! UserInfo(_))
   }
 }

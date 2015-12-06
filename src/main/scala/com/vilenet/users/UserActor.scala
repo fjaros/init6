@@ -111,6 +111,7 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
               }
             case command: ChannelCommand => channelActor ! command
             case ChannelsCommand => channelsActor ! ChannelsCommand
+            case command: WhoCommand => channelsActor ! command
             case command: UserToChannelCommand => usersActor ! command
             case command: UserCommand => usersActor ! command
             case command: ReturnableCommand => encoder(command).fold()(connection ! WriteOut(_))
