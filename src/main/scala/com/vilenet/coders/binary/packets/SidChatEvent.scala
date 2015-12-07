@@ -8,7 +8,7 @@ import com.vilenet.coders.binary.BinaryPacket
  */
 object SidChatEvent extends BinaryPacket {
 
-  override val PACKET_ID: Byte = 0x0F
+  override val PACKET_ID = Packets.SID_CHATEVENT
 
   def apply(eventId: Int, userFlags: Int, ping: Int, username: String, text: String = "") = {
     build(

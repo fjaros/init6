@@ -36,6 +36,7 @@ case class UsersUserAdded(userActor: ActorRef, user: User)
 
 class UsersActor extends ViLeNetActor {
 
+  var placeCounter = 1
   var remoteUsersActors = mutable.HashSet[ActorRef]()
 
   val remoteUsersActor = (actor: ActorRef) =>
@@ -116,7 +117,8 @@ class UsersActor extends ViLeNetActor {
     case ServerOffline(columbus) =>
 
     case Add(connection, user, protocol) =>
-      val newUser = getRealUser(user)
+      val newUser = getRealUser(user).copy(place = placeCounter)
+      placeCounter += 1
       val userActor = context.actorOf(UserActor(connection, newUser, protocol))
       context.watch(userActor)
       topMap(
@@ -130,6 +132,7 @@ class UsersActor extends ViLeNetActor {
       reverseUsers += userActor -> newUser.name
       remoteUsersActors.foreach(_ ! RemoteEvent(Add(userActor, newUser, protocol)))
       sender() ! UsersUserAdded(userActor, newUser)
+      system.eventStream.publish(UserInfo("Bullshit"))
 
     case Rem(username) =>
       val userActor = users(username)

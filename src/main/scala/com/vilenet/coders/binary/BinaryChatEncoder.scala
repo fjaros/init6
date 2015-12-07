@@ -37,19 +37,21 @@ object BinaryChatEncoder extends Encoder {
       case UserInfo(message) =>
         SidChatEvent(0x12, 0,0, "", message)
       case UserInfoArray(messages) =>
-        messages
-          .map(SidChatEvent(0x12, 0,0, "", _))
-          .reduceLeft((m1, m2) => m1 ++ m2)
+        handleArrayEvent(0x12, messages)
       case UserError(message) =>
         SidChatEvent(0x13, 0,0, "", message)
       case UserErrorArray(messages) =>
-        messages
-          .map(SidChatEvent(0x13, 0,0, "", _))
-          .reduceLeft((m1, m2) => m1 ++ m2)
+        handleArrayEvent(0x13, messages)
       case UserEmote(user, message) =>
         SidChatEvent(0x17, user.flags, user.ping, user.name, message)
       case _ =>
         None
+    }
+
+    def handleArrayEvent(packetId: Byte, messages: Array[String]) = {
+      messages
+        .map(SidChatEvent(packetId, 0, 0, "", _))
+        .reduceLeft(_ ++ _)
     }
   }
 }

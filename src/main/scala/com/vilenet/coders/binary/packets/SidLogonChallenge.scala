@@ -8,7 +8,7 @@ import com.vilenet.coders.binary.BinaryPacket
  */
 object SidLogonChallenge extends BinaryPacket {
 
-  override val PACKET_ID: Byte = 0x28
+  override val PACKET_ID = Packets.SID_LOGONCHALLENGE
 
   def apply(): ByteString = {
     build(

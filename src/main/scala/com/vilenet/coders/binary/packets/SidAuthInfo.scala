@@ -1,14 +1,16 @@
 package com.vilenet.coders.binary.packets
 
 import akka.util.ByteString
-import com.vilenet.coders.binary.BinaryPacket
+import com.vilenet.coders.binary.{DeBuffer, BinaryPacket}
+
+import scala.util.Try
 
 /**
  * Created by filip on 10/25/15.
  */
 object SidAuthInfo extends BinaryPacket {
 
-  override val PACKET_ID: Byte = 0x50
+  override val PACKET_ID = Packets.SID_AUTH_INFO
 
   def apply(): ByteString = {
     build(
@@ -23,4 +25,15 @@ object SidAuthInfo extends BinaryPacket {
         .result()
     )
   }
+
+  def unapply(data: ByteString): Option[SidAuthInfo] = {
+    Try {
+      val debuffer = DeBuffer(data)
+      val productId = debuffer.byteArray(4)
+      val verbyte = debuffer.byte(8)
+      SidAuthInfo(new String(productId), verbyte)
+    }.toOption
+  }
 }
+
+case class SidAuthInfo(productId: String, verByte: Byte)

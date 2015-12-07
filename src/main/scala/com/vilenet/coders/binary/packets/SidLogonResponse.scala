@@ -8,7 +8,7 @@ import com.vilenet.coders.binary.BinaryPacket
  */
 object SidLogonResponse extends BinaryPacket {
 
-  override val PACKET_ID: Byte = 0x3A
+  override val PACKET_ID = Packets.SID_LOGONRESPONSE
 
   def apply(): ByteString = {
     build(

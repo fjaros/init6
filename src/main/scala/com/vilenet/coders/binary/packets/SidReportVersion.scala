@@ -8,7 +8,7 @@ import com.vilenet.coders.binary.BinaryPacket
  */
 object SidReportVersion extends BinaryPacket {
 
-  override val PACKET_ID: Byte = 0x07
+  override val PACKET_ID: Byte = Packets.SID_REPORTVERSION
 
   def apply(): ByteString = {
     build(

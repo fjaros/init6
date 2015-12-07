@@ -8,7 +8,7 @@ import com.vilenet.coders.binary.BinaryPacket
  */
 object SidStartVersioning extends BinaryPacket {
 
-  override val PACKET_ID: Byte = 0x06
+  override val PACKET_ID: Byte = Packets.SID_STARTVERSIONING
 
   def apply(): ByteString = {
     build(

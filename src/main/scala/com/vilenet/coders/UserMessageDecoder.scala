@@ -34,9 +34,12 @@ object UserMessageDecoder {
             case "kick" => KickCommand(sendToOption(splitCommand._2))
             case "squelch" | "ignore" => SquelchCommand(user, sendToOption(splitCommand._2))
             case "unsquelch" | "unignore" => UnsquelchCommand(user, sendToOption(splitCommand._2))
+            case "away" => AwayCommand(sendToOption(splitCommand._2))
+            case "dnd" => DndCommand(sendToOption(splitCommand._2))
 
             case "top" => TopCommand(sendToOption(splitCommand._2))
             case "channels" | "list" => ChannelsCommand
+            case "place" => PlaceCommand(user)
 
             case "help" | "?" => HelpCommand()
 
@@ -105,6 +108,9 @@ case object TopCommand {
   }
 }
 case class TopCommand(which: String) extends Command
+object PlaceCommand extends ReturnableCommand {
+  def apply(user: User): Command = UserInfo(PLACED(user.place))
+}
 
 case object WhoamiCommand {
   def apply(user: User): Command =
@@ -143,6 +149,16 @@ case object WhoisCommand extends Command {
   }
 }
 case class WhoisCommand(override val fromUser: User, override val toUsername: String) extends UserCommand
+
+object AwayCommand {
+  def apply(message: Option[String]): Command = AwayCommand(message.getOrElse(""))
+}
+case class AwayCommand(message: String) extends Command
+
+object DndCommand {
+  def apply(message: Option[String]): Command = DndCommand(message.getOrElse(""))
+}
+case class DndCommand(message: String) extends Command
 
 object WhoCommand {
   def apply(fromUser: User, channel: Option[String]): Command = WhoCommand(fromUser, channel.getOrElse(fromUser.channel))
@@ -234,6 +250,8 @@ case object HelpCommand {
       "/emote, /me",
       "/whoami",
       "/whois",
+      "/away",
+      "/dnd",
 
       "/ban",
       "/unban",

@@ -11,8 +11,8 @@ trait BinaryPacket {
 
   implicit val byteOrder = ByteOrder.LITTLE_ENDIAN
 
-  val PACKET_HEADER = 0xFF.toByte
-  val PACKET_HEADER_LENGTH = 4.toShort
+  val PACKET_HEADER: Byte = 0xFF.toByte
+  val PACKET_HEADER_LENGTH: Short = 4
 
   val PACKET_ID: Byte
 

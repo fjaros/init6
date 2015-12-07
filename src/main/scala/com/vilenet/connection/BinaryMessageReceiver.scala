@@ -29,18 +29,6 @@ case object ExpectingSidLogonResponse extends BinaryState
 case object ExpectingSidEnterChat extends BinaryState
 case object ExpectingSidJoinChannel extends BinaryState
 
-
-sealed trait BinaryData
-case object EmptyBinaryData extends BinaryData
-case class WithBinaryData(packetId: Byte, packetLength: Int, data: Array[Byte]) extends BinaryData
-case class WithActor(actor: ActorRef) extends BinaryData
-
-trait DeBuffer {
-  implicit def toByte(data: Array[Byte]): Byte = data.head
-  implicit def toWord(data: Array[Byte]): Short = (data(1) << 8 & 0xff00 | data(0) & 0xff).toShort
-  implicit def toDword(data: Array[Byte]): Int = data(3) << 24 & 0xff000000 | data(2) << 16 & 0xff0000 | data(1) << 8 & 0xff00 | data(0) & 0xff
-}
-
 /**
  * Created by filip on 10/25/15.
  */

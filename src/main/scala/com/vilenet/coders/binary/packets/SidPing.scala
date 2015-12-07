@@ -8,7 +8,7 @@ import com.vilenet.coders.binary.BinaryPacket
  */
 object SidPing extends BinaryPacket {
 
-  override val PACKET_ID: Byte = 0x25
+  override val PACKET_ID: Byte = Packets.SID_PING
 
   def apply(cookie: Int): ByteString = {
     build(

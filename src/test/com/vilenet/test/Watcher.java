@@ -11,10 +11,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class Watcher {
 
+    static final String hostName = "45.63.55.10";
+    static final int  portNumber = 6112;
     //static final String hostName = "54.193.49.146";
     //static final int portNumber = 6113;
-    static final String hostName = "127.0.0.1";
-    static final int portNumber = 6112;
+//    static final String hostName = "127.0.0.1";
+//    static final int portNumber = 6112;
 
     static AtomicInteger i = new AtomicInteger();
 
@@ -42,18 +44,20 @@ public class Watcher {
                 out.write(3);
                 out.write(4);
                 send(name);
-                send("pw");
+                send("1234");
                 send("/j legacy");
-                System.out.println(i.addAndGet(1));
                 String s;
 
                 int joined =0;int left=0;
 
                 while ((s = in.readLine()) != null) {
+                    System.out.println(s);
                     if (s.startsWith("1002")) {
                         System.out.println("Joined: " + ++joined);
                     } else if (s.startsWith("1003")) {
                         System.out.println("Left: " + ++left);
+                    } else if (s.contains("xab")) {
+                        send("/uptime");
                     }
                 }
             } catch (Exception e) {
@@ -70,9 +74,8 @@ public class Watcher {
     }
 
     public static void main(String[] args) throws Exception {
-        int threads = 250;
         ExecutorService e = Executors.newSingleThreadExecutor();
-        e.submit(new Bot("watcher"));
+        e.submit(new Bot("Test12345"));
 
         Scanner stdIn = new Scanner(new BufferedReader(new InputStreamReader(System.in)));
         String s;

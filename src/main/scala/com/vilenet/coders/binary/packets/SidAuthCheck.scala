@@ -8,7 +8,7 @@ import com.vilenet.coders.binary.BinaryPacket
  */
 object SidAuthCheck extends BinaryPacket {
 
-  override val PACKET_ID: Byte = 0x51
+  override val PACKET_ID = Packets.SID_AUTH_CHECK
 
   def apply(): ByteString = {
     build(

@@ -2,10 +2,11 @@ package com.vilenet
 
 import java.net.InetSocketAddress
 
+import akka.actor.Props
 import com.vilenet.channels.ChannelsActor
 import com.vilenet.connection.ConnectionHandler
 import Constants.VILE_NET
-import com.vilenet.servers.ServerColumbus
+import com.vilenet.servers.{ServerInfo, ServerColumbus}
 import com.vilenet.users.UsersActor
 
 import scala.io.StdIn

@@ -8,7 +8,7 @@ import com.vilenet.coders.binary.BinaryPacket
  */
 object SidEnterChat extends BinaryPacket {
 
-  override val PACKET_ID: Byte = 0x0A
+  override val PACKET_ID = Packets.SID_ENTERCHAT
 
   def apply(username: String, oldUsername: String, productId: String): ByteString = {
     build(

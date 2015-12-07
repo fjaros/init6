@@ -10,6 +10,7 @@ import akka.util.{ByteString, Timeout}
 import com.vilenet.channels.{User, UserInfoArray}
 import com.vilenet.coders.binary.BinaryChatEncoder
 import com.vilenet.coders.binary.packets._
+import com.vilenet.coders.binary.packets.Packets._
 import com.vilenet.connection._
 import com.vilenet.users.{Add, BinaryProtocol, UsersUserAdded}
 import com.vilenet.{Constants, ViLeNetActor}
@@ -27,11 +28,11 @@ object BinaryMessageHandler {
   def apply(clientAddress: InetSocketAddress, connection: ActorRef) = Props(new BinaryMessageHandler(clientAddress, connection))
 }
 
-class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRef) extends ViLeNetActor with FSM[BinaryState, BinaryData] with DeBuffer {
+class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRef) extends ViLeNetActor with FSM[BinaryState, ActorRef] with DeBuffer {
 
   implicit val timeout = Timeout(1, TimeUnit.MINUTES)
 
-  startWith(StartLoginState, EmptyBinaryData)
+  startWith(StartLoginState, ActorRef.noSender)
   context.watch(connection)
 
   val pingCookie: Int = Random.nextInt
@@ -44,18 +45,16 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
   var productId: String = _
 
   def handleRest(): State = {
-    stateData match {
-      case WithBinaryData(packetId, length, data) =>
-        //println("Hey " + packetId)
-        stay()
-      case x =>
-        //println(s"Unrecognized $x")
-        stay()
-    }
+    case _ => stay()
   }
 
   when(StartLoginState) {
     case Event(BinaryPacket(packetId, data), _) =>
+      packetId match {
+        case SID_CLIENTID | SID_CLIENTID2 | SID_AUTH_INFO =>
+
+        case _ =>
+      }
       if (packetId == 0x05) {
         connection ! WriteOut(SidLogonChallenge())
         connection ! WriteOut(SidPing(pingCookie))

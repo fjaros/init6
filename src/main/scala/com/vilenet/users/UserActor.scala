@@ -1,7 +1,7 @@
 package com.vilenet.users
 
 import akka.actor.{Terminated, ActorRef, Props}
-import akka.io.Tcp.{Received, Write}
+import akka.io.Tcp.Received
 import com.vilenet.Constants._
 import com.vilenet.connection.WriteOut
 import com.vilenet.ViLeNetActor
@@ -9,7 +9,7 @@ import com.vilenet.channels._
 import com.vilenet.coders._
 import com.vilenet.coders.binary.BinaryChatEncoder
 import com.vilenet.coders.telnet._
-import com.vilenet.utils.{CaseInsensitiveHashSet, CaseInsensitiveFiniteHashSet}
+import com.vilenet.utils.CaseInsensitiveHashSet
 
 /**
  * Created by filip on 9/27/15.
@@ -30,6 +30,10 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
 
   var channelActor: ActorRef = _
   var squelchedUsers = CaseInsensitiveHashSet()
+  var away: Boolean = false
+  var awayMessage: String = _
+  var dnd: Boolean = false
+  var dndMessage: String = _
 
   context.watch(connection)
 
@@ -79,8 +83,15 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
     case (actor: ActorRef, WhisperMessage(fromUser, toUsername, message)) =>
       encoder(UserWhisperedFrom(fromUser, message))
         .fold()(msg => {
-          connection ! WriteOut(msg)
-          actor !  UserWhisperedTo(user, message)
+          if (dnd) {
+           actor ! UserInfo(DND_UNAVAILABLE(user.name, dndMessage))
+          } else {
+            connection ! WriteOut(msg)
+            if (away) {
+              actor ! UserInfo(AWAY_UNAVAILABLE(user.name, awayMessage))
+            }
+            actor ! UserWhisperedTo(user, message)
+          }
         })
 
     case (actor: ActorRef, WhoisCommand(fromUser, username)) =>
@@ -116,6 +127,26 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
             case command: UserCommand => usersActor ! command
             case command: ReturnableCommand => encoder(command).fold()(connection ! WriteOut(_))
             case command: TopCommand => usersActor ! command
+            case AwayCommand(message) =>
+              if (message.nonEmpty) {
+                self ! UserInfo(AWAY_ENGAGED)
+                away = true
+                awayMessage = message
+              } else {
+                self ! UserInfo(if (away) AWAY_CANCELLED else AWAY_ENGAGED)
+                away = !away
+                awayMessage = DND_DEFAULT_MSG
+              }
+            case DndCommand(message) =>
+              if (message.nonEmpty) {
+                self ! UserInfo(DND_ENGAGED)
+                dnd = true
+                dndMessage = message
+              } else {
+                self ! UserInfo(if (dnd) DND_CANCELLED else DND_ENGAGED)
+                dnd = !dnd
+                dndMessage = DND_DEFAULT_MSG
+              }
             case _ =>
           }
         case x =>
