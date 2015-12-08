@@ -10,10 +10,10 @@ object SidLogonChallenge extends BinaryPacket {
 
   override val PACKET_ID = Packets.SID_LOGONCHALLENGE
 
-  def apply(): ByteString = {
+  def apply(serverToken: Int): ByteString = {
     build(
       ByteString.newBuilder
-        .putInt(0xdeadbeef)
+        .putInt(serverToken)
         .result()
     )
   }

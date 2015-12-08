@@ -6,6 +6,7 @@ package com.vilenet.channels
 object Flags {
   val ADMIN = 0x01
   val OP = 0x02
+  val UDP = 0x10
   val SQUELCH = 0x20
 
   private val CAN_BAN = ADMIN | OP

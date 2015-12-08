@@ -5,6 +5,8 @@ import java.util.concurrent.TimeUnit
 
 import akka.actor.{ActorRef, FSM, Props}
 import akka.io.Tcp.Received
+import akka.util.ByteString
+import com.vilenet.coders.binary.DeBuffer
 import com.vilenet.connection.binary.{BinaryPacket, BinaryMessageHandler}
 import com.vilenet.ViLeNetActor
 
@@ -18,17 +20,6 @@ case object ReceivingPacket extends PacketReceiverState
 sealed trait ReceiverData
 case class ReceivingData(buffer: Array[Byte] = Array[Byte]()) extends ReceiverData
 
-sealed trait BinaryState
-case object StartLoginState extends BinaryState
-case object ExpectingSidStartVersioning extends BinaryState
-case object ExpectingSidReportVersion extends BinaryState
-case object ExpectingSidLogonChallenge extends BinaryState
-case object ExpectingSidAuthInfo extends BinaryState
-case object ExpectingSidAuthCheck extends BinaryState
-case object ExpectingSidLogonResponse extends BinaryState
-case object ExpectingSidEnterChat extends BinaryState
-case object ExpectingSidJoinChannel extends BinaryState
-
 /**
  * Created by filip on 10/25/15.
  */
@@ -36,7 +27,7 @@ object BinaryMessageReceiver {
   def apply(clientAddress: InetSocketAddress, connection: ActorRef) = Props(new BinaryMessageReceiver(clientAddress, connection))
 }
 
-class BinaryMessageReceiver(clientAddress: InetSocketAddress, connection: ActorRef) extends ViLeNetActor with FSM[PacketReceiverState, ReceiverData] with DeBuffer {
+class BinaryMessageReceiver(clientAddress: InetSocketAddress, connection: ActorRef) extends ViLeNetActor with FSM[PacketReceiverState, ReceiverData] {
 
   val HEADER_BYTE = 0xFF.toByte
   val HEADER_SIZE = 4
@@ -57,8 +48,8 @@ class BinaryMessageReceiver(clientAddress: InetSocketAddress, connection: ActorR
 
           if (fullData.head == HEADER_BYTE) {
             val packetId = fullData(1)
-            val length = toWord(fullData.drop(2))
-            val packet = fullData.slice(HEADER_SIZE, length)
+            val length = (fullData(3) << 8 & 0xff00 | fullData(2) & 0xff).toShort
+            val packet = ByteString(fullData.slice(HEADER_SIZE, length))
 
             handler ! BinaryPacket(packetId, packet)
 

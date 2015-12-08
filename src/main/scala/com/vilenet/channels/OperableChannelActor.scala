@@ -2,7 +2,7 @@ package com.vilenet.channels
 
 import akka.actor.ActorRef
 import com.vilenet.Constants._
-import com.vilenet.coders.DesignateCommand
+import com.vilenet.coders.{OperableCommand, DesignateCommand}
 import com.vilenet.users.{UserToChannelCommandAck, UserUpdated}
 
 /**
@@ -12,12 +12,21 @@ trait OperableChannelActor extends RemoteOperableChannelActor {
 
   override def receiveEvent = ({
     case command: UserToChannelCommandAck =>
-      command.command match {
-        case DesignateCommand(_, designatee) =>
-          designate(sender(), command.userActor)
-        case _ =>
+    users.get(sender()).fold()(user => {
+      if (Flags.canBan(user)) {
+        command.command match {
+          case DesignateCommand(_, designatee) =>
+            designate(sender(), command.userActor)
+          case _ =>
+        }
+      } else {
+        command.command match {
+          case command: OperableCommand => sender() ! UserError(NOT_OPERATOR)
+          case _ => super.receiveEvent(command)
+        }
       }
       super.receiveEvent(command)
+    })
   }: Receive)
     .orElse(super.receiveEvent)
 

@@ -47,11 +47,11 @@ object BinaryChatEncoder extends Encoder {
       case _ =>
         None
     }
+  }
 
-    def handleArrayEvent(packetId: Byte, messages: Array[String]) = {
-      messages
-        .map(SidChatEvent(packetId, 0, 0, "", _))
-        .reduceLeft(_ ++ _)
-    }
+  def handleArrayEvent(packetId: Byte, messages: Array[String]) = {
+    messages
+      .map(SidChatEvent(packetId, 0, 0, "", _))
+      .reduceLeft(_ ++ _)
   }
 }

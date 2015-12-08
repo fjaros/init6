@@ -11,7 +11,6 @@ import scala.annotation.switch
  * Created by filip on 9/21/15.
  */
 object UserMessageDecoder {
-  val CHARSET = "windows-1252"
 
   private implicit def decode(byteString: ByteString): String = new String(byteString.toArray, CHARSET)
 
@@ -187,7 +186,7 @@ case class WhisperMessage(override val fromUser: User, override val toUsername: 
 case object DesignateCommand {
   def apply(fromUser: User, designatee: Option[String]): Command = DesignateCommand(fromUser, designatee.getOrElse(""))
 }
-case class DesignateCommand(fromUser: User, override val toUsername: String) extends UserToChannelCommand
+case class DesignateCommand(fromUser: User, override val toUsername: String) extends UserToChannelCommand with OperableCommand
 
 case class ChatMessage(fromUser: User, message: String) extends ChannelCommand
 case object EmoteMessage {

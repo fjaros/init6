@@ -1,6 +1,9 @@
 package com.vilenet.coders.binary
 
+import java.nio.ByteOrder
+
 import akka.util.ByteString
+import com.vilenet.Constants
 
 /**
   * Created by filip on 12/7/15.
@@ -10,21 +13,55 @@ object DeBuffer {
 }
 
 sealed class DeBuffer(data: ByteString) {
-  val index = 0
+
+  val buffer = data.asByteBuffer.order(ByteOrder.LITTLE_ENDIAN)
+  var index = 0
+
+  def skip(length: Int) = {
+    index += length
+  }
 
   def byte(index: Int = index): Byte = {
-    data(index)
+    val ret = buffer.get(index)
+    this.index += 1
+    ret
   }
 
   def word(index: Int = index): Short = {
-    (data(index + 1) << 8 & 0xff00 | data(index) & 0xff).toShort
+    val ret = buffer.getShort(index)
+    this.index += 2
+    ret
   }
 
   def dword(index: Int = index): Int = {
-    data(index + 3) << 24 & 0xff000000 | data(index + 2) << 16 & 0xff0000 | data(index + 1) << 8 & 0xff00 | data(index) & 0xff
+    val ret = buffer.getInt(index)
+    this.index += 4
+    ret
   }
 
-  def byteArray(index: Int = index, length: Int = 4) = {
-    data.slice(index, index + length).toArray
+  def byteArray(length: Int): Array[Byte] = {
+    byteArray(index, length)
+  }
+
+  def byteArray(index: Int = index, length: Int = 0) = {
+    val ret = data.slice(index, index + length).toArray
+    this.index += length
+    ret
+  }
+
+  def byteArrayAsString(length: Int): String = {
+    byteArrayAsString(index, length)
+  }
+
+  def byteArrayAsString(index: Int = index, length: Int = 0) = {
+    val ret = new String(byteArray(index, length), Constants.CHARSET)
+    this.index += length
+    ret
+  }
+
+  def string(index: Int = index): String = {
+    val ret = data.drop(index).takeWhile(_ != 0).toArray
+    this.index += ret.length + 1
+    new String(ret, Constants.CHARSET)
   }
 }

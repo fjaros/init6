@@ -12,12 +12,12 @@ object SidAuthInfo extends BinaryPacket {
 
   override val PACKET_ID = Packets.SID_AUTH_INFO
 
-  def apply(): ByteString = {
+  def apply(serverToken: Int, udpToken: Int = 0xDEADBEEF): ByteString = {
     build(
       ByteString.newBuilder
         .putInt(0)
-        .putInt(0xdeadbeef)
-        .putInt(0xdeadbeef)
+        .putInt(serverToken)
+        .putInt(udpToken)
         .putInt(0x4341AC00)
         .putInt(0x01C50B25)
         .putBytes("IX86ver3.mpq")
@@ -26,14 +26,15 @@ object SidAuthInfo extends BinaryPacket {
     )
   }
 
+  case class SidAuthInfo(productId: String, versionByte: Byte)
+
   def unapply(data: ByteString): Option[SidAuthInfo] = {
     Try {
       val debuffer = DeBuffer(data)
+      debuffer.skip(8)
       val productId = debuffer.byteArray(4)
       val verbyte = debuffer.byte(8)
       SidAuthInfo(new String(productId), verbyte)
     }.toOption
   }
 }
-
-case class SidAuthInfo(productId: String, verByte: Byte)

@@ -1,7 +1,9 @@
 package com.vilenet.coders.binary.packets
 
 import akka.util.ByteString
-import com.vilenet.coders.binary.BinaryPacket
+import com.vilenet.coders.binary.{DeBuffer, BinaryPacket}
+
+import scala.util.Try
 
 /**
  * Created by filip on 10/28/15.
@@ -20,4 +22,16 @@ object SidStartVersioning extends BinaryPacket {
         .result()
     )
   }
+
+  def unapply(data: ByteString): Option[SidStartVersioning] = {
+    Try {
+      val debuffer = DeBuffer(data)
+      debuffer.skip(4)
+      val productId = debuffer.byteArrayAsString(4)
+      val versionByte = debuffer.byte()
+      SidStartVersioning(productId, versionByte)
+    }.toOption
+  }
 }
+
+case class SidStartVersioning(productId: String, versionByte: Byte)
