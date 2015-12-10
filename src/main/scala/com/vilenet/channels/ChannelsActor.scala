@@ -3,7 +3,7 @@ package com.vilenet.channels
 import akka.actor.{ActorRef, Props}
 import com.vilenet.Constants._
 import com.vilenet.channels.utils.RemoteEvent
-import com.vilenet.coders.{WhoCommandToChannel, WhoCommand, ChannelsCommand}
+import com.vilenet.coders.{Command, WhoCommandToChannel, WhoCommand, ChannelsCommand}
 import com.vilenet.{ViLeNetComponent, ViLeNetActor}
 import com.vilenet.servers.{ServerOffline, ServerOnline, AddListener}
 import com.vilenet.utils.CaseInsensitiveHashMap
@@ -17,11 +17,11 @@ object ChannelsActor extends ViLeNetComponent {
   def apply() = system.actorOf(Props(new ChannelsActor), VILE_NET_CHANNELS_PATH)
 }
 
-case class GetChannels(columbus: ActorRef)
-case class ChannelCreated(actor: ActorRef, name: String)
-case class GetChannelUsers(remoteActor: ActorRef)
-case class ReceivedChannel(channel: (String, ActorRef))
-case class UserAdded(actor: ActorRef, channel: String)
+case class GetChannels(columbus: ActorRef) extends Command
+case class ChannelCreated(actor: ActorRef, name: String) extends Command
+case class GetChannelUsers(remoteActor: ActorRef) extends Command
+case class ReceivedChannel(channel: (String, ActorRef)) extends Command
+case class UserAdded(actor: ActorRef, channel: String) extends Command
 
 
 

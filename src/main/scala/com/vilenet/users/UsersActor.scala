@@ -1,7 +1,6 @@
 package com.vilenet.users
 
 import akka.actor.{Terminated, Props, ActorRef}
-import akka.io.Tcp.Event
 import com.vilenet.channels.utils.RemoteEvent
 import com.vilenet.coders._
 import com.vilenet.servers.{ServerOffline, ServerOnline, AddListener}
@@ -15,10 +14,10 @@ import scala.collection.mutable
 /**
  * Created by filip on 9/28/15.
  */
-case class Add(connection: ActorRef, user: User, protocol: Protocol) extends Event
-case class Rem(username: String) extends Event
+case class Add(connection: ActorRef, user: User, protocol: Protocol) extends Command
+case class Rem(username: String) extends Command
 
-case class WhisperTo(user: User, username: String, message: String) extends Event
+case class WhisperTo(user: User, username: String, message: String)  extends Command
 
 object UsersActor extends ViLeNetComponent {
   def apply() = system.actorOf(Props(new UsersActor), VILE_NET_USERS_PATH)
@@ -28,11 +27,11 @@ trait Protocol
 case object BinaryProtocol extends Protocol
 case object TelnetProtocol extends Protocol
 
-case object GetUsers
-case class ReceivedUser(user: (String, ActorRef))
-case class ReceivedUsers(users: RealKeyedCaseInsensitiveHashMap[ActorRef])
+case object GetUsers extends Command
+case class ReceivedUser(user: (String, ActorRef)) extends Command
+case class ReceivedUsers(users: RealKeyedCaseInsensitiveHashMap[ActorRef]) extends Command
 case class UserToChannelCommandAck(userActor: ActorRef, realUsername: String, command: UserToChannelCommand) extends Command
-case class UsersUserAdded(userActor: ActorRef, user: User)
+case class UsersUserAdded(userActor: ActorRef, user: User) extends Command
 
 class UsersActor extends ViLeNetActor {
 

@@ -1,13 +1,14 @@
 package com.vilenet.channels
 
 import akka.actor.ActorRef
+import com.vilenet.coders.Command
 
 import scala.collection.mutable
 
 /**
   * Created by filip on 11/26/15.
   */
-case class DesignateAction(actor: ActorRef, designatee: ActorRef)
+case class DesignateAction(actor: ActorRef, designatee: ActorRef) extends Command
 
 trait RemoteOperableChannelActor extends RemoteChannelActor {
 

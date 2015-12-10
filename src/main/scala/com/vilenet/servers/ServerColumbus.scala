@@ -3,6 +3,7 @@ package com.vilenet.servers
 
 import akka.actor.{Terminated, Props, ActorRef}
 import com.vilenet.Constants._
+import com.vilenet.coders.Command
 import com.vilenet.{ViLeNetComponent, ViLeNetActor}
 
 import scala.collection.mutable
@@ -10,18 +11,18 @@ import scala.collection.mutable
 /**
  * Created by filip on 10/17/15.
  */
-case object SendBirth
+case object SendBirth extends Command
 
-case object ServerOnline
-case class ServerOnline(actor: ActorRef)
-case object ServerOnlineAck
+case object ServerOnline extends Command
+case class ServerOnline(actor: ActorRef) extends Command
+case object ServerOnlineAck extends Command
 
-case object ServerOffline
-case class ServerOffline(actor: ActorRef)
+case object ServerOffline extends Command
+case class ServerOffline(actor: ActorRef) extends Command
 
-case object AddListener
+case object AddListener extends Command
 
-case object SplitMe
+case object SplitMe extends Command
 
 
 object ServerColumbus extends ViLeNetComponent {

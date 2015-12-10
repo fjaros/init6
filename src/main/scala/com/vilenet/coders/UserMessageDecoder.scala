@@ -77,7 +77,6 @@ object UserMessageDecoder {
  * Commands can also be general (e.g. ErrorCommand which can be returned from a user or a channel)
  */
 
-trait Command
 trait ChannelCommand extends Command {
   val fromUser: User
 }
