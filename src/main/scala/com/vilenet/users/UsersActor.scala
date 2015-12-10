@@ -83,7 +83,7 @@ class UsersActor extends ViLeNetActor {
       log.error(s"command sending $command")
       users.get(command.toUsername)
         .fold(sender() ! UserError(Constants.USER_NOT_LOGGED_ON))(x => {
-        log.error(s"users $users")
+        //log.error(s"users $users")
         log.error(s"sending to $x from ${sender()}")
         x ! (sender(), command)
       })
@@ -159,7 +159,7 @@ class UsersActor extends ViLeNetActor {
   def getRealUser(user: User): User = {
     var number = 1
     var username = user.name
-    println(s"$users $username $number")
+    //println(s"$users $username $number")
     while (users.contains(username)) {
       number = number + 1
       username = s"${user.name}#$number"

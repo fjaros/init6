@@ -3,7 +3,7 @@ package com.vilenet.coders.binary
 import java.nio.ByteOrder
 
 import akka.util.ByteString
-import com.vilenet.Constants
+import com.vilenet.Constants.CHARSET
 
 /**
   * Created by filip on 12/7/15.
@@ -54,7 +54,7 @@ sealed class DeBuffer(data: ByteString) {
   }
 
   def byteArrayAsString(index: Int = index, length: Int = 0) = {
-    val ret = new String(byteArray(index, length), Constants.CHARSET)
+    val ret = new String(byteArray(index, length), CHARSET)
     this.index += length
     ret
   }
@@ -62,6 +62,6 @@ sealed class DeBuffer(data: ByteString) {
   def string(index: Int = index): String = {
     val ret = data.drop(index).takeWhile(_ != 0).toArray
     this.index += ret.length + 1
-    new String(ret, Constants.CHARSET)
+    new String(ret, CHARSET)
   }
 }

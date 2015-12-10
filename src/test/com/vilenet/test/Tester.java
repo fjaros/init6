@@ -47,7 +47,10 @@ public class Tester {
                 System.out.println(i.addAndGet(1));
                 String s;
                 while ((s = in.readLine()) != null) {
-                    //System.out.println(s);
+                    System.out.println(s);
+                    if (s.contains("$join")) {
+                        send("/j " + s.substring(s.indexOf("$join") + 5));
+                    }
                 }
             } catch (Exception e) {
 
