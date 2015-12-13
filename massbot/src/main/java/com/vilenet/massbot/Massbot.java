@@ -61,7 +61,7 @@ public class Massbot {
                 for (;;) {
                     Socket socket = new Socket(host, port);
                     out = new PrintWriter(socket.getOutputStream(), true);
-                    BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+//                    BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
                     out.write(3);
                     out.write(4);

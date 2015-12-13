@@ -42,7 +42,6 @@ class ServerColumbus(remoteServers: Array[String]) extends ViLeNetActor {
     super.preStart()
 
     // WTF
-    //Thread.sleep(3000)
     self ! SendBirth
   }
 

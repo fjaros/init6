@@ -23,7 +23,7 @@ object UsersActor extends ViLeNetComponent {
   def apply() = system.actorOf(Props(new UsersActor), VILE_NET_USERS_PATH)
 }
 
-trait Protocol
+trait Protocol extends Command
 case object BinaryProtocol extends Protocol
 case object TelnetProtocol extends Protocol
 
@@ -92,7 +92,7 @@ class UsersActor extends ViLeNetActor {
       sender() ! UserInfo(s"Showing the top ${topList.getInitialSize} $which connections:")
       for (i <- 1 to topList.size) {
         val user = topList(i - 1)
-        sender() ! UserInfo(s"$i. ${TOP_LIST(user.name, WhoamiCommand.encodeClient(user.client))}")
+        sender() ! UserInfo(s"$i. ${TOP_LIST(user.name, encodeClient(user.client))}")
       }
 
     case Terminated(actor) =>
@@ -131,14 +131,14 @@ class UsersActor extends ViLeNetActor {
       reverseUsers += userActor -> newUser.name
       remoteUsersActors.foreach(_ ! RemoteEvent(Add(userActor, newUser, protocol)))
       sender() ! UsersUserAdded(userActor, newUser)
-      system.eventStream.publish(UserInfo("Bullshit"))
 
     case Rem(username) =>
-      val userActor = users(username)
-      context.unwatch(userActor)
-      users -= username
-      reverseUsers -= userActor
-      remoteUsersActors.foreach(_ ! RemoteEvent(Rem(username)))
+      users.get(username).fold()(userActor => {
+        context.unwatch(userActor)
+        users -= username
+        reverseUsers -= userActor
+        remoteUsersActors.foreach(_ ! RemoteEvent(Rem(username)))
+      })
   }
 
   def handleRemote: Receive = {

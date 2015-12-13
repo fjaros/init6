@@ -66,12 +66,20 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
     case UserJoined(user) =>
       encodeAndSend(UserJoined(checkSquelched(user)))
 
+    case UserLeftChat =>
+      user = user.copy(channel = "")
+      if (channelActor != ActorRef.noSender) {
+        channelActor ! RemUser(self)
+        channelActor = ActorRef.noSender
+      }
+
     case channelEvent: SquelchableTalkEvent =>
       if (!squelchedUsers.contains(channelEvent.user.name)) {
         encodeAndSend(channelEvent)
       }
 
     case channelEvent: ChatEvent =>
+      println(s"?? chatEvent $channelEvent")
       channelEvent match {
         case UserChannel(newUser, channel, channelActor) =>
           user = newUser
@@ -95,7 +103,7 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
         })
 
     case (actor: ActorRef, WhoisCommand(fromUser, username)) =>
-      actor ! UserInfo(s"${user.name} is using ${WhoamiCommand.encodeClient(user.client)} in the channel ${user.channel}.")
+      actor ! UserInfo(s"${user.name} is using ${encodeClient(user.client)}${if (user.channel != "") s" in the channel ${user.channel}" else ""}.")
 
     case BanCommand(kicking) =>
       self ! UserInfo(YOU_KICKED(kicking))
@@ -120,6 +128,8 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
               if (!user.channel.equalsIgnoreCase(channel)) {
                 channelsActor ! UserSwitchedChat(self, fromUser, channel)
               }
+            case ResignCommand => resign()
+            case RejoinCommand => rejoin()
             case command: ChannelCommand => channelActor ! command
             case ChannelsCommand => channelsActor ! ChannelsCommand
             case command: WhoCommand => channelsActor ! command
@@ -164,12 +174,20 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
       channelActor ! command
 
     case Terminated(actor) =>
-      usersActor ! Rem(user.name)
       context.stop(self)
 
     case x =>
       //log.error(s"### UserActor Unhandled: $x")
   }
 
-  def isOperator(user: User) = (user.flags & 0x02) == 0x02 || (user.flags & 0x01) == 0x01
+  private def resign() = {
+    if (Flags.isOp(user)) {
+      rejoin()
+    }
+  }
+
+  private def rejoin() = {
+    channelActor ! RemUser(self)
+    channelsActor ! UserSwitchedChat(self, user, user.channel)
+  }
 }

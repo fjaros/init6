@@ -12,6 +12,7 @@ trait SquelchableTalkEvent extends ChatEvent {
   val user: User
 }
 
+// Battle.net events
 case class UserIn(user: User) extends ChatEvent
 case class UserJoined(user: User) extends ChatEvent
 case class UserLeft(user: User) extends ChatEvent
@@ -29,6 +30,7 @@ case object UserNull extends ChatEvent
 case class UserName(name: String) extends ChatEvent
 case class UserEmote(override val user: User, message: String) extends SquelchableTalkEvent
 
+// Internal actor events
 case class UserSquelched(user: String) extends ChatEvent
 case class UserUnsquelched(user: String) extends ChatEvent
 case class UserSentChat(user: String, message: String) extends ChatEvent
@@ -36,3 +38,4 @@ case class UserSentEmote(user: String, message: String) extends ChatEvent
 case class Designate(user: String, mesasge: String) extends ChatEvent
 case class UserSwitchedChat(actor: ActorRef, user: User, channel: String) extends ChatEvent
 case class ChatEmptied(channel: String) extends ChatEvent
+case object UserLeftChat extends ChatEvent

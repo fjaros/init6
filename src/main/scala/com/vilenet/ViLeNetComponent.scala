@@ -1,14 +1,19 @@
 package com.vilenet
 
+import java.util.concurrent.TimeUnit
+
 import akka.actor.ActorSystem
+import com.typesafe.config.ConfigFactory
 import com.vilenet.Constants._
+
+import scala.concurrent.duration.Duration
 
 /**
  * Created by filip on 9/19/15.
  */
 private[vilenet] trait ViLeNetComponent {
 
-  implicit val system = SystemContext()
+  implicit val system = SystemContext.system
 
   lazy val serverColumbus = system.actorSelection(s"/user/$VILE_NET_SERVERS_PATH")
   lazy val channelsActor = system.actorSelection(s"/user/$VILE_NET_CHANNELS_PATH")
@@ -16,7 +21,9 @@ private[vilenet] trait ViLeNetComponent {
 }
 
 private[vilenet] object SystemContext {
-  lazy val system = ActorSystem(Constants.VILE_NET)
 
-  def apply() = system
+  private val start = System.currentTimeMillis()
+  lazy val system = ActorSystem(Constants.VILE_NET, ConfigFactory.load(Constants.CONFIG))
+
+  def getUptime = Duration(System.currentTimeMillis() - start, TimeUnit.MILLISECONDS)
 }

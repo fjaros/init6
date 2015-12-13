@@ -34,7 +34,7 @@ case class User(
                  place: Int = 0,
 
                  // Changeable
-                 channel: String = "Chat"
+                 channel: String = ""
                ) extends Command
 
 case class ServerTerminated(columbus: ActorRef) extends Command

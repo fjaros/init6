@@ -3,6 +3,7 @@ package com.vilenet.coders
 import akka.actor.ActorRef
 import akka.util.ByteString
 import com.vilenet.Constants._
+import com.vilenet.SystemContext
 import com.vilenet.channels._
 
 import scala.annotation.switch
@@ -35,10 +36,14 @@ object UserMessageDecoder {
             case "unsquelch" | "unignore" => UnsquelchCommand(user, sendToOption(splitCommand._2))
             case "away" => AwayCommand(sendToOption(splitCommand._2))
             case "dnd" => DndCommand(sendToOption(splitCommand._2))
+            case "rejoin" => RejoinCommand // resign but doesnt care if ops
+            case "resign" => ResignCommand // Only if ops
 
             case "top" => TopCommand(sendToOption(splitCommand._2))
             case "channels" | "list" => ChannelsCommand
             case "place" => PlaceCommand(user)
+            case "motd" => MotdCommand()
+            case "serveruptime" | "uptime" => UptimeCommand()
 
             case "help" | "?" => HelpCommand()
 
@@ -113,24 +118,6 @@ object PlaceCommand extends ReturnableCommand {
 case object WhoamiCommand {
   def apply(user: User): Command =
     UserInfo(WHOAMI(user.name, encodeClient(user.client), user.channel))
-
-  def encodeClient(client: String) = {
-    (client: @switch) match {
-      case "CHAT" | "TAHC" => "a Chat Client"
-      case "LTRD" => "Diablo"
-      case "RHSD" => "Diablo Shareware"
-      case "RHSS" => "Starcraft Shareware"
-      case "RTSJ" => "Starcraft Japanese"
-      case "RATS" => "Starcraft"
-      case "PXES" => "Starcraft Broodwar"
-      case "NB2W" => "Warcraft II"
-      case "VD2D" => "Diablo II"
-      case "PX2D" => "Diablo II Lord of Destruction"
-      case "3RAW" => "Warcraft III"
-      case "PX3W" => "Warcraft III The Frozen Throne"
-      case _ => "Unknown"
-    }
-  }
 }
 case class WhoamiCommand(message: String) extends ReturnableCommand
 
@@ -236,7 +223,33 @@ case object UnsquelchCommand {
 }
 case class UnsquelchCommand(override val toUsername: String) extends UserToChannelCommand
 
+case object RejoinCommand extends Command
+case object ResignCommand extends Command
+
+object UptimeCommand {
+  def apply() = {
+    val uptime = SystemContext.getUptime
+    UserInfo(
+      s"""Uptime: ${
+        Array(
+          uptime.toDays -> "day",
+          uptime.toHours % 24 -> "hour",
+          uptime.toMinutes % 60 -> "minute",
+          uptime.toSeconds % 60 -> "second"
+        )
+          .filter(_._1 > 0)
+          .map(tuple => s"${tuple._1} ${addS(tuple._1, tuple._2)}")
+          .mkString(" ")
+      }."""
+    )
+  }
+}
+
 case class BlizzMe(fromUser: User) extends ChannelCommand
+
+object MotdCommand {
+  def apply() = UserInfoArray(MOTD)
+}
 
 case object HelpCommand {
   def apply() = UserInfoArray(
@@ -257,6 +270,7 @@ case object HelpCommand {
 
       "/top, /top chat, /top binary",
       "/channels",
+      "/motd",
 
       "/help, /?"
     )

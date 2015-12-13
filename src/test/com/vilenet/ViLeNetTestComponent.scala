@@ -5,5 +5,5 @@ package com.vilenet
  */
 trait ViLeNetTestComponent {
 
-  implicit val system = SystemContext()
+  implicit val system = SystemContext.system
 }

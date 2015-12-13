@@ -7,12 +7,13 @@ import akka.actor.{ActorRef, FSM, Props}
 import akka.pattern.ask
 import akka.io.Tcp.Received
 import akka.util.{ByteString, Timeout}
-import com.vilenet.channels.{User, UserInfoArray}
+import com.vilenet.channels.{UserLeftChat, User, UserInfoArray}
 import com.vilenet.coders.binary.BinaryChatEncoder
 import com.vilenet.coders.binary.packets._
 import com.vilenet.coders.binary.packets.Packets._
 import com.vilenet.connection._
 import com.vilenet.users.{Add, BinaryProtocol, UsersUserAdded}
+import com.vilenet.utils.LimitedAction
 import com.vilenet.{Constants, ViLeNetActor}
 
 import scala.concurrent.Await
@@ -48,6 +49,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
 
   val pingCookie: Int = Random.nextInt
   val serverToken: Int = Random.nextInt
+  val sidNullHandler = LimitedAction()
 
   var pingTime: Long = 0
   var ping: Int = -1
@@ -59,10 +61,21 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
 
   def handleRest(binaryPacket: BinaryPacket): State = {
     binaryPacket.packetId match {
+      case SID_NULL =>
+        binaryPacket.packet match {
+          case SidNull(packet) =>
+            sidNullHandler.fold()(send(SidNull()))
+        }
       case SID_PING =>
         binaryPacket.packet match {
           case SidPing(packet) =>
             ping = Math.max(0, (System.currentTimeMillis() - pingTime).toInt)
+        }
+      case SID_LEAVECHAT =>
+        binaryPacket.packet match {
+          case SidLeaveChat(packet) =>
+            stateData ! UserLeftChat
+          case x => println(s"${x.getClass}")
         }
       case _ =>
     }
@@ -233,7 +246,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
               stay()
             case _ => stop()
           }
-        case _ => stay()
+        case _ => handleRest(BinaryPacket(packetId, data))
       }
   }
 

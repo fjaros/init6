@@ -1,5 +1,7 @@
 package com.vilenet
 
+import scala.annotation.switch
+
 /**
  * Created by filip on 10/2/15.
  */
@@ -7,6 +9,7 @@ object Constants {
 
   val CHARSET = "windows-1252"
 
+  val CONFIG = "application.conf"
   val VILE_NET = "ViLeNet"
   val VILE_NET_SERVERS_PATH = "Servers"
   val VILE_NET_CHANNELS_PATH = "Channels"
@@ -76,4 +79,26 @@ object Constants {
   " ~ l2k-Shadow and rest of the ViLe crew",
   ""
   )
+
+  def encodeClient(client: String) = {
+    (client: @switch) match {
+      case "CHAT" | "TAHC" => "a Chat Client"
+      case "LTRD" => "Diablo"
+      case "RHSD" => "Diablo Shareware"
+      case "VD2D" => "Diablo II"
+      case "PX2D" => "Diablo II Lord of Destruction"
+      case "RATS" => "Starcraft"
+      case "PXES" => "Starcraft Broodwar"
+      case "RTSJ" => "Starcraft Japanese"
+      case "RHSS" => "Starcraft Shareware"
+      case "NB2W" => "Warcraft II"
+      case "3RAW" => "Warcraft III"
+      case "PX3W" => "Warcraft III The Frozen Throne"
+      case _ => "Unknown"
+    }
+  }
+
+  def addS[A >: Number](number: A, string: String) = {
+    if (number != 1) s"${string}s" else string
+  }
 }

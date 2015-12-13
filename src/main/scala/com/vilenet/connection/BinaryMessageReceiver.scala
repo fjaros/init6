@@ -6,7 +6,6 @@ import java.util.concurrent.TimeUnit
 import akka.actor.{ActorRef, FSM, Props}
 import akka.io.Tcp.Received
 import akka.util.ByteString
-import com.vilenet.coders.binary.DeBuffer
 import com.vilenet.connection.binary.{BinaryPacket, BinaryMessageHandler}
 import com.vilenet.ViLeNetActor
 
