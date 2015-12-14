@@ -9,9 +9,11 @@ import akka.io.Tcp.Received
 import akka.util.{ByteString, Timeout}
 import com.vilenet.channels.{UserLeftChat, User, UserInfoArray}
 import com.vilenet.coders.binary.BinaryChatEncoder
+import com.vilenet.coders.binary.hash.BSHA1
 import com.vilenet.coders.binary.packets._
 import com.vilenet.coders.binary.packets.Packets._
 import com.vilenet.connection._
+import com.vilenet.db.DAO
 import com.vilenet.users.{Add, BinaryProtocol, UsersUserAdded}
 import com.vilenet.utils.LimitedAction
 import com.vilenet.{Constants, ViLeNetActor}
@@ -111,6 +113,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
               goto(ExpectingSidAuthCheck)
             case _ => stop()
           }
+        case _ => stop()
       }
   }
 
@@ -168,32 +171,69 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
 //              }
             case _ => stop()
           }
+        case SID_CREATEACCOUNT2 =>
+          data match {
+            case SidCreateAccount2(packet) =>
+              createAccount2(packet.passwordHash, packet.username)
+            case _ => stop()
+          }
         case _ => handleRest(BinaryPacket(packetId, data))
       }
   }
 
+  def createAccount2(passwordHash: Array[Byte], username: String) = {
+    DAO.getUser(username).fold({
+      DAO.createUser(username, passwordHash)
+      send(SidCreateAccount2(SidCreateAccount2.RESULT_ACCOUNT_CREATED))
+    })(dbUser => {
+      send(SidCreateAccount2(SidCreateAccount2.RESULT_ALREADY_EXISTS))
+    })
+
+    goto(ExpectingSidLogonResponse)
+  }
+
   def handleLogon(clientToken: Int, serverToken: Int, passwordHash: Array[Byte], username: String) = {
     oldUsername = username
-    val u = User(oldUsername, 0, ping, client = productId)
-    Await.result(usersActor ? Add(connection, u, BinaryProtocol), timeout.duration) match {
-      case UsersUserAdded(userActor, user) =>
-        this.username = user.name
-        send(SidLogonResponse(SidLogonResponse.RESULT_SUCCESS))
-        goto (ExpectingSidEnterChat) using userActor
-      case _ => stop()
-    }
+    DAO.getUser(username).fold({
+      send(SidLogonResponse(SidLogonResponse.RESULT_INVALID_PASSWORD))
+      goto(ExpectingSidLogonResponse)
+    })(dbUser => {
+      if (dbUser.passwordHash.sameElements(passwordHash)) {
+        val u = User(oldUsername, 0, ping, client = productId)
+        Await.result(usersActor ? Add(connection, u, BinaryProtocol), timeout.duration) match {
+          case UsersUserAdded(userActor, user) =>
+            this.username = user.name
+            send(SidLogonResponse(SidLogonResponse.RESULT_SUCCESS))
+            goto(ExpectingSidEnterChat) using userActor
+          case _ => stop()
+        }
+      } else {
+        send(SidLogonResponse(SidLogonResponse.RESULT_INVALID_PASSWORD))
+        goto(ExpectingSidLogonResponse)
+      }
+    })
   }
 
   def handleLogon2(clientToken: Int, serverToken: Int, passwordHash: Array[Byte], username: String) = {
     oldUsername = username
-    val u = User(oldUsername, 0, ping, client = productId)
-    Await.result(usersActor ? Add(connection, u, BinaryProtocol), timeout.duration) match {
-      case UsersUserAdded(userActor, user) =>
-        this.username = user.name
-        send(SidLogonResponse2(SidLogonResponse2.RESULT_SUCCESS))
-        goto (ExpectingSidEnterChat) using userActor
-      case _ => stop()
-    }
+    DAO.getUser(username).fold({
+      send(SidLogonResponse2(SidLogonResponse2.RESULT_DOES_NOT_EXIST))
+      goto(ExpectingSidLogonResponse)
+    })(dbUser => {
+      if (BSHA1(clientToken, serverToken, dbUser.passwordHash).sameElements(passwordHash)) {
+        val u = User(oldUsername, 0, ping, client = productId)
+        Await.result(usersActor ? Add(connection, u, BinaryProtocol), timeout.duration) match {
+          case UsersUserAdded(userActor, user) =>
+            this.username = user.name
+            send(SidLogonResponse2(SidLogonResponse2.RESULT_SUCCESS))
+            goto(ExpectingSidEnterChat) using userActor
+          case _ => stop()
+        }
+      } else {
+        send(SidLogonResponse2(SidLogonResponse2.RESULT_INVALID_PASSWORD))
+        goto(ExpectingSidLogonResponse)
+      }
+    })
   }
 
   when(ExpectingSidAuthCheck) {
@@ -218,8 +258,9 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
           data match {
             case SidEnterChat(packet) =>
 //              if (oldUsername == packet.username) {
-                send(SidEnterChat(username, oldUsername, productId))
-                goto(LoggedIn)
+              send(SidEnterChat(username, oldUsername, productId))
+              send(BinaryChatEncoder(UserInfoArray(Constants.MOTD)).get)
+              goto(LoggedIn)
 //              } else {
 //                stop()
 //              }
@@ -234,8 +275,11 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
         case SID_JOINCHANNEL =>
           data match {
             case SidJoinChannel(packet) =>
-              send(BinaryChatEncoder(UserInfoArray(Constants.MOTD)).get)
-              actor ! Received(ByteString(s"/j ${packet.channel}"))
+              packet.joinFlag match {
+                case 0x01 => actor ! Received(ByteString(s"/j ViLe"))
+                case 0x02 | 0x05 => actor ! Received(ByteString(s"/j ${packet.channel}"))
+                case _ =>
+              }
               stay()
             case _ => stop()
           }

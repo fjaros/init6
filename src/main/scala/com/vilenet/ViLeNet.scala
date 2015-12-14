@@ -2,11 +2,12 @@ package com.vilenet
 
 import java.net.InetSocketAddress
 
-import akka.actor.Props
 import com.vilenet.channels.ChannelsActor
+import com.vilenet.coders.binary.hash.BSHA1
 import com.vilenet.connection.ConnectionHandler
 import Constants.VILE_NET
-import com.vilenet.servers.{ServerInfo, ServerColumbus}
+import com.vilenet.db.DAO
+import com.vilenet.servers.ServerColumbus
 import com.vilenet.users.UsersActor
 
 import scala.io.StdIn
@@ -22,7 +23,8 @@ object ViLeNet extends App with ViLeNetComponent {
     port = args(1).toInt
   }
 
-  val columbus = ServerColumbus(args(0))
+  DAO.updateUser("l2k-shadow", passwordHash = BSHA1("12354"))
+  ServerColumbus(args(0))
   UsersActor()
   ChannelsActor()
 
@@ -31,4 +33,5 @@ object ViLeNet extends App with ViLeNetComponent {
 
   StdIn.readLine(s"Hit ENTER to exit ...${System.getProperty("line.separator")}")
   system.terminate()
+  DAO.close()
 }

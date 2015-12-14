@@ -1,9 +1,5 @@
 package com.vilenet.db
 
-import java.sql.{DriverManager, Connection}
-
-import akka.actor.{Props, ActorRef, ActorSystem, Actor}
-
 import scalikejdbc._
 
 /**
@@ -15,19 +11,83 @@ object DAO {
   ConnectionPool.singleton("jdbc:mariadb://localhost:3306/vilenet", "vile", "12345")
   implicit val session = AutoSession
 
-  case class User(id: Long, username: String, password: String, flags: Long)
+  val usersCache = UserCache(withSQL {
+    select.from(DbUser as DbUser.syntax("user"))
+  }.map(rs => DbUser(rs)).list().apply())
 
-  implicit def decodeFlags(flags: Array[Byte]): Long = flags(0) << 24 | flags(1) << 16 | flags(2) << 8 | flags(3)
+  implicit def decodeFlags(flags: Array[Byte]): Int = flags(0) << 24 | flags(1) << 16 | flags(2) << 8 | flags(3)
 
-  object User extends SQLSyntaxSupport[User] {
-    override val tableName = "users"
-    def apply(rs: WrappedResultSet) = new User(rs.long(1), rs.string(2), rs.string(3), rs.get[Array[Byte]](4))
+  def close() = {
+    UserCache.close()
+    session.close()
   }
 
-  val u = User.syntax("u")
-  val findUser: String => Option[User] = (username: String) => {
-    withSQL {
-      select.from(User as u).where.eq(u.username, username)
-    }.map(rs => User(rs)).single().apply()
+  object DbUser extends SQLSyntaxSupport[DbUser] {
+    override val tableName = "users"
+
+    def apply(rs: WrappedResultSet) = new DbUser(rs.long(1), rs.string(2), rs.string(3), rs.get[Array[Byte]](4), rs.get[Array[Byte]](5))
+  }
+
+  def createUser(username: String, passwordHash: Array[Byte]) = UserCache.insert(username, passwordHash)
+  def updateUser(username: String, password: String = "", passwordHash: Array[Byte] = Array[Byte](), flags: Int = -1) = {
+    getUser(username).fold()(dbUser => {
+      UserCache.update(username, dbUser.copy(
+        password = if (password.nonEmpty) password else dbUser.password,
+        passwordHash = if (passwordHash.nonEmpty) passwordHash else dbUser.passwordHash,
+        flags = if (flags != -1) flags else dbUser.flags
+      ))
+    })
+  }
+  def getUser(username: String) = UserCache.get(username)
+
+  private[db] def saveInserted(inserted: Set[DbUser]) = {
+    if (inserted.nonEmpty) {
+      DB localTx { implicit session =>
+        withSQL {
+          insertInto(DbUser)
+            .namedValues(
+              DbUser.column.username -> sqls.?,
+              DbUser.column.password -> sqls.?,
+              DbUser.column.passwordHash -> sqls.?,
+              DbUser.column.flags -> sqls.?
+            )
+        }.batch(inserted.map(
+          dbUser => Seq(
+            dbUser.username,
+            dbUser.password,
+            dbUser.passwordHash,
+            dbUser.flags
+          )
+        ).toSeq: _*)
+          .apply()
+      }
+    }
+  }
+
+  private[db] def saveUpdated(updated: Set[DbUser]) = {
+    if (updated.nonEmpty) {
+      DB localTx { implicit session =>
+        withSQL {
+          update(DbUser)
+            .set(
+              DbUser.column.username -> sqls.?,
+              DbUser.column.password -> sqls.?,
+              DbUser.column.passwordHash -> sqls.?,
+              DbUser.column.flags -> sqls.?
+            )
+              .where.eq(DbUser.column.column("id"), sqls.?) // applyDynamic does not support passing a vararg parameter?
+        }.batch(
+          updated.map(dbUser =>
+            Seq(
+              dbUser.username,
+              dbUser.password,
+              dbUser.passwordHash,
+              dbUser.flags,
+              dbUser.id
+            )
+          ).toSeq: _*)
+            .apply()
+      }
+    }
   }
 }

@@ -1,7 +1,8 @@
 CREATE TABLE IF NOT EXISTS users (
     id INT(11) NOT NULL AUTO_INCREMENT,
     username VARCHAR(16) NOT NULL,
-    password VARCHAR(256) NOT NULL,
+    password VARCHAR(32),
+    passwordHash VARBINARY(20) NOT NULL,
     flags BIT(32) NOT NULL DEFAULT 0,
     PRIMARY KEY(id),
     UNIQUE KEY(username)

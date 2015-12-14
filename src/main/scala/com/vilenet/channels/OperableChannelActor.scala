@@ -81,7 +81,7 @@ trait OperableChannelActor extends RemoteOperableChannelActor {
     userOpt.fold()(user => {
       if (users.nonEmpty && Flags.isOp(user) && !existsOperator()) {
         val designateeActor = designatedActors.getOrElse(actor, users.head._1)
-        val designatedUser = users(designateeActor)
+        val designatedUser = users(designateeActor) // Not ofund?!
 
         val oppedUser = Flags.op(designatedUser)
         users += designateeActor -> oppedUser

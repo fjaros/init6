@@ -19,8 +19,10 @@ sealed class PublicChannelActor(channelName: String)
   override val name = channelName
 
   override def add(actor: ActorRef, user: User): User = {
-    val addedUser = super.add(actor, user)
-    actor ! UserInfo(PUBLIC_CHANNEL)
-    addedUser
+    users.getOrElse(actor, {
+      val addedUser = super.add(actor, Flags.deOp(user))
+      actor ! UserInfo(PUBLIC_CHANNEL)
+      addedUser
+    })
   }
 }

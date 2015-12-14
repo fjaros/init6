@@ -14,12 +14,13 @@ public class BrokenSHA1
 
     public static void main(String[] args)
     {
-        int[] hash = calcHashBuffer("1234".getBytes());
-        System.out.println(PadString.padHex(hash[0], 8));
-        System.out.println(PadString.padHex(hash[1], 8));
-        System.out.println(PadString.padHex(hash[2], 8));
-        System.out.println(PadString.padHex(hash[3], 8));
-        System.out.println(PadString.padHex(hash[4], 8));
+        int[] hash = calcHashBuffer("The quick brown fox jumped over the lazy dog. The quick brown fox jumped over the lazy dog.".getBytes());
+        System.out.print(PadString.padHex(hash[0], 8));
+        System.out.print(PadString.padHex(hash[1], 8));
+        System.out.print(PadString.padHex(hash[2], 8));
+        System.out.print(PadString.padHex(hash[3], 8));
+        System.out.print(PadString.padHex(hash[4], 8));
+        System.out.println();
     }
 
     /**
@@ -65,6 +66,12 @@ public class BrokenSHA1
 
             doHash(hashBuffer);
         }
+
+        for(int a:hashBuffer) {
+            System.out.print(a + " ");
+        }
+        System.out.println();
+
 
         int[] ret = new int[5];
         System.arraycopy(hashBuffer, 0, ret, 0, 5);

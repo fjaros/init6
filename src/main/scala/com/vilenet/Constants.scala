@@ -38,6 +38,7 @@ object Constants {
   val INVALID_USER = "Invalid user."
   val NO_CHANNEL_INPUT = "What channel do you want to join?"
   val NO_CHAT_PRIVILEGES = "This channel does not have chat privileges."
+  val NO_MESSAGE_INPUT = "What do you want to say?"
   val NOT_ALLOWED_TO_VIEW = "You do not have permission to view that channel."
   val NOT_BANNED = "That user is not banned."
   val NOT_OPERATOR = "You are not a channel operator."

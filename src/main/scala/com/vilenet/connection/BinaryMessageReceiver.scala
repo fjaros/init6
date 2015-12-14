@@ -47,7 +47,7 @@ class BinaryMessageReceiver(clientAddress: InetSocketAddress, connection: ActorR
 
           if (fullData.head == HEADER_BYTE) {
             val packetId = fullData(1)
-            val length = (fullData(3) << 8 & 0xff00 | fullData(2) & 0xff).toShort
+            val length = (fullData(3) << 8 & 0xFF00 | fullData(2) & 0xFF).toShort
             val packet = ByteString(fullData.slice(HEADER_SIZE, length))
 
             handler ! BinaryPacket(packetId, packet)

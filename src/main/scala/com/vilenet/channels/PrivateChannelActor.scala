@@ -18,6 +18,6 @@ sealed class PrivateChannelActor(channelName: String)
   override val name = channelName
 
   override def add(actor: ActorRef, user: User): User = {
-    super.add(actor, Flags.deOp(user))
+    users.getOrElse(actor, super.add(actor, Flags.deOp(user)))
   }
 }

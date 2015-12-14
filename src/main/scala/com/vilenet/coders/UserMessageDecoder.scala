@@ -161,7 +161,13 @@ case class JoinUserCommand(override val fromUser: User, channel: String) extends
 
 case object WhisperMessage {
   def apply(opt: Option[(User, String, String)]): Command = {
-    opt.fold[Command](UserError(USER_NOT_LOGGED_ON))(WhisperMessage(_))
+    opt.fold[Command](UserError(USER_NOT_LOGGED_ON))(whisperCommand => {
+      if (whisperCommand._3 != "") {
+        WhisperMessage(whisperCommand)
+      } else {
+        UserError(NO_MESSAGE_INPUT)
+      }
+    })
   }
 
   def apply(opt: (User, String, String)): WhisperMessage = WhisperMessage(opt._1, opt._2, opt._3)

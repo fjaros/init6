@@ -22,9 +22,11 @@ sealed class VoidedChannelActor(channelName: String)
     .orElse(super.receiveEvent)
 
   override def add(actor: ActorRef, user: User): User = {
-    val addedUser = super.add(actor, user)
-    actor ! UserInfo(NO_CHAT_PRIVILEGES)
-    addedUser
+    users.getOrElse(actor, {
+      val addedUser = super.add(actor, user)
+      actor ! UserInfo(NO_CHAT_PRIVILEGES)
+      addedUser
+    })
   }
 
   override def whoCommand(actor: ActorRef, user: User) = {
