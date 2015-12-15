@@ -8,7 +8,7 @@ import scalikejdbc._
 object DAO {
 
   Class.forName("org.mariadb.jdbc.Driver")
-  ConnectionPool.singleton("jdbc:mariadb://localhost:3306/vilenet", "vile", "12345")
+  ConnectionPool.singleton("jdbc:mariadb://localhost:3306/vilenet", "vileserv", "12345")
   implicit val session = AutoSession
 
   val usersCache = UserCache(withSQL {
@@ -41,6 +41,7 @@ object DAO {
   def getUser(username: String) = UserCache.get(username)
 
   private[db] def saveInserted(inserted: Set[DbUser]) = {
+    println(s"saveInserted $inserted")
     if (inserted.nonEmpty) {
       DB localTx { implicit session =>
         withSQL {

@@ -50,6 +50,10 @@ object BSHA1 {
     calcHashBuffer(data.map(_.toByte).toArray)
   }
 
+  def apply(data: Array[Byte]): Array[Byte] = {
+    calcHashBuffer(data)
+  }
+
   /**
     * Double Hash for password
     * clientToken + serverToken + passwordHash + '\0'
@@ -96,10 +100,10 @@ object BSHA1 {
         val onByte = (blockLength + 20) % 4
 
         hashBuffer.update(onInt, (onByte: @switch) match {
-          case 3 => int & 0x00FFFFFF
-          case 2 => int & 0x0000FFFF
-          case 1 => int & 0x000000FF
           case 0 => 0
+          case 1 => int & 0x000000FF
+          case 2 => int & 0x0000FFFF
+          case 3 => int & 0x00FFFFFF
         })
 
         j = onInt + 1
@@ -135,7 +139,7 @@ object BSHA1 {
     var p: Int = 0
     var i: Int = 0
 
-    while(i < 0x10) {
+    while (i < 0x10) {
       buf(i) = hashBuffer(i + 5)
       i += 1
     }
@@ -212,6 +216,3 @@ object BSHA1 {
     hashBuffer(4) += e
   }
 }
-
-
-

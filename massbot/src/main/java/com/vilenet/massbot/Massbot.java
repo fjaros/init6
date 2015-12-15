@@ -65,8 +65,9 @@ public class Massbot {
 
                     out.write(3);
                     out.write(4);
-                    send(name);
-                    send("pw");
+                    //send("boatbawt");
+                    //send("boatbawt#$&(*)!@vsdh9ai@$!Q^911");
+                    send(name); send("pw");
                     send("/j vile");
 
                     Thread.sleep(100);

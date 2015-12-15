@@ -4,13 +4,15 @@ import java.net.InetSocketAddress
 import java.util.concurrent.TimeUnit
 
 import akka.actor.{ActorRef, FSM, Props}
-import akka.io.Tcp.{Close, Write, Received}
+import akka.io.Tcp.{Close, Received}
 import akka.pattern.ask
 import akka.util.{Timeout, ByteString}
+import com.vilenet.coders.binary.hash.BSHA1
+import com.vilenet.db.DAO
 import com.vilenet.{Constants, ViLeNetActor}
 import com.vilenet.channels._
 import com.vilenet.coders.telnet.TelnetEncoder
-import com.vilenet.users.{UsersUserAdded, TelnetProtocol, Add, UserActor}
+import com.vilenet.users.{UsersUserAdded, TelnetProtocol, Add}
 
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.Await
@@ -60,7 +62,8 @@ class TelnetMessageReceiver(clientAddress: InetSocketAddress, connection: ActorR
       if (restOfData.nonEmpty) {
         receive(Received(restOfData))
       }
-    case _ =>
+    case x =>
+      println(s"Received $x and closing handler.")
       handler ! Close
   }
 }
@@ -83,19 +86,25 @@ class TelnetMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
 
   when (ExpectingPassword) {
     case Event(Received(data), buffer: UnauthenticatedUser) =>
-      //DAO.findUser(buffer.user)
-        //.fold(stop())(user =>
-          //if (user.password == data.utf8String) {
-            //val u = User(buffer.user, user.flags)
-      val u = User(buffer.user, Flags.UDP, 0, client = "TAHC")
-            Await.result(usersActor ? Add(connection, u, TelnetProtocol), timeout.duration) match {
-                case UsersUserAdded(actor, user) => goto (LoggedIn) using AuthenticatedUser(user, actor)
-                case _ => stop()
-              }
-          //} else {
-          //  stop()
-          }//)
-  //}
+//      DAO.getUser(buffer.user).fold({
+//        log.error(s"User not found ${buffer.user}")
+//        stop()
+//      })(dbUser => {
+//        log.error(s"User found ${buffer.user}")
+//        if (BSHA1(data.toArray).sameElements(dbUser.passwordHash)) {
+          val u = User(buffer.user, Flags.UDP, 0, client = "TAHC")
+          Await.result(usersActor ? Add(connection, u, TelnetProtocol), timeout.duration) match {
+            case UsersUserAdded(actor, user) => goto (LoggedIn) using AuthenticatedUser(user, actor)
+            case x =>
+              println(s"Stopped because $x")
+              stop()
+          }
+//        } else {
+//          log.error(s"Incorrect PW ${buffer.user} ${data.utf8String}")
+//          stop()
+//        }
+//      })
+    }
 
   when (LoggedIn) {
     case Event(JustLoggedIn, buffer: AuthenticatedUser) =>
@@ -109,11 +118,11 @@ class TelnetMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
       stay()
   }
 
-  //whenUnhandled {
-    //case x =>
-      //log.error(s"Unhandled Event $x")
-      //stop()
-  //}
+  whenUnhandled {
+    case x =>
+      log.error(s"Unhandled Event $x")
+      stop()
+  }
 
   onTransition {
     case ExpectingPassword -> LoggedIn =>
@@ -121,8 +130,8 @@ class TelnetMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
   }
 
   onTermination {
-    case _ =>
-      log.error("Connection stopped 4")
+    case x =>
+      log.error(s"Connection stopped $x")
       context.stop(self)
   }
 }

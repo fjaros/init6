@@ -23,7 +23,9 @@ object ViLeNet extends App with ViLeNetComponent {
     port = args(1).toInt
   }
 
-  DAO.updateUser("l2k-shadow", passwordHash = BSHA1("12354"))
+  //DAO.createUser("l2k-shadow", passwordHash = BSHA1("vile123456"))
+  //DAO.createUser("boatbawt", passwordHash = BSHA1("boatbawt#$&(*)!@vsdh9ai@$!Q^911"))
+  DAO
   ServerColumbus(args(0))
   UsersActor()
   ChannelsActor()

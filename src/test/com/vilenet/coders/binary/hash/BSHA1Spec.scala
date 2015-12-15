@@ -2,8 +2,6 @@ package com.vilenet.coders.binary.hash
 
 import org.scalatest.{Matchers, FlatSpec}
 
-import scala.collection.mutable.ArrayBuffer
-
 /**
   * Created by filip on 12/13/15.
   */
