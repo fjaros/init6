@@ -198,7 +198,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
       send(SidLogonResponse(SidLogonResponse.RESULT_INVALID_PASSWORD))
       goto(ExpectingSidLogonResponse)
     })(dbUser => {
-      if (dbUser.passwordHash.sameElements(passwordHash)) {
+      if (BSHA1(clientToken, serverToken, dbUser.passwordHash).sameElements(passwordHash)) {
         val u = User(oldUsername, 0, ping, client = productId)
         Await.result(usersActor ? Add(connection, u, BinaryProtocol), timeout.duration) match {
           case UsersUserAdded(userActor, user) =>

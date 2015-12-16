@@ -86,24 +86,19 @@ class TelnetMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
 
   when (ExpectingPassword) {
     case Event(Received(data), buffer: UnauthenticatedUser) =>
-//      DAO.getUser(buffer.user).fold({
-//        log.error(s"User not found ${buffer.user}")
-//        stop()
-//      })(dbUser => {
-//        log.error(s"User found ${buffer.user}")
-//        if (BSHA1(data.toArray).sameElements(dbUser.passwordHash)) {
+      DAO.getUser(buffer.user).fold({
+        stop()
+      })(dbUser => {
+        if (BSHA1(data.toArray).sameElements(dbUser.passwordHash)) {
           val u = User(buffer.user, Flags.UDP, 0, client = "TAHC")
           Await.result(usersActor ? Add(connection, u, TelnetProtocol), timeout.duration) match {
             case UsersUserAdded(actor, user) => goto (LoggedIn) using AuthenticatedUser(user, actor)
-            case x =>
-              println(s"Stopped because $x")
-              stop()
+            case x => stop()
           }
-//        } else {
-//          log.error(s"Incorrect PW ${buffer.user} ${data.utf8String}")
-//          stop()
-//        }
-//      })
+        } else {
+          stop()
+        }
+      })
     }
 
   when (LoggedIn) {
