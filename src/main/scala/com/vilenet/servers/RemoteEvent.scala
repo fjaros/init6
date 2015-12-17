@@ -1,6 +1,6 @@
-package com.vilenet.channels.utils
+package com.vilenet.servers
 
-import com.vilenet.coders.Command
+import com.vilenet.coders.commands.Command
 
 /**
  * Created by filip on 10/18/15.

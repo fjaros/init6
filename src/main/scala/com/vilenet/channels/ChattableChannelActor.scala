@@ -1,9 +1,9 @@
 package com.vilenet.channels
 
-import akka.actor.{Terminated, ActorRef}
+import akka.actor.ActorRef
 import com.vilenet.Constants._
-import com.vilenet.coders.{UnsquelchCommand, SquelchCommand, EmoteMessage, ChatMessage}
-import com.vilenet.users.{UserUpdated, UserToChannelCommandAck}
+import com.vilenet.coders.commands.{UnsquelchCommand, SquelchCommand, EmoteCommand, ChatCommand}
+import com.vilenet.users.{UserToChannelCommandAck}
 
 /**
   * Created by filip on 11/15/15.
@@ -11,18 +11,18 @@ import com.vilenet.users.{UserUpdated, UserToChannelCommandAck}
 trait ChattableChannelActor extends RemoteChattableChannelActor {
 
   override def receiveEvent = ({
-    case ChatMessage(user, message) =>
+    case ChatCommand(user, message) =>
       onChatMessage(user, message)
-    case EmoteMessage(user, message) =>
+    case EmoteCommand(user, message) =>
       onEmoteMessage(user, message)
 
     case command: UserToChannelCommandAck =>
       command.command match {
-        case SquelchCommand(_) =>
+        case _: SquelchCommand =>
           sender() ! UserInfo(USER_SQUELCHED(command.realUsername))
           sender() ! UserSquelched(command.realUsername)
           users.get(command.userActor).fold()(user => sender() ! UserFlags(Flags.squelch(user)))
-        case UnsquelchCommand(_) =>
+        case _: UnsquelchCommand =>
           sender() ! UserInfo(USER_UNSQUELCHED(command.realUsername))
           sender() ! UserUnsquelched(command.realUsername)
           users.get(command.userActor).fold()(user => sender() ! UserFlags(Flags.unsquelch(user)))

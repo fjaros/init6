@@ -2,7 +2,7 @@ package com.vilenet.channels
 
 import akka.actor.ActorRef
 import com.vilenet.Constants._
-import com.vilenet.coders.OperableCommand
+import com.vilenet.coders.commands.OperableCommand
 import com.vilenet.users.UserToChannelCommandAck
 
 /**

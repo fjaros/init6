@@ -3,6 +3,7 @@ package com.vilenet.users
 import akka.actor.{Terminated, ActorRef, Props}
 import akka.io.Tcp.Received
 import com.vilenet.Constants._
+import com.vilenet.coders.commands._
 import com.vilenet.connection.WriteOut
 import com.vilenet.ViLeNetActor
 import com.vilenet.channels._
@@ -105,16 +106,16 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
     case (actor: ActorRef, WhoisCommand(fromUser, username)) =>
       actor ! UserInfo(s"${user.name} is using ${encodeClient(user.client)}${if (user.channel != "") s" in the channel ${user.channel}" else ""}.")
 
-    case BanCommand(kicking) =>
+    case BanCommand(kicking, message) =>
       self ! UserInfo(YOU_KICKED(kicking))
-      channelsActor ! UserSwitchedChat(self, user, "The Void")
+      channelsActor ! UserSwitchedChat(self, user, THE_VOID)
 
-    case KickCommand(kicking) =>
+    case KickCommand(kicking, message) =>
       self ! UserInfo(YOU_KICKED(kicking))
-      channelsActor ! UserSwitchedChat(self, user, "The Void")
+      channelsActor ! UserSwitchedChat(self, user, THE_VOID)
 
     case Received(data) =>
-      UserMessageDecoder(user, data) match {
+      CommandDecoder(user, data) match {
         case command: Command =>
           log.error(s"UserMessageDecoder $command")
           command match {

@@ -3,9 +3,9 @@ package com.vilenet.channels
 import akka.actor.{PoisonPill, Terminated, Props, ActorRef}
 import com.vilenet.Constants._
 import com.vilenet.ViLeNetActor
-import com.vilenet.channels.utils.{RemoteEvent, LocalUsersSet}
-import com.vilenet.coders.{Command, WhoCommandToChannel, WhoCommand, ChannelsCommand}
-import com.vilenet.users.UserToChannelCommandAck
+import com.vilenet.channels.utils.LocalUsersSet
+import com.vilenet.coders.commands.Command
+import com.vilenet.coders.commands.{WhoCommandToChannel, ChannelsCommand}
 
 import scala.annotation.switch
 import scala.collection.mutable
@@ -43,7 +43,6 @@ case class ChannelUsersResponse(name: String, allUsers: mutable.Map[ActorRef, Us
 case class ChannelUsersLoad(remoteChannelActor: ActorRef, allUsers: mutable.Map[ActorRef, User], remoteUsers: mutable.Set[ActorRef]) extends Command
 
 case class AddUser(actor: ActorRef, user: User) extends Command
-case class AddLocalUser(actor: ActorRef, user: User) extends Command
 case class RemUser(actor: ActorRef) extends Command
 
 trait ChannelActor extends ViLeNetActor {

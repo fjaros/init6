@@ -1,8 +1,9 @@
 package com.vilenet.channels
 
 import akka.actor.{Terminated, ActorRef}
-import com.vilenet.channels.utils.{RemoteChannelsMultiMap, RemoteEvent}
-import com.vilenet.coders.{EmoteMessage, ChatMessage}
+import com.vilenet.channels.utils.RemoteChannelsMultiMap
+import com.vilenet.coders.commands.{EmoteCommand, ChatCommand}
+import com.vilenet.servers.RemoteEvent
 
 import scala.collection.mutable
 
@@ -49,10 +50,10 @@ trait RemoteChannelActor extends ChannelActor {
     case AddUser(actor, user) => remoteAdd(actor, user)
     case RemUser(actor) => remoteRem(actor)
 
-    case ChatMessage(user, message) =>
+    case ChatCommand(user, message) =>
       println("Remote chat msg")
       localUsers ! UserTalked(user, message)
-    case EmoteMessage(user, message) =>
+    case EmoteCommand(user, message) =>
       localUsers ! UserEmote(user, message)
     case event =>
   }

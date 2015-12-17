@@ -1,7 +1,7 @@
 package com.vilenet.channels
 
 import akka.actor.ActorRef
-import com.vilenet.coders.Command
+import com.vilenet.coders.commands.Command
 
 import scala.collection.mutable
 

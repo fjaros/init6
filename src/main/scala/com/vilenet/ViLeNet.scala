@@ -3,7 +3,6 @@ package com.vilenet
 import java.net.InetSocketAddress
 
 import com.vilenet.channels.ChannelsActor
-import com.vilenet.coders.binary.hash.BSHA1
 import com.vilenet.connection.ConnectionHandler
 import Constants.VILE_NET
 import com.vilenet.db.DAO
@@ -23,8 +22,6 @@ object ViLeNet extends App with ViLeNetComponent {
     port = args(1).toInt
   }
 
-  //DAO.createUser("l2k-shadow", passwordHash = BSHA1("vile123456"))
-  //DAO.createUser("boatbawt", passwordHash = BSHA1("boatbawt#$&(*)!@vsdh9ai@$!Q^911"))
   DAO
   ServerColumbus(args(0))
   UsersActor()

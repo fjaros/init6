@@ -1,9 +1,7 @@
 package com.vilenet.channels
 
 import akka.actor.ActorRef
-import com.vilenet.channels.utils.RemoteEvent
-import com.vilenet.coders.{UserToChannelCommand, UnbanCommand, BanCommand}
-import com.vilenet.users.UserToChannelCommandAck
+import com.vilenet.coders.commands.{UnbanCommand, BanCommand}
 import com.vilenet.utils.CaseInsensitiveFiniteHashSet
 
 /**
@@ -15,16 +13,16 @@ trait RemoteBannableChannelActor extends RemoteChannelActor {
   var bannedUsers = CaseInsensitiveFiniteHashSet(limit)
 
   override def receiveRemoteEvent = ({
-    case BanCommand(banned) =>
+    case BanCommand(banned, message) =>
       println(s"Got banned Remote $banned")
       bannedUsers += banned
     case UnbanCommand(unbanned) => bannedUsers -= unbanned
   }: Receive)
     .orElse(super.receiveRemoteEvent)
 
-  def banAction(banningActor: ActorRef, bannedActor: ActorRef, banned: String) = {
+  def banAction(banningActor: ActorRef, bannedActor: ActorRef, banned: String, message: String) = {
     println(s"RemoteBannable banAction $banned")
-    remoteUsers ! BanCommand(banned)
+    remoteUsers ! BanCommand(banned, message)
   }
 
   def unbanAction(unbanningActor: ActorRef, unbanned: String) = {

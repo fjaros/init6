@@ -40,13 +40,13 @@ object TelnetEncoder extends Encoder {
       case UserInfoArray(messages) =>
         messages
           .map(message => encode(s"1018 INFO ${'"'}$message${'"'}"))
-          .reduceLeft((m1, m2) => m1 ++ m2)
+          .reduceLeft(_ ++ _)
       case UserError(message) =>
         s"1019 ERROR ${'"'}$message${'"'}"
       case UserErrorArray(messages) =>
         messages
           .map(message => encode(s"1019 ERROR ${'"'}$message${'"'}"))
-          .reduceLeft((m1, m2) => m1 ++ m2)
+          .reduceLeft(_ ++ _)
       case UserEmote(user, message) =>
         s"1023 EMOTE ${user.name} ${encodeFlags(user.flags)} ${'"'}$message${'"'}"
       case UserNull =>

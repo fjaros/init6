@@ -3,7 +3,7 @@ package com.vilenet.servers
 
 import akka.actor.{Terminated, Props, ActorRef}
 import com.vilenet.Constants._
-import com.vilenet.coders.Command
+import com.vilenet.coders.commands.Command
 import com.vilenet.{ViLeNetComponent, ViLeNetActor}
 
 import scala.collection.mutable

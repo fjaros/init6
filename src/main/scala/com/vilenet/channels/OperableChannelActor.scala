@@ -2,7 +2,7 @@ package com.vilenet.channels
 
 import akka.actor.ActorRef
 import com.vilenet.Constants._
-import com.vilenet.coders.{OperableCommand, DesignateCommand}
+import com.vilenet.coders.commands.{OperableCommand, DesignateCommand}
 import com.vilenet.users.{UserToChannelCommandAck, UserUpdated}
 
 /**
@@ -81,7 +81,7 @@ trait OperableChannelActor extends RemoteOperableChannelActor {
     userOpt.fold()(user => {
       if (users.nonEmpty && Flags.isOp(user) && !existsOperator()) {
         val designateeActor = designatedActors.getOrElse(actor, users.head._1)
-        val designatedUser = users(designateeActor) // Not ofund?!
+        val designatedUser = users.getOrElse(designateeActor, users.head._2)
 
         val oppedUser = Flags.op(designatedUser)
         users += designateeActor -> oppedUser

@@ -2,10 +2,9 @@ package com.vilenet.channels
 
 import akka.actor.{ActorRef, Props}
 import com.vilenet.Constants._
-import com.vilenet.channels.utils.RemoteEvent
-import com.vilenet.coders.{Command, WhoCommandToChannel, WhoCommand, ChannelsCommand}
+import com.vilenet.coders.commands.{WhoCommandToChannel, WhoCommand, ChannelsCommand, Command}
 import com.vilenet.{ViLeNetComponent, ViLeNetActor}
-import com.vilenet.servers.{ServerOffline, ServerOnline, AddListener}
+import com.vilenet.servers.{RemoteEvent, ServerOffline, ServerOnline, AddListener}
 import com.vilenet.utils.CaseInsensitiveHashMap
 
 import scala.collection.mutable
@@ -40,7 +39,7 @@ class ChannelsActor extends ViLeNetActor {
   override def receive: Receive = {
     case ServerOnline(columbus) =>
       log.error(s"GetChannelsActor: $columbus")
-      remoteChannelsActor(columbus) ! GetChannels(columbus)
+      //remoteChannelsActor(columbus) ! GetChannels(columbus)
 
     case ServerOffline(columbus) =>
       log.error(s"ServerOffline: $columbus")

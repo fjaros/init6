@@ -1,6 +1,7 @@
 package com.vilenet.channels.utils
 
 import akka.actor.ActorRef
+import com.vilenet.servers.RemoteEvent
 
 import scala.collection.mutable
 

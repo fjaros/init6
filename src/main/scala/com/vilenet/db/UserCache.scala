@@ -19,11 +19,9 @@ private object UserCache {
 
   def apply(dbUsers: List[DbUser]) = {
     cache ++= dbUsers.map(dbUser => dbUser.username -> dbUser)
-    println(s"## cache: $cache")
 
     executorService.scheduleWithFixedDelay(new Runnable {
       override def run() = {
-        println("??? hello...?")
         DAO.saveInserted(cache.filterKeys(inserted.contains).values.toSet)
         DAO.saveUpdated(cache.filterKeys(updated.contains).values.toSet)
         inserted.clear()

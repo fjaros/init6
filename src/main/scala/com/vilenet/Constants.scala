@@ -17,6 +17,7 @@ object Constants {
   val CHANNEL_DISPATCHER = "channel-dispatcher"
 
 
+  val ALREADY_OPERATOR = "That user is already an operator."
   val AWAY_ENGAGED = "You are now marked as being away."
   val AWAY_CANCELLED = "You are no longer marked as away."
   val AWAY_UNAVAILABLE = (name: String, message: String) => s"$name is away ($message)"
@@ -39,15 +40,16 @@ object Constants {
   val NO_CHANNEL_INPUT = "What channel do you want to join?"
   val NO_CHAT_PRIVILEGES = "This channel does not have chat privileges."
   val NO_MESSAGE_INPUT = "What do you want to say?"
+  val NO_WHISPER_USER_INPUT = "Who do you want to whisper?"
   val NOT_ALLOWED_TO_VIEW = "You do not have permission to view that channel."
   val NOT_BANNED = "That user is not banned."
   val NOT_OPERATOR = "You are not a channel operator."
   val PLACED = (place: Int) => s"You placed $place on the server."
   val PUBLIC_CHANNEL = "This is a chat channel. No Ops will be given."
 
-  val USER_BANNED = (banning: String, banned: String) => s"$banned was banned by $banning."
+  val USER_BANNED = (banning: String, banned: String, message: String) => s"$banned was banned by $banning${if (message.nonEmpty) s" ($message)" else ""}."
   val USER_DESIGNATED = (designated: String) => s"$designated is your new designated heir."
-  val USER_KICKED = (kicking: String, kicked: String) => s"$kicked was kicked out of the channel by $kicking."
+  val USER_KICKED = (kicking: String, kicked: String, message: String) => s"$kicked was kicked out of the channel by $kicking${if (message.nonEmpty) s" ($message)" else ""}."
   val USER_NOT_LOGGED_ON = "That user is not logged on."
   val USER_SQUELCHED = (squelched: String) => s"$squelched has been squelched."
   val USER_UNBANNED = (unbanning: String, unbanned: String) => s"$unbanned was unbanned by $unbanning."
@@ -62,6 +64,14 @@ object Constants {
 
   val THE_VOID = "The Void"
 
+  val TELNET_CONNECTED = (address: String) => s"ViLeNet Telnet Connection from [$address]"
+  val TELNET_INCORRECT_PASSWORD = "Incorrect password."
+  val TELNET_INCORRECT_USERNAME = "Incorrect username."
+
+  val ACCOUNT_ALREADY_EXISTS = (name: String) => s"Account $name already exists."
+  val ACCOUNT_CREATED = (name: String, passwordHashString: String) => s"Created account $name with password hash $passwordHashString."
+  val NO_ACCOUNT_INPUT = "What account do you want to make?"
+  val NO_PASSWORD_INPUT = "You did not enter a password."
 
   val MOTD = Array(
   " ===== Welcome to ViLeNet ===== ",

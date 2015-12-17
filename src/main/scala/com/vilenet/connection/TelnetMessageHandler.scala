@@ -7,9 +7,10 @@ import akka.actor.{ActorRef, FSM, Props}
 import akka.io.Tcp.{Close, Received}
 import akka.pattern.ask
 import akka.util.{Timeout, ByteString}
+import com.vilenet.Constants._
 import com.vilenet.coders.binary.hash.BSHA1
 import com.vilenet.db.DAO
-import com.vilenet.{Constants, ViLeNetActor}
+import com.vilenet.ViLeNetActor
 import com.vilenet.channels._
 import com.vilenet.coders.telnet.TelnetEncoder
 import com.vilenet.users.{UsersUserAdded, TelnetProtocol, Add}
@@ -21,6 +22,7 @@ sealed trait State
 case object ExpectingUsername extends State
 case object ExpectingPassword extends State
 case object LoggedIn extends State
+case object Blocked extends State
 
 sealed trait Data
 case object UnauthenticatedUser extends Data
@@ -87,7 +89,8 @@ class TelnetMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
   when (ExpectingPassword) {
     case Event(Received(data), buffer: UnauthenticatedUser) =>
       DAO.getUser(buffer.user).fold({
-        stop()
+        connection ! WriteOut(TelnetEncoder(TELNET_INCORRECT_USERNAME))
+        goto (Blocked)
       })(dbUser => {
         if (BSHA1(data.toArray).sameElements(dbUser.passwordHash)) {
           val u = User(buffer.user, Flags.UDP, 0, client = "TAHC")
@@ -96,21 +99,26 @@ class TelnetMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
             case x => stop()
           }
         } else {
-          stop()
+          connection ! WriteOut(TelnetEncoder(TELNET_INCORRECT_PASSWORD))
+          goto (Blocked)
         }
       })
     }
 
   when (LoggedIn) {
     case Event(JustLoggedIn, buffer: AuthenticatedUser) =>
-      connection ! WriteOut(TelnetEncoder(s"ViLeNet Telnet Connection from [$clientAddress]"))
+      connection ! WriteOut(TelnetEncoder(TELNET_CONNECTED(clientAddress.toString)))
       connection ! WriteOut(TelnetEncoder(UserName(buffer.user.name)).get)
-      connection ! WriteOut(TelnetEncoder(UserInfoArray(Constants.MOTD)).get)
+      connection ! WriteOut(TelnetEncoder(UserInfoArray(MOTD)).get)
       stay()
     case Event(Received(data), buffer: AuthenticatedUser) =>
       //log.error(s"Received $data")
       buffer.actor ! Received(data)
       stay()
+  }
+
+  when (Blocked) {
+    case _ => stay()
   }
 
   whenUnhandled {

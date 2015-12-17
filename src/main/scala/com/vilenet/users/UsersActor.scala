@@ -1,9 +1,8 @@
 package com.vilenet.users
 
 import akka.actor.{Terminated, Props, ActorRef}
-import com.vilenet.channels.utils.RemoteEvent
-import com.vilenet.coders._
-import com.vilenet.servers.{ServerOffline, ServerOnline, AddListener}
+import com.vilenet.coders.commands.{TopCommand, UserCommand, UserToChannelCommand, Command}
+import com.vilenet.servers.{RemoteEvent, ServerOffline, ServerOnline, AddListener}
 import com.vilenet.{Constants, ViLeNetComponent, ViLeNetActor}
 import com.vilenet.channels._
 import com.vilenet.Constants._
@@ -66,10 +65,11 @@ class UsersActor extends ViLeNetActor {
       reverseUsers += remoteUser._2 -> remoteUser._1
 
     case ReceivedUsers(remoteUsers) =>
+      println(s"${remoteUsers.realKeyMap}")
       remoteUsers
         .values
         .foreach(context.watch)
-      users ++= remoteUsers.map(tuple => remoteUsers.getWithRealKey(tuple._1).getOrElse(tuple))
+      //users ++= remoteUsers.map(tuple => remoteUsers.getWithRealKey(tuple._1).getOrElse(tuple))
       reverseUsers ++= remoteUsers.map(tuple => tuple._2 -> tuple._1)
 
     case command: UserToChannelCommand =>
