@@ -39,7 +39,7 @@ class ChannelsActor extends ViLeNetActor {
   override def receive: Receive = {
     case ServerOnline(columbus) =>
       log.error(s"GetChannelsActor: $columbus")
-      //remoteChannelsActor(columbus) ! GetChannels(columbus)
+      remoteChannelsActor(columbus) ! GetChannels(columbus)
 
     case ServerOffline(columbus) =>
       log.error(s"ServerOffline: $columbus")
