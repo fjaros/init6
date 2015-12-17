@@ -65,12 +65,12 @@ class UsersActor extends ViLeNetActor {
       reverseUsers += remoteUser._2 -> remoteUser._1
 
     case ReceivedUsers(remoteUsers) =>
-      println(s"${remoteUsers.realKeyMap}")
       remoteUsers
         .values
+        .map(_._2)
         .foreach(context.watch)
-      //users ++= remoteUsers.map(tuple => remoteUsers.getWithRealKey(tuple._1).getOrElse(tuple))
-      reverseUsers ++= remoteUsers.map(tuple => tuple._2 -> tuple._1)
+      users ++= remoteUsers//.map(tuple => remoteUsers.getWithRealKey(tuple._1).getOrElse(tuple))
+      reverseUsers ++= remoteUsers.map(tuple => tuple._2._2 -> tuple._1)
 
     case command: UserToChannelCommand =>
       users.keys.map(users.getWithRealKey).foreach(println)
@@ -84,7 +84,7 @@ class UsersActor extends ViLeNetActor {
         .fold(sender() ! UserError(Constants.USER_NOT_LOGGED_ON))(x => {
         //log.error(s"users $users")
         log.error(s"sending to $x from ${sender()}")
-        x ! (sender(), command)
+        x._2 ! (sender(), command)
       })
 
     case TopCommand(which) =>
@@ -99,7 +99,7 @@ class UsersActor extends ViLeNetActor {
       println(s"TERMINATED $actor $reverseUsers")
       reverseUsers.get(actor).fold()(username => {
         users.get(username).fold()(userActor => {
-          context.unwatch(userActor)
+          context.unwatch(userActor._2)
           users -= username
         })
       })
@@ -134,9 +134,9 @@ class UsersActor extends ViLeNetActor {
 
     case Rem(username) =>
       users.get(username).fold()(userActor => {
-        context.unwatch(userActor)
+        context.unwatch(userActor._2)
         users -= username
-        reverseUsers -= userActor
+        reverseUsers -= userActor._2
         remoteUsersActors.foreach(_ ! RemoteEvent(Rem(username)))
       })
   }
@@ -149,9 +149,9 @@ class UsersActor extends ViLeNetActor {
 
     case Rem(username) =>
       users.get(username).fold()(userActor => {
-        context.unwatch(userActor)
+        context.unwatch(userActor._2)
         users -= username
-        reverseUsers -= userActor
+        reverseUsers -= userActor._2
       })
   }
 
