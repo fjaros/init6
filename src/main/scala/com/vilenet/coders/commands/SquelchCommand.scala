@@ -1,8 +1,24 @@
 package com.vilenet.coders.commands
 
-import com.vilenet.channels.User
+import com.vilenet.Constants._
+import com.vilenet.channels.{UserError, User}
 
 /**
   * Created by filip on 12/16/15.
   */
-case class SquelchCommand(override val fromUser: User, override val toUsername: String) extends UserCommand with UserToChannelCommand
+object SquelchCommand {
+
+  def apply(fromUser: User, toUsername: String): Command = {
+    if (toUsername.nonEmpty) {
+      if (fromUser.name.equalsIgnoreCase(toUsername)) {
+        UserError(YOU_CANT_SQUELCH)
+      } else {
+        SquelchCommand(toUsername)
+      }
+    } else {
+      UserError(USER_NOT_LOGGED_ON)
+    }
+  }
+}
+
+case class SquelchCommand(override val toUsername: String) extends UserToChannelCommand

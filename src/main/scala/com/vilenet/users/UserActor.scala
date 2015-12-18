@@ -80,7 +80,6 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
       }
 
     case channelEvent: ChatEvent =>
-      println(s"?? chatEvent $channelEvent")
       channelEvent match {
         case UserChannel(newUser, channel, channelActor) =>
           user = newUser

@@ -45,7 +45,7 @@ object CommandDecoder {
   def apply(user: User, byteString: ByteString) = {
     if (byteString.head == '/') {
       val (command, message) = spanBySpace(byteString.tail)
-      (command: @switch) match {
+      (command.toLowerCase: @switch) match {
         case "away" => AwayCommand(message)
         case "ban" => OneCommand(BanCommand(message), UserError(USER_NOT_LOGGED_ON))
         case "channel" | "join" | "j" => OneCommand(JoinUserCommand(user, message), UserError(NO_CHANNEL_INPUT))
@@ -61,7 +61,7 @@ object CommandDecoder {
         case "rejoin" => RejoinCommand
         case "resign" => ResignCommand
         case "serveruptime" | "uptime" => UptimeCommand()
-        case "squelch" | "ignore" => OneCommand(SquelchCommand(user, message.takeWhile(_ != ' ')), UserError(USER_NOT_LOGGED_ON), UserError(YOU_CANT_SQUELCH))
+        case "squelch" | "ignore" => SquelchCommand(user, message.takeWhile(_ != ' '))
         case "top" =>
           if (message.nonEmpty) {
             message match {
@@ -73,7 +73,7 @@ object CommandDecoder {
             TopCommand("all")
           }
         case "unban" => OneCommand(UnbanCommand(message.takeWhile(_ != ' ')), UserError(USER_NOT_LOGGED_ON))
-        case "unsquelch" | "unignore" => OneCommand(UnsquelchCommand(user, message.takeWhile(_ != ' ')), UserError(USER_NOT_LOGGED_ON), EmptyCommand)
+        case "unsquelch" | "unignore" => UnsquelchCommand(user, message.takeWhile(_ != ' '))
         case "whisper" | "w" | "msg" | "m" => WhisperMessage(user, message)
         case "whoami" => WhoamiCommand(user)
         case "whois" | "whereis" => OneCommand(WhoisCommand(user, message), UserError(USER_NOT_LOGGED_ON), WhoamiCommand(user))

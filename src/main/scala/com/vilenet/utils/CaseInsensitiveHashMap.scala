@@ -24,30 +24,16 @@ object RealKeyedCaseInsensitiveHashMap {
 
 sealed class RealKeyedCaseInsensitiveHashMap[B] extends CaseInsensitiveHashMap[(String, B)] {
 
-  //var realKeyMap = mutable.Map[String, String]()
-
   def +=(kv: (String, B)): this.type = {
-    //realKeyMap += kv._1.toLowerCase -> kv._1
     super.+=(kv._1 -> kv)
   }
 
   override def -=(key: String): this.type = {
-//    realKeyMap -= key.toLowerCase
     super.-=(key.toLowerCase)
   }
 
   override def remove(key: String): Option[(String, B)] = {
-//    realKeyMap -= key.toLowerCase
     super.remove(key.toLowerCase)
-  }
-
-  def getWithRealKey(key: String): Option[(String, B)] = {
-    (for {
-      opt <- Try(apply(key))
-    } yield {
-      (opt._1, opt._2)
-    })
-      .toOption
   }
 }
 
