@@ -1,5 +1,6 @@
 package com.vilenet
 
+import java.io.File
 import java.util.concurrent.TimeUnit
 
 import akka.actor.ActorSystem
@@ -23,7 +24,7 @@ private[vilenet] trait ViLeNetComponent {
 private[vilenet] object SystemContext {
 
   private val start = System.currentTimeMillis()
-  lazy val system = ActorSystem(Constants.VILE_NET, ConfigFactory.load("akka.conf"))
+  lazy val system = ActorSystem(Constants.VILE_NET, ConfigFactory.parseFile(new File("akka.conf")))
 
   def getUptime = Duration(System.currentTimeMillis() - start, TimeUnit.MILLISECONDS)
 }
