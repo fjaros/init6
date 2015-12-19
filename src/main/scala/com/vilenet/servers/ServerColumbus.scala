@@ -1,6 +1,5 @@
 package com.vilenet.servers
 
-
 import akka.actor.{Terminated, Props, ActorRef}
 import com.vilenet.Constants._
 import com.vilenet.coders.commands.Command
@@ -81,7 +80,8 @@ class ServerColumbus(remoteServers: Array[String]) extends ViLeNetActor {
       sendServersOnline(sender())
 
     case SplitMe =>
-      sendServersOffline(sender())
+      usersActor ! SplitMe
+      channelsActor ! SplitMe
   }
 
 

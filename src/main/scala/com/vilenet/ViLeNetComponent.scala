@@ -23,7 +23,7 @@ private[vilenet] trait ViLeNetComponent {
 private[vilenet] object SystemContext {
 
   private val start = System.currentTimeMillis()
-  lazy val system = ActorSystem(Constants.VILE_NET, ConfigFactory.load(Constants.CONFIG))
+  lazy val system = ActorSystem(Constants.VILE_NET, ConfigFactory.load("akka.conf"))
 
   def getUptime = Duration(System.currentTimeMillis() - start, TimeUnit.MILLISECONDS)
 }

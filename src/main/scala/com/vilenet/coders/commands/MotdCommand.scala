@@ -1,6 +1,6 @@
 package com.vilenet.coders.commands
 
-import com.vilenet.Constants._
+import com.vilenet.Config
 import com.vilenet.channels.UserInfoArray
 
 /**
@@ -8,5 +8,5 @@ import com.vilenet.channels.UserInfoArray
   */
 object MotdCommand {
 
-  def apply() = UserInfoArray(MOTD)
+  def apply() = UserInfoArray(Config.motd)
 }

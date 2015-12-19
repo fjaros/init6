@@ -10,7 +10,7 @@ import akka.util.{Timeout, ByteString}
 import com.vilenet.Constants._
 import com.vilenet.coders.binary.hash.BSHA1
 import com.vilenet.db.DAO
-import com.vilenet.ViLeNetActor
+import com.vilenet.{Config, ViLeNetActor}
 import com.vilenet.channels._
 import com.vilenet.coders.telnet.TelnetEncoder
 import com.vilenet.users.{UsersUserAdded, TelnetProtocol, Add}
@@ -109,7 +109,7 @@ class TelnetMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
     case Event(JustLoggedIn, buffer: AuthenticatedUser) =>
       connection ! WriteOut(TelnetEncoder(TELNET_CONNECTED(clientAddress.toString)))
       connection ! WriteOut(TelnetEncoder(UserName(buffer.user.name)).get)
-      connection ! WriteOut(TelnetEncoder(UserInfoArray(MOTD)).get)
+      connection ! WriteOut(TelnetEncoder(UserInfoArray(Config.motd)).get)
       stay()
     case Event(Received(data), buffer: AuthenticatedUser) =>
       //log.error(s"Received $data")

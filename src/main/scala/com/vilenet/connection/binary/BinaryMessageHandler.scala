@@ -16,7 +16,7 @@ import com.vilenet.connection._
 import com.vilenet.db.DAO
 import com.vilenet.users.{Add, BinaryProtocol, UsersUserAdded}
 import com.vilenet.utils.LimitedAction
-import com.vilenet.{Constants, ViLeNetActor}
+import com.vilenet.{Config, ViLeNetActor}
 
 import scala.concurrent.Await
 import scala.util.Random
@@ -77,7 +77,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
         binaryPacket.packet match {
           case SidLeaveChat(packet) =>
             stateData ! UserLeftChat
-          case x => println(s"${x.getClass}")
+          case x => //println(s"${x.getClass}")
         }
       case _ =>
     }
@@ -107,7 +107,6 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
           data match {
             case SidAuthInfo(packet) =>
               productId = packet.productId
-              println(productId)
               sendPing()
               send(SidAuthInfo(serverToken))
               goto(ExpectingSidAuthCheck)
@@ -152,23 +151,13 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
         case SID_LOGONRESPONSE =>
           data match {
             case SidLogonResponse(packet) =>
-              // Sanity Check!
-//              if (serverToken == packet.serverToken) {
                 handleLogon(packet.clientToken, packet.serverToken, packet.passwordHash, packet.username)
-//              } else {
-//                stop()
-//              }
             case _ => stop()
           }
         case SID_LOGONRESPONSE2 =>
           data match {
             case SidLogonResponse2(packet) =>
-              // Sanity Check!
-              //if (serverToken == packet.serverToken) {
                 handleLogon2(packet.clientToken, packet.serverToken, packet.passwordHash, packet.username)
-//              } else {
-//                stop()
-//              }
             case _ => stop()
           }
         case SID_CREATEACCOUNT2 =>
@@ -181,9 +170,23 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
       }
   }
 
-  def createAccount2(passwordHash: Array[Byte], username: String) = {
-    DAO.getUser(username).fold({
-      DAO.createUser(username, passwordHash)
+  def createAccount2(passwordHash: Array[Byte], username: String): State = {
+
+    if (username.length < Config.Accounts.minLength) {
+      send(SidCreateAccount2(SidCreateAccount2.RESULT_NAME_TOO_SHORT))
+      return goto(ExpectingSidLogonResponse)
+    }
+
+    username.foreach(c => {
+      if (!Config.Accounts.allowedCharacters.contains(c.toLower)) {
+        send(SidCreateAccount2(SidCreateAccount2.RESULT_INVALID_CHARACTERS))
+        return goto(ExpectingSidLogonResponse)
+      }
+    })
+
+    val maxLenUser = username.take(Config.Accounts.maxLength)
+    DAO.getUser(maxLenUser).fold({
+      DAO.createUser(maxLenUser, passwordHash)
       send(SidCreateAccount2(SidCreateAccount2.RESULT_ACCOUNT_CREATED))
     })(dbUser => {
       send(SidCreateAccount2(SidCreateAccount2.RESULT_ALREADY_EXISTS))
@@ -259,7 +262,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
             case SidEnterChat(packet) =>
 //              if (oldUsername == packet.username) {
               send(SidEnterChat(username, oldUsername, productId))
-              send(BinaryChatEncoder(UserInfoArray(Constants.MOTD)).get)
+              send(BinaryChatEncoder(UserInfoArray(Config.motd)).get)
               goto(LoggedIn)
 //              } else {
 //                stop()

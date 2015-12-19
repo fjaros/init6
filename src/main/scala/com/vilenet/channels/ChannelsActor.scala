@@ -4,7 +4,7 @@ import akka.actor.{ActorRef, Props}
 import com.vilenet.Constants._
 import com.vilenet.coders.commands.{WhoCommandToChannel, WhoCommand, ChannelsCommand, Command}
 import com.vilenet.{ViLeNetComponent, ViLeNetActor}
-import com.vilenet.servers.{RemoteEvent, ServerOffline, ServerOnline, AddListener}
+import com.vilenet.servers._
 import com.vilenet.utils.CaseInsensitiveHashMap
 
 import scala.collection.mutable
@@ -46,6 +46,11 @@ class ChannelsActor extends ViLeNetActor {
       channels
         .values
         .foreach(_ ! ServerOffline(columbus))
+
+    case SplitMe =>
+      channels
+        .values
+        .foreach(_ ! SplitMe)
 
     case GetChannels(columbus) =>
       log.error(s"GetChannels sender ${sender()} $channels")

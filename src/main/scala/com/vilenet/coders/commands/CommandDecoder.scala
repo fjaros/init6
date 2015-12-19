@@ -3,6 +3,7 @@ package com.vilenet.coders.commands
 import akka.util.ByteString
 import com.vilenet.Constants._
 import com.vilenet.channels.{UserError, User}
+import com.vilenet.servers.{SendBirth, SplitMe}
 
 import scala.annotation.switch
 
@@ -78,6 +79,9 @@ object CommandDecoder {
         case "whoami" => WhoamiCommand(user)
         case "whois" | "whereis" => OneCommand(WhoisCommand(user, message), UserError(USER_NOT_LOGGED_ON), WhoamiCommand(user))
         case "who" => OneCommand(WhoCommand(user, message), WhoCommand(user, user.channel))
+
+        case "splitme" => SplitMe
+        case "recon" => SendBirth
 
         case "!bl!zzme!" => BlizzMe(user)
         case _ => UserError()

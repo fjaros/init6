@@ -2,10 +2,12 @@ package com.vilenet.channels
 
 import akka.actor.{Terminated, ActorRef}
 import com.vilenet.channels.utils.RemoteChannelsMultiMap
-import com.vilenet.coders.commands.{EmoteCommand, ChatCommand}
-import com.vilenet.servers.RemoteEvent
+import com.vilenet.coders.commands.{Command, EmoteCommand, ChatCommand}
+import com.vilenet.servers.{SplitMe, ServerOffline, RemoteEvent}
 
 import scala.collection.mutable
+
+case class RemAll(remoteUsers: mutable.HashSet[ActorRef]) extends Command
 
 /**
   * Created by filip on 11/14/15.
@@ -16,6 +18,16 @@ trait RemoteChannelActor extends ChannelActor {
   var remoteUsers = RemoteChannelsMultiMap()
 
   override def receiveEvent: Receive = {
+    case ServerOffline(columbus) =>
+      remoteUsers ! SplitMe
+
+    case SplitMe =>
+      remoteUsers
+        .values
+        .foreach(_.foreach(remoteRem))
+      remoteUsers ! RemAll(localUsers)
+      remoteUsers.clear()
+
     case ChannelCreated(remoteChannelActor, _) =>
       println(s"ChannelCreated $remoteChannelActor")
       context.watch(remoteChannelActor)
@@ -49,6 +61,9 @@ trait RemoteChannelActor extends ChannelActor {
 
     case AddUser(actor, user) => remoteAdd(actor, user)
     case RemUser(actor) => remoteRem(actor)
+    case RemAll(userActors) =>
+      remoteUsers -= sender()
+      userActors.foreach(remoteRem)
 
     case ChatCommand(user, message) =>
       println("Remote chat msg")

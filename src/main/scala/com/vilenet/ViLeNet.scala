@@ -16,18 +16,15 @@ import scala.io.StdIn
  */
 object ViLeNet extends App with ViLeNetComponent {
 
-  var port = 6112
-
-  if (args.length > 1) {
-    port = args(1).toInt
-  }
+  val splt = args(1).split(":")
+  val (host, port) = (splt(0), if (splt.length > 1) splt(1).toInt else 6112)
 
   DAO
   ServerColumbus(args(0))
   UsersActor()
   ChannelsActor()
 
-  val bind = new InetSocketAddress("0.0.0.0", port)
+  val bind = new InetSocketAddress(host, port)
   system.actorOf(ConnectionHandler(bind, Array(args(0))), VILE_NET)
 
   StdIn.readLine(s"Hit ENTER to exit ...${System.getProperty("line.separator")}")

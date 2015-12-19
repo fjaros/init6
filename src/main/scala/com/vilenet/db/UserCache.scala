@@ -2,6 +2,7 @@ package com.vilenet.db
 
 import java.util.concurrent.{TimeUnit, Executors}
 
+import com.vilenet.Config
 import com.vilenet.utils.CaseInsensitiveHashMap
 
 import scala.collection.mutable
@@ -20,6 +21,7 @@ private object UserCache {
   def apply(dbUsers: List[DbUser]) = {
     cache ++= dbUsers.map(dbUser => dbUser.username -> dbUser)
 
+    val updateInterval = Config.Database.batchUpdateInterval
     executorService.scheduleWithFixedDelay(new Runnable {
       override def run() = {
         DAO.saveInserted(cache.filterKeys(inserted.contains).values.toSet)
@@ -27,7 +29,7 @@ private object UserCache {
         inserted.clear()
         updated.clear()
       }
-    }, 10, 10, TimeUnit.SECONDS)
+    }, updateInterval, updateInterval, TimeUnit.SECONDS)
   }
 
   def close() = {
@@ -37,9 +39,10 @@ private object UserCache {
   def get(username: String) = cache.get(username)
 
   def insert(username: String, passwordHash: Array[Byte]) = {
+    val newUser = username.toLowerCase
     synchronized {
-      cache += username -> DbUser(username = username, passwordHash = passwordHash)
-      inserted += username.toLowerCase
+      cache += newUser -> DbUser(username = newUser, passwordHash = passwordHash)
+      inserted += newUser.toLowerCase
     }
   }
 

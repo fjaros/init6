@@ -10,6 +10,7 @@ import com.vilenet.channels._
 import com.vilenet.coders._
 import com.vilenet.coders.binary.BinaryChatEncoder
 import com.vilenet.coders.telnet._
+import com.vilenet.servers.{SendBirth, ServerOnline, SplitMe}
 import com.vilenet.utils.CaseInsensitiveHashSet
 
 /**
@@ -163,6 +164,10 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
                 dnd = !dnd
                 dndMessage = DND_DEFAULT_MSG
               }
+            case SplitMe =>
+              serverColumbus ! SplitMe
+            case SendBirth =>
+              serverColumbus ! SendBirth
             case _ =>
           }
         case x =>

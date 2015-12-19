@@ -9,7 +9,6 @@ object Constants {
 
   val CHARSET = "windows-1252"
 
-  val CONFIG = "application.conf"
   val VILE_NET = "ViLeNet"
   val VILE_NET_SERVERS_PATH = "Servers"
   val VILE_NET_CHANNELS_PATH = "Channels"
@@ -34,7 +33,7 @@ object Constants {
   val DND_CANCELLED = "Do Not Disturb mode cancelled."
   val DND_DEFAULT_MSG = "Not available"
   val DND_ENGAGED = "Do Not Disturb mode engaged."
-  val DND_UNAVAILABLE = (name: String, message: String) => s"$name is unavaialble ($message)"
+  val DND_UNAVAILABLE = (name: String, message: String) => s"$name is unavailable ($message)"
   val INVALID_COMMAND = "That is not a valid command. Type /help or /? for more info."
   val INVALID_USER = "Invalid user."
   val NO_CHANNEL_INPUT = "What channel do you want to join?"
@@ -72,24 +71,6 @@ object Constants {
   val ACCOUNT_CREATED = (name: String, passwordHashString: String) => s"Created account $name with password hash $passwordHashString."
   val NO_ACCOUNT_INPUT = "What account do you want to make?"
   val NO_PASSWORD_INPUT = "You did not enter a password."
-
-  val MOTD = Array(
-  " ===== Welcome to ViLeNet ===== ",
-  "Your alpha testing is awesomely appreciated. Here is a cookie jar.",
-  "Please feel free to load bots on BOTH servers - 54.193.49.146:6112 AND 54.193.49.146:6113",
-  "",
-  "LATEST PATCH INFO:",
-  " ~~~ ",
-  " READ READ READ READ READ READ READ READ READ",
-  " PING",
-  " /away, /dnd",
-  " ~~~ ",
-  "",
-  " ===== Join us in channel ViLe ===== ",
-  "",
-  " ~ l2k-Shadow and rest of the ViLe crew",
-  ""
-  )
 
   def encodeClient(client: String) = {
     (client: @switch) match {

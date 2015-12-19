@@ -1,8 +1,9 @@
 package com.vilenet.users
 
 import akka.actor.{Terminated, Props, ActorRef}
+import com.vilenet.channels.utils.LocalUsersSet
 import com.vilenet.coders.commands.{TopCommand, UserCommand, UserToChannelCommand, Command}
-import com.vilenet.servers.{RemoteEvent, ServerOffline, ServerOnline, AddListener}
+import com.vilenet.servers._
 import com.vilenet.{Constants, ViLeNetComponent, ViLeNetActor}
 import com.vilenet.channels._
 import com.vilenet.Constants._
@@ -15,6 +16,7 @@ import scala.collection.mutable
  */
 case class Add(connection: ActorRef, user: User, protocol: Protocol) extends Command
 case class Rem(username: String) extends Command
+case class RemActors(userActors: mutable.Set[ActorRef]) extends Command
 
 case class WhisperTo(user: User, username: String, message: String)  extends Command
 
@@ -41,6 +43,7 @@ class UsersActor extends ViLeNetActor {
     system.actorSelection(s"akka.tcp://${actor.path.address.hostPort}/user/$VILE_NET_USERS_PATH")
 
   var users = RealKeyedCaseInsensitiveHashMap[ActorRef]()
+  var localUsers = LocalUsersSet()
   var reverseUsers = mutable.HashMap[ActorRef, String]()
 
   var topMap = Map(
@@ -69,7 +72,7 @@ class UsersActor extends ViLeNetActor {
         .values
         .map(_._2)
         .foreach(context.watch)
-      users ++= remoteUsers//.map(tuple => remoteUsers.getWithRealKey(tuple._1).getOrElse(tuple))
+      users ++= remoteUsers
       reverseUsers ++= remoteUsers.map(tuple => tuple._2._2 -> tuple._1)
 
     case command: UserToChannelCommand =>
@@ -113,6 +116,9 @@ class UsersActor extends ViLeNetActor {
   def handleLocal: Receive = {
     case ServerOffline(columbus) =>
 
+    case SplitMe =>
+      remoteUsersActors.foreach(_ ! RemoteEvent(RemActors(localUsers)))
+
     case Add(connection, user, protocol) =>
       val newUser = getRealUser(user).copy(place = placeCounter)
       placeCounter += 1
@@ -127,6 +133,7 @@ class UsersActor extends ViLeNetActor {
       topMap("all") += newUser
       users += newUser.name -> userActor
       reverseUsers += userActor -> newUser.name
+      localUsers += userActor
       remoteUsersActors.foreach(_ ! RemoteEvent(Add(userActor, newUser, protocol)))
       sender() ! UsersUserAdded(userActor, newUser)
 
@@ -150,6 +157,14 @@ class UsersActor extends ViLeNetActor {
         context.unwatch(userActor._2)
         users -= username
         reverseUsers -= userActor._2
+      })
+
+    case RemActors(userActors) =>
+      userActors.foreach(userActor => {
+        reverseUsers.get(userActor).fold()(username => {
+          users -= username
+          reverseUsers -= userActor
+        })
       })
   }
 
