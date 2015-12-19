@@ -12,7 +12,17 @@ import scala.collection.JavaConverters._
   */
 object Config {
 
-  val c = ConfigFactory.parseFile(new File("vilenet.conf"))
+  def load(filepath: String) = {
+    val file = new File(filepath)
+    if (file.exists()) {
+      ConfigFactory.parseFile(file)
+    } else {
+      ConfigFactory.load(filepath)
+    }
+  }
+
+
+  val c = load("vilenet.conf")
   val p = c.getConfig(Constants.VILE_NET)
 
   object Accounts {

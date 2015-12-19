@@ -202,7 +202,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
       goto(ExpectingSidLogonResponse)
     })(dbUser => {
       if (BSHA1(clientToken, serverToken, dbUser.passwordHash).sameElements(passwordHash)) {
-        val u = User(oldUsername, 0, ping, client = productId)
+        val u = User(oldUsername, dbUser.flags, ping, client = productId)
         Await.result(usersActor ? Add(connection, u, BinaryProtocol), timeout.duration) match {
           case UsersUserAdded(userActor, user) =>
             this.username = user.name
@@ -224,7 +224,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
       goto(ExpectingSidLogonResponse)
     })(dbUser => {
       if (BSHA1(clientToken, serverToken, dbUser.passwordHash).sameElements(passwordHash)) {
-        val u = User(oldUsername, 0, ping, client = productId)
+        val u = User(oldUsername, dbUser.flags, ping, client = productId)
         Await.result(usersActor ? Add(connection, u, BinaryProtocol), timeout.duration) match {
           case UsersUserAdded(userActor, user) =>
             this.username = user.name
