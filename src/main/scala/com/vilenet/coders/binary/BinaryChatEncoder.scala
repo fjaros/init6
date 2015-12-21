@@ -1,6 +1,7 @@
 package com.vilenet.coders.binary
 
 import akka.util.ByteString
+import com.vilenet.Constants.VILE_NET
 import com.vilenet.channels._
 import com.vilenet.coders.Encoder
 import com.vilenet.coders.binary.packets.SidChatEvent
@@ -27,7 +28,7 @@ object BinaryChatEncoder extends Encoder {
       case UserTalked(user, message) =>
         SidChatEvent(0x05, user.flags, user.ping, user.name, message)
       case UserBroadcast(message) =>
-        SidChatEvent(0x06, 0, 0, "", message)
+        SidChatEvent(0x06, 0, 0, VILE_NET, message)
       case UserChannel(user, channel, _) =>
         SidChatEvent(0x07, 0, 0, "", channel)
       case UserFlags(user) =>

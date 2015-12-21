@@ -165,9 +165,11 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
                 dndMessage = DND_DEFAULT_MSG
               }
             case SplitMe =>
-              serverColumbus ! SplitMe
+              if (Flags.isAdmin(user)) serverColumbus ! SplitMe
             case SendBirth =>
-              serverColumbus ! SendBirth
+              if (Flags.isAdmin(user)) serverColumbus ! SendBirth
+            case command @ BroadcastCommand(message) =>
+              usersActor ! command
             case _ =>
           }
         case x =>
@@ -193,7 +195,9 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
   }
 
   private def rejoin() = {
+    val oldChannel = user.channel
     channelActor ! RemUser(self)
-    channelsActor ! UserSwitchedChat(self, user, user.channel)
+    user = user.copy(channel = "")
+    channelsActor ! UserSwitchedChat(self, user, oldChannel)
   }
 }

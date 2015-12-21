@@ -2,7 +2,7 @@ package com.vilenet.users
 
 import akka.actor.{Terminated, Props, ActorRef}
 import com.vilenet.channels.utils.LocalUsersSet
-import com.vilenet.coders.commands.{TopCommand, UserCommand, UserToChannelCommand, Command}
+import com.vilenet.coders.commands._
 import com.vilenet.servers._
 import com.vilenet.{Constants, ViLeNetComponent, ViLeNetActor}
 import com.vilenet.channels._
@@ -144,6 +144,10 @@ class UsersActor extends ViLeNetActor {
         reverseUsers -= userActor._2
         remoteUsersActors.foreach(_ ! RemoteEvent(Rem(username)))
       })
+
+    case BroadcastCommand(message) =>
+      remoteUsersActors.foreach(_ ! RemoteEvent(BroadcastCommand(message)))
+      localUsers ! UserError(message)
   }
 
   def handleRemote: Receive = {
@@ -166,6 +170,9 @@ class UsersActor extends ViLeNetActor {
           reverseUsers -= userActor
         })
       })
+
+    case BroadcastCommand(message) =>
+      localUsers ! UserError(message)
   }
 
   def getRealUser(user: User): User = {

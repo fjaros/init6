@@ -32,7 +32,7 @@ object MakeAccountCommand {
     hash
       .grouped(4)
       .foldLeft("")((result: String, group: Array[Byte]) =>
-        result + group.reverseMap("%02x".format(_))
+        result + group.foldRight("")((b: Byte, result: String) => result + "%02x".format(b))
       )
   }
 }

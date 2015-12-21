@@ -10,12 +10,16 @@ object HelpCommand {
   def apply() = UserInfoArray(
     Array(
       "Avaialble commands:",
+      "/makeaccount",
       "/whisper, /w, /msg, /m",
       "/channel, /join, /j",
+      "/squelch, /ignore",
+      "/unsquelch, /unignore",
       "/designate",
       "/emote, /me",
       "/whoami",
       "/whois",
+      "/who",
       "/away",
       "/dnd",
 
@@ -24,7 +28,8 @@ object HelpCommand {
       "/kick",
 
       "/top, /top chat, /top binary",
-      "/channels",
+      "/place",
+      "/channels, /list",
       "/motd",
 
       "/help, /?"

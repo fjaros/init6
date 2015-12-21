@@ -13,12 +13,12 @@ import scala.collection.JavaConverters._
 object Config {
 
   def load(filepath: String) = {
-    val file = new File(filepath)
-    if (file.exists()) {
-      ConfigFactory.parseFile(file)
-    } else {
-      ConfigFactory.load(filepath)
-    }
+//    val file = new File(filepath)
+//    if (file.exists()) {
+//      ConfigFactory.parseFile(file).resolve()
+//    } else {
+        ConfigFactory.load(filepath)
+//    }
   }
 
 

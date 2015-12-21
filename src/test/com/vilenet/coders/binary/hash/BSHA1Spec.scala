@@ -10,9 +10,9 @@ class BSHA1Spec extends FlatSpec with Matchers {
   "bsha1" should "work" in {
 
     getStringFromHash(BSHA1("")) should be("67452301efcdab8998badcfe10325476c3d2e1f0")
-    getStringFromHash(BSHA1("The quick brown fox jumped over the lazy dog.")) should be("b42d0f2578a404a7296b803b1e61e44a866b583b")
-    getStringFromHash(BSHA1("The quick brown fox jumped over the lazy dog. The quick brown fox jumped over the lazy dog.")) should be("754c851813303dfac6fec37c84b517069788fcd5")
-    getStringFromHash(BSHA1(0xDEADBEEF, 0xBADCAB, BSHA1("The quick brown fox jumped over the lazy dog."))) should be("604bc0f968ba575a994e6772c300325006260937")
+    getStringFromHash(BSHA1("The quick brown fox jumps over the lazy dog.")) should be("011a2027a5d5c5448356db5e207d391d8d970534")
+    getStringFromHash(BSHA1("The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog.")) should be("d1cc8c9acaa7eac78ab86f915588114d4d273a3d")
+    getStringFromHash(BSHA1(0xDEADBEEF, 0xBADCAB, BSHA1("The quick brown fox jumps over the lazy dog."))) should be("5b4ad103d0c63e0fe6405585c7288e8c6145c1ee")
   }
 
   def getStringFromHash(hash: Array[Byte]) = {

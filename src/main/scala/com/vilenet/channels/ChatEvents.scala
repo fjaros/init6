@@ -2,7 +2,7 @@ package com.vilenet.channels
 
 import akka.actor.ActorRef
 import com.vilenet.Constants._
-import com.vilenet.coders.commands.{ReturnableCommand, Command}
+import com.vilenet.coders.commands.{UserCommand, ReturnableCommand, Command}
 
 /**
  * Created by filip on 9/20/15.
