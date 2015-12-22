@@ -3,7 +3,7 @@ package com.vilenet.coders.commands
 import com.vilenet.Constants._
 import com.vilenet.channels.UserInfo
 import com.vilenet.coders.binary.hash.BSHA1
-import com.vilenet.db.DAO
+import com.vilenet.db.DAOActor
 
 /**
   * Created by filip on 12/16/15.

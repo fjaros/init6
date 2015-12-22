@@ -9,7 +9,7 @@ import akka.pattern.ask
 import akka.util.{Timeout, ByteString}
 import com.vilenet.Constants._
 import com.vilenet.coders.binary.hash.BSHA1
-import com.vilenet.db.DAO
+import com.vilenet.db.DAOActor
 import com.vilenet.{Config, ViLeNetActor}
 import com.vilenet.channels._
 import com.vilenet.coders.telnet.TelnetEncoder

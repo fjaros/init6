@@ -5,7 +5,7 @@ import java.net.InetSocketAddress
 import com.vilenet.channels.ChannelsActor
 import com.vilenet.connection.ConnectionHandler
 import Constants.VILE_NET
-import com.vilenet.db.DAO
+import com.vilenet.db.DAOActor
 import com.vilenet.servers.ServerColumbus
 import com.vilenet.users.UsersActor
 

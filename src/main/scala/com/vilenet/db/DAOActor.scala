@@ -1,12 +1,22 @@
 package com.vilenet.db
 
-import com.vilenet.Config
+import akka.actor.Props
+import com.vilenet.Constants._
+import com.vilenet.coders.commands.Command
+import com.vilenet.{ViLeNetActor, Config, ViLeNetComponent}
 import scalikejdbc._
 
 /**
  * Created by filip on 9/20/15.
  */
-object DAO {
+object DAOActor extends ViLeNetComponent {
+  def apply() = system.actorOf(Props(new DAOActor), VILE_NET_DAO_PATH)
+}
+
+case class AccountCreated(username: String, passwordHash: Array[Byte]) extends Command
+case class AccountUpdated(username: String, passwordHash: Array[Byte]) extends Command
+
+class DAOActor extends ViLeNetActor {
 
   Class.forName("org.mariadb.jdbc.Driver")
   ConnectionPool.singleton(
@@ -19,6 +29,10 @@ object DAO {
   }.map(rs => DbUser(rs)).list().apply())
 
   implicit def decodeFlags(flags: Array[Byte]): Int = flags(0) << 24 | flags(1) << 16 | flags(2) << 8 | flags(3)
+
+  override def receive: Receive = {
+    case _ =>
+  }
 
   def close() = {
     UserCache.close()

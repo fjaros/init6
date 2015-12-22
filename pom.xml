@@ -121,7 +121,7 @@
         </dependency>
         <dependency>
             <groupId>com.typesafe.akka</groupId>
-            <artifactId>akka-remote_${scala.version.major}</artifactId>
+            <artifactId>akka-cluster_${scala.version.major}</artifactId>
             <version>${akka.version}</version>
         </dependency>
         <dependency>

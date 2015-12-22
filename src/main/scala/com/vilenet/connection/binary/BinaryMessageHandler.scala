@@ -13,7 +13,7 @@ import com.vilenet.coders.binary.hash.BSHA1
 import com.vilenet.coders.binary.packets._
 import com.vilenet.coders.binary.packets.Packets._
 import com.vilenet.connection._
-import com.vilenet.db.DAO
+import com.vilenet.db.DAOActor
 import com.vilenet.users.{Add, BinaryProtocol, UsersUserAdded}
 import com.vilenet.utils.LimitedAction
 import com.vilenet.{Config, ViLeNetActor}
