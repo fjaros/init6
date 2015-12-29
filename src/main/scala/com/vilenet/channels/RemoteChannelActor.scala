@@ -1,6 +1,7 @@
 package com.vilenet.channels
 
 import akka.actor.{Terminated, ActorRef}
+import akka.cluster.ClusterEvent.{MemberUp, UnreachableMember, MemberEvent, InitialStateAsEvents}
 import com.vilenet.channels.utils.RemoteChannelsMultiMap
 import com.vilenet.coders.commands.{Command, EmoteCommand, ChatCommand}
 import com.vilenet.servers.{SplitMe, ServerOffline, RemoteEvent}

@@ -3,8 +3,9 @@ package com.vilenet.connection
 import java.net.InetSocketAddress
 import java.util.concurrent.TimeUnit
 
-import akka.actor.{ActorRef, FSM, Props}
-import akka.io.Tcp.Received
+import akka.actor.{PoisonPill, ActorRef, FSM, Props}
+import akka.io.Tcp
+import akka.io.Tcp.{PeerClosed, Received}
 import akka.util.ByteString
 import com.vilenet.connection.binary.{BinaryPacket, BinaryMessageHandler}
 import com.vilenet.ViLeNetActor

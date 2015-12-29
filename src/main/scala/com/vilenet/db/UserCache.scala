@@ -6,6 +6,7 @@ import com.vilenet.Config
 import com.vilenet.utils.CaseInsensitiveHashMap
 
 import scala.collection.mutable
+import scala.util.Try
 
 /**
   * Created by filip on 12/13/15.
@@ -24,8 +25,12 @@ private object UserCache {
     val updateInterval = Config.Database.batchUpdateInterval
     executorService.scheduleWithFixedDelay(new Runnable {
       override def run() = {
-        DAO.saveInserted(cache.filterKeys(inserted.contains).values.toSet)
-        DAO.saveUpdated(cache.filterKeys(updated.contains).values.toSet)
+        Try {
+          DAO.saveInserted(cache.filterKeys(inserted.contains).values.toSet)
+        }
+        Try {
+          DAO.saveUpdated(cache.filterKeys(updated.contains).values.toSet)
+        }
         inserted.clear()
         updated.clear()
       }
@@ -40,20 +45,16 @@ private object UserCache {
 
   def insert(username: String, passwordHash: Array[Byte]) = {
     val newUser = username.toLowerCase
-    synchronized {
       cache += newUser -> DbUser(username = newUser, passwordHash = passwordHash)
       inserted += newUser.toLowerCase
-    }
   }
 
   def update(username: String, dbUser: DbUser) = {
-    synchronized {
-      get(username).fold()(originalDbUser => {
-        if (originalDbUser != dbUser) {
-          cache += username -> dbUser
-          updated += username.toLowerCase
-        }
-      })
-    }
+    get(username).fold()(originalDbUser => {
+      if (originalDbUser != dbUser) {
+        cache += username -> dbUser
+        updated += username.toLowerCase
+      }
+    })
   }
 }

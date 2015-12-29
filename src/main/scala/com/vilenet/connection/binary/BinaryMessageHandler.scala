@@ -1,19 +1,21 @@
 package com.vilenet.connection.binary
 
 import java.net.InetSocketAddress
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.{Executors, TimeUnit}
 
-import akka.actor.{ActorRef, FSM, Props}
+import akka.actor.{PoisonPill, ActorRef, FSM, Props}
+import akka.cluster.pubsub.DistributedPubSubMediator.Publish
 import akka.pattern.ask
 import akka.io.Tcp.Received
 import akka.util.{ByteString, Timeout}
+import com.vilenet.Constants._
 import com.vilenet.channels.{UserLeftChat, User, UserInfoArray}
 import com.vilenet.coders.binary.BinaryChatEncoder
 import com.vilenet.coders.binary.hash.BSHA1
 import com.vilenet.coders.binary.packets._
 import com.vilenet.coders.binary.packets.Packets._
 import com.vilenet.connection._
-import com.vilenet.db.DAOActor
+import com.vilenet.db.{DAOAck, CreateAccount, DAO}
 import com.vilenet.users.{Add, BinaryProtocol, UsersUserAdded}
 import com.vilenet.utils.LimitedAction
 import com.vilenet.{Config, ViLeNetActor}
@@ -49,6 +51,9 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
   startWith(StartLoginState, ActorRef.noSender)
   context.watch(connection)
 
+  val keepAliveExecutor = Executors.newSingleThreadScheduledExecutor()
+  var keptAlive: Boolean = true
+
   val pingCookie: Int = Random.nextInt
   val serverToken: Int = Random.nextInt
   val sidNullHandler = LimitedAction()
@@ -61,6 +66,11 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
   var oldUsername: String = _
   var productId: String = _
 
+
+  override def postStop(): Unit = {
+    keepAliveExecutor.shutdown()
+  }
+
   def handleRest(binaryPacket: BinaryPacket): State = {
     binaryPacket.packetId match {
       case SID_NULL =>
@@ -71,7 +81,14 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
       case SID_PING =>
         binaryPacket.packet match {
           case SidPing(packet) =>
-            ping = Math.max(0, (System.currentTimeMillis() - pingTime).toInt)
+            if (ping == -1) {
+              ping = if (pingCookie == packet.cookie) {
+                Math.max(0, (System.currentTimeMillis() - pingTime).toInt)
+              } else {
+                0
+              }
+            }
+            keptAlive = true
         }
       case SID_LEAVECHAT =>
         binaryPacket.packet match {
@@ -168,6 +185,10 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
           }
         case _ => handleRest(BinaryPacket(packetId, data))
       }
+    case Event(DAOAck, _) =>
+      send(SidCreateAccount2(SidCreateAccount2.RESULT_ACCOUNT_CREATED))
+      stay()
+    case x => println(x) ; stay()
   }
 
   def createAccount2(passwordHash: Array[Byte], username: String): State = {
@@ -186,8 +207,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
 
     val maxLenUser = username.take(Config.Accounts.maxLength)
     DAO.getUser(maxLenUser).fold({
-      DAO.createUser(maxLenUser, passwordHash)
-      send(SidCreateAccount2(SidCreateAccount2.RESULT_ACCOUNT_CREATED))
+      mediator ! Publish(TOPIC_DAO, CreateAccount(username, passwordHash))
     })(dbUser => {
       send(SidCreateAccount2(SidCreateAccount2.RESULT_ALREADY_EXISTS))
     })
@@ -255,7 +275,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
   }
 
   when(ExpectingSidEnterChat) {
-    case Event(BinaryPacket(packetId, data), _) =>
+    case Event(BinaryPacket(packetId, data), actor) =>
       packetId match {
         case SID_ENTERCHAT =>
           data match {
@@ -263,6 +283,18 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
 //              if (oldUsername == packet.username) {
               send(SidEnterChat(username, oldUsername, productId))
               send(BinaryChatEncoder(UserInfoArray(Config.motd)).get)
+
+              keepAliveExecutor.scheduleWithFixedDelay(new Runnable {
+                override def run(): Unit = {
+                  if (keptAlive) {
+                    keptAlive = false
+                    sendPing()
+                  } else {
+                    actor ! PoisonPill
+                  }
+                }
+              }, 15, 15, TimeUnit.SECONDS)
+
               goto(LoggedIn)
 //              } else {
 //                stop()

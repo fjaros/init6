@@ -1,6 +1,7 @@
 package com.vilenet.servers
 
 import akka.actor.{Terminated, Props, ActorRef}
+import akka.cluster.ClusterEvent.{MemberUp, MemberEvent, UnreachableMember, InitialStateAsEvents}
 import com.vilenet.Constants._
 import com.vilenet.coders.commands.Command
 import com.vilenet.{ViLeNetComponent, ViLeNetActor}
@@ -35,14 +36,6 @@ class ServerColumbus(remoteServers: Array[String]) extends ViLeNetActor {
 
   var servers = mutable.HashSet[ActorRef]()
   var listeners = mutable.HashSet[ActorRef]()
-
-
-  override def preStart(): Unit = {
-    super.preStart()
-
-    // WTF
-    self ! SendBirth
-  }
 
 
   override def receive: Receive = {

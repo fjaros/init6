@@ -1,10 +1,11 @@
 package com.vilenet.users
 
-import akka.actor.{Terminated, Props, ActorRef}
+import akka.actor.{Address, Terminated, Props, ActorRef}
+import akka.cluster.ClusterEvent.MemberUp
 import com.vilenet.channels.utils.LocalUsersSet
 import com.vilenet.coders.commands._
 import com.vilenet.servers._
-import com.vilenet.{Constants, ViLeNetComponent, ViLeNetActor}
+import com.vilenet.{ViLeNetClusterActor, Constants, ViLeNetComponent}
 import com.vilenet.channels._
 import com.vilenet.Constants._
 import com.vilenet.utils.{FiniteArrayBuffer, RealKeyedCaseInsensitiveHashMap}
@@ -34,13 +35,13 @@ case class ReceivedUsers(users: RealKeyedCaseInsensitiveHashMap[ActorRef]) exten
 case class UserToChannelCommandAck(userActor: ActorRef, realUsername: String, command: UserToChannelCommand) extends Command
 case class UsersUserAdded(userActor: ActorRef, user: User) extends Command
 
-class UsersActor extends ViLeNetActor {
+class UsersActor extends ViLeNetClusterActor {
 
   var placeCounter = 1
   var remoteUsersActors = mutable.HashSet[ActorRef]()
 
-  val remoteUsersActor = (actor: ActorRef) =>
-    system.actorSelection(s"akka.tcp://${actor.path.address.hostPort}/user/$VILE_NET_USERS_PATH")
+  val remoteUsersActor = (address: Address) =>
+    system.actorSelection(s"akka.tcp://${address.hostPort}/user/$VILE_NET_USERS_PATH")
 
   var users = RealKeyedCaseInsensitiveHashMap[ActorRef]()
   var localUsers = LocalUsersSet()
@@ -55,8 +56,11 @@ class UsersActor extends ViLeNetActor {
   serverColumbus ! AddListener
 
   override def receive: Receive = {
-    case ServerOnline(columbus) =>
-      remoteUsersActor(columbus) ! GetUsers
+    case MemberUp(member) =>
+      remoteUsersActor(member.address) ! GetUsers
+
+    case ServerOnline =>
+      remoteUsersActor(sender().path.address) ! GetUsers
 
     case GetUsers =>
       remoteUsersActors += sender()
@@ -148,6 +152,8 @@ class UsersActor extends ViLeNetActor {
     case BroadcastCommand(message) =>
       remoteUsersActors.foreach(_ ! RemoteEvent(BroadcastCommand(message)))
       localUsers ! UserError(message)
+
+    case _ =>
   }
 
   def handleRemote: Receive = {

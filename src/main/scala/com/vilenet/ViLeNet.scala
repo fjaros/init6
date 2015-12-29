@@ -5,7 +5,7 @@ import java.net.InetSocketAddress
 import com.vilenet.channels.ChannelsActor
 import com.vilenet.connection.ConnectionHandler
 import Constants.VILE_NET
-import com.vilenet.db.DAOActor
+import com.vilenet.db.{DAO, DAOActor}
 import com.vilenet.servers.ServerColumbus
 import com.vilenet.users.UsersActor
 
@@ -20,6 +20,7 @@ object ViLeNet extends App with ViLeNetComponent {
   val (host, port) = (splt(0), if (splt.length > 1) splt(1).toInt else 6112)
 
   DAO
+  DAOActor()
   ServerColumbus(args(0))
   UsersActor()
   ChannelsActor()

@@ -1,6 +1,8 @@
 package com.vilenet.users
 
 import akka.actor.{Terminated, ActorRef, Props}
+import akka.cluster.pubsub.DistributedPubSubMediator.Publish
+import akka.cluster.pubsub.{DistributedPubSubMediator, DistributedPubSub}
 import akka.io.Tcp.Received
 import com.vilenet.Constants._
 import com.vilenet.coders.commands._
@@ -10,7 +12,8 @@ import com.vilenet.channels._
 import com.vilenet.coders._
 import com.vilenet.coders.binary.BinaryChatEncoder
 import com.vilenet.coders.telnet._
-import com.vilenet.servers.{SendBirth, ServerOnline, SplitMe}
+import com.vilenet.db.CreateAccount
+import com.vilenet.servers.{ServerOnline, SendBirth, SplitMe}
 import com.vilenet.utils.CaseInsensitiveHashSet
 
 /**
@@ -164,10 +167,12 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
                 dnd = !dnd
                 dndMessage = DND_DEFAULT_MSG
               }
+            case AccountMade(username, passwordHash) =>
+              mediator ! Publish(TOPIC_DAO, CreateAccount(username, passwordHash))
             case SplitMe =>
               if (Flags.isAdmin(user)) serverColumbus ! SplitMe
             case SendBirth =>
-              if (Flags.isAdmin(user)) serverColumbus ! SendBirth
+              if (Flags.isAdmin(user)) mediator ! Publish(TOPIC_CHANNELS, ServerOnline)
             case command @ BroadcastCommand(message) =>
               usersActor ! command
             case _ =>
