@@ -15,7 +15,7 @@ import scala.collection.mutable
  * Created by filip on 9/20/15.
  */
 object ChannelsActor extends ViLeNetComponent {
-  def apply() = system.actorOf(Props(new ChannelsActor), VILE_NET_CHANNELS_PATH)
+  def apply() = system.actorOf(Props[ChannelsActor], VILE_NET_CHANNELS_PATH)
 }
 
 case object GetChannels extends Command

@@ -16,7 +16,7 @@ object DAOActor extends ViLeNetComponent {
 case class GetAccount(username: String) extends Command
 case class CreateAccount(username: String, passwordHash: Array[Byte]) extends Command
 case class UpdateAccount(username: String, passwordHash: Array[Byte], flags: Int = -1) extends Command
-case object DAOAck extends Command
+case class DAOAck(username: String, passwordHash: Array[Byte]) extends Command
 
 class DAOActor extends ViLeNetActor {
 
@@ -25,14 +25,14 @@ class DAOActor extends ViLeNetActor {
   override def receive: Receive = {
     case CreateAccount(username, passwordHash) =>
       DAO.createUser(username, passwordHash)
-      if (isLocal) {
-        sender() ! DAOAck
+      if (isLocal()) {
+        sender() ! DAOAck(username, passwordHash)
       }
 
     case UpdateAccount(username, passwordHash, flags) =>
       DAO.updateUser(username, passwordHash, flags)
-      if (isLocal) {
-        sender() ! DAOAck
+      if (isLocal()) {
+        sender() ! DAOAck(username, passwordHash)
       }
   }
 }

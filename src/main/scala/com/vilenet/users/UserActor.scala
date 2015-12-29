@@ -12,7 +12,7 @@ import com.vilenet.channels._
 import com.vilenet.coders._
 import com.vilenet.coders.binary.BinaryChatEncoder
 import com.vilenet.coders.telnet._
-import com.vilenet.db.CreateAccount
+import com.vilenet.db.{DAOAck, CreateAccount}
 import com.vilenet.servers.{ServerOnline, SendBirth, SplitMe}
 import com.vilenet.utils.CaseInsensitiveHashSet
 
@@ -117,6 +117,9 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
       self ! UserInfo(YOU_KICKED(kicking))
       channelsActor ! UserSwitchedChat(self, user, THE_VOID)
 
+    case DAOAck(username, passwordHash) =>
+      self ! UserInfo(ACCOUNT_CREATED(username, passwordHash))
+
     case Received(data) =>
       CommandDecoder(user, data) match {
         case command: Command =>
@@ -146,6 +149,7 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
             case command: UserToChannelCommand => usersActor ! command
             case command: UserCommand => usersActor ! command
             case command: ReturnableCommand => encoder(command).fold()(connection ! WriteOut(_))
+            case command @ UsersCommand => usersActor ! command
             case command: TopCommand => usersActor ! command
             case AwayCommand(message) =>
               if (message.nonEmpty) {

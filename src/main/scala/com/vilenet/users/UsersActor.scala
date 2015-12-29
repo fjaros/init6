@@ -22,12 +22,16 @@ case class RemActors(userActors: mutable.Set[ActorRef]) extends Command
 case class WhisperTo(user: User, username: String, message: String)  extends Command
 
 object UsersActor extends ViLeNetComponent {
-  def apply() = system.actorOf(Props(new UsersActor), VILE_NET_USERS_PATH)
+  def apply() = system.actorOf(Props[UsersActor], VILE_NET_USERS_PATH)
 }
 
 trait Protocol extends Command
 case object BinaryProtocol extends Protocol
 case object TelnetProtocol extends Protocol
+
+/*
+[11:42:19 PM] There are currently 12750 users playing 2782 games of Starcraft Broodwar, and 54265 users playing 35437 games on Battle.net.
+ */
 
 case object GetUsers extends Command
 case class ReceivedUser(user: (String, ActorRef)) extends Command
@@ -91,6 +95,9 @@ class UsersActor extends ViLeNetClusterActor {
         log.error(s"sending to $x from ${sender()}")
         x._2 ! (sender(), command)
       })
+
+    case UsersCommand =>
+      sender() ! UserInfo(USERS(localUsers.size, users.size))
 
     case TopCommand(which) =>
       val topList = topMap(which)

@@ -75,6 +75,7 @@ object CommandDecoder {
           }
         case "unban" => OneCommand(UnbanCommand(message.takeWhile(_ != ' ')), UserError(USER_NOT_LOGGED_ON))
         case "unsquelch" | "unignore" => UnsquelchCommand(user, message.takeWhile(_ != ' '))
+        case "users" => UsersCommand
         case "whisper" | "w" | "msg" | "m" => WhisperMessage(user, message)
         case "whoami" => WhoamiCommand(user)
         case "whois" | "whereis" => OneCommand(WhoisCommand(user, message), UserError(USER_NOT_LOGGED_ON), WhoamiCommand(user))

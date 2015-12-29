@@ -57,6 +57,8 @@ object Constants {
   val USER_SQUELCHED = (squelched: String) => s"$squelched has been squelched."
   val USER_UNBANNED = (unbanning: String, unbanned: String) => s"$unbanned was unbanned by $unbanning."
   val USER_UNSQUELCHED = (unsquelched: String) => s"$unsquelched has been unsquelched."
+  val USERS = (localUsersCount: Int, allUsersCount: Int) =>
+    s"There ${if (localUsersCount != 1) s"are $localUsersCount users" else s"is $localUsersCount user"} on this server and $allUsersCount ${addS(allUsersCount, "user")} on $VILE_NET."
   val YOU_KICKED = (kicking: String) => s"$kicking kicked you out of the channel!"
   val YOU_BANNED = "You are banned from that channel."
   val YOU_CANT_SQUELCH = "You can't squelch yourself."
@@ -72,7 +74,7 @@ object Constants {
   val TELNET_INCORRECT_USERNAME = "Incorrect username."
 
   val ACCOUNT_ALREADY_EXISTS = (name: String) => s"Account $name already exists."
-  val ACCOUNT_CREATED = (name: String, passwordHashString: String) => s"Created account $name with password hash $passwordHashString."
+  val ACCOUNT_CREATED = (name: String, passwordHash: Array[Byte]) => s"Created account $name with password hash ${getStringFromHash(passwordHash)}."
   val NO_ACCOUNT_INPUT = "What account do you want to make?"
   val NO_PASSWORD_INPUT = "You did not enter a password."
 
@@ -96,5 +98,13 @@ object Constants {
 
   def addS[A >: Number](number: A, string: String) = {
     if (number != 1) s"${string}s" else string
+  }
+
+  def getStringFromHash(hash: Array[Byte]) = {
+    hash
+    .grouped(4)
+      .foldLeft("")((result: String, group: Array[Byte]) =>
+        result + group.foldRight("")((b: Byte, result: String) => result + "%02x".format(b))
+      )
   }
 }

@@ -88,7 +88,6 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
                 0
               }
             }
-            keptAlive = true
         }
       case SID_LEAVECHAT =>
         binaryPacket.packet match {
@@ -185,7 +184,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
           }
         case _ => handleRest(BinaryPacket(packetId, data))
       }
-    case Event(DAOAck, _) =>
+    case Event(DAOAck(_, _), _) =>
       send(SidCreateAccount2(SidCreateAccount2.RESULT_ACCOUNT_CREATED))
       stay()
     case x => println(x) ; stay()
@@ -280,7 +279,6 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
         case SID_ENTERCHAT =>
           data match {
             case SidEnterChat(packet) =>
-//              if (oldUsername == packet.username) {
               send(SidEnterChat(username, oldUsername, productId))
               send(BinaryChatEncoder(UserInfoArray(Config.motd)).get)
 
@@ -293,12 +291,9 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
                     actor ! PoisonPill
                   }
                 }
-              }, 15, 15, TimeUnit.SECONDS)
+              }, 1, 1, TimeUnit.MINUTES)
 
               goto(LoggedIn)
-//              } else {
-//                stop()
-//              }
           }
         case _ => handleRest(BinaryPacket(packetId, data))
       }
@@ -306,6 +301,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
 
   when(LoggedIn) {
     case Event(BinaryPacket(packetId, data), actor) =>
+      keptAlive = true
       packetId match {
         case SID_JOINCHANNEL =>
           data match {

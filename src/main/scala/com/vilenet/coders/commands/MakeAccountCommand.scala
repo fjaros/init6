@@ -26,14 +26,6 @@ object MakeAccountCommand {
       UserInfo(NO_ACCOUNT_INPUT)
     }
   }
-
-  def getStringFromHash(hash: Array[Byte]) = {
-    hash
-      .grouped(4)
-      .foldLeft("")((result: String, group: Array[Byte]) =>
-        result + group.foldRight("")((b: Byte, result: String) => result + "%02x".format(b))
-      )
-  }
 }
 
 case class AccountMade(username: String, passwordHash: Array[Byte]) extends Command

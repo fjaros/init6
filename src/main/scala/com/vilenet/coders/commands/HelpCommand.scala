@@ -29,6 +29,7 @@ object HelpCommand {
 
       "/top, /top chat, /top binary",
       "/place",
+      "/users",
       "/channels, /list",
       "/motd",
 
