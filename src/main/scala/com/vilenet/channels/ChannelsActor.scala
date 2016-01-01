@@ -2,14 +2,11 @@ package com.vilenet.channels
 
 import akka.actor.{Address, ActorRef, Props}
 import akka.cluster.ClusterEvent.MemberUp
-import akka.cluster.pubsub.DistributedPubSubMediator.{SubscribeAck, Subscribe, Publish}
 import com.vilenet.Constants._
 import com.vilenet.coders.commands.{WhoCommandToChannel, WhoCommand, ChannelsCommand, Command}
 import com.vilenet.{ViLeNetClusterActor, ViLeNetComponent}
 import com.vilenet.servers._
 import com.vilenet.utils.CaseInsensitiveHashMap
-
-import scala.collection.mutable
 
 /**
  * Created by filip on 9/20/15.
@@ -27,8 +24,6 @@ case class UserAdded(actor: ActorRef, channel: String) extends Command
 
 class ChannelsActor extends ViLeNetClusterActor {
 
-  var remoteChannelsActors = mutable.HashSet[ActorRef]()
-
   val remoteChannelsActor = (address: Address) =>
     system.actorSelection(s"akka.tcp://${address.hostPort}/user/$VILE_NET_CHANNELS_PATH")
 
@@ -36,16 +31,19 @@ class ChannelsActor extends ViLeNetClusterActor {
 
   serverColumbus ! AddListener
 
-  mediator ! Subscribe(TOPIC_CHANNELS, self)
+  subscribe(TOPIC_ONLINE)
+  subscribe(TOPIC_CHANNELS)
 
 
   override def receive: Receive = {
-    case MemberUp(member) =>
-      remoteChannelsActor(member.address) ! GetChannels
+    case c@ MemberUp(member) =>
+      if (!isLocal(member.address)) {
+        remoteChannelsActor(member.address) ! GetChannels
+      }
 
     case ServerOnline =>
       println("ServerOnline?")
-      mediator ! Publish(TOPIC_CHANNELS, GetChannels)
+      publish(TOPIC_CHANNEL, GetChannels)
 
     case ServerOffline(columbus) =>
       log.error(s"ServerOffline: $columbus")
@@ -53,15 +51,9 @@ class ChannelsActor extends ViLeNetClusterActor {
         .values
         .foreach(_ ! ServerOffline(columbus))
 
-    case SplitMe =>
-      channels
-        .values
-        .foreach(_ ! SplitMe)
-
     case GetChannels =>
       log.error(s"GetChannels sender ${sender()} ${isLocal()} $channels")
       if (!isLocal()) {
-        remoteChannelsActors += sender()
         channels
           .values
           .foreach(_ ! ChannelUsersRequest(sender()))
@@ -69,14 +61,16 @@ class ChannelsActor extends ViLeNetClusterActor {
 
     case ChannelCreated(actor, name) =>
       log.error(s"ChannelCreated $actor $name")
-      getOrCreate(name) ! ChannelCreated(actor, name)
+      if (!isLocal()) {
+        getOrCreate(name) ! ChannelCreated(actor, name)
+      }
 
     case ChannelUsersResponse(name, allUsers, remoteUsers) =>
       log.error(s"ChannelUsersResponse $name $allUsers $remoteUsers")
       getOrCreate(name) ! RemoteEvent(ChannelUsersLoad(sender(), allUsers, remoteUsers))
 
     case UserSwitchedChat(actor, user, channel) =>
-      log.error(s"$user switched chat $remoteChannelsActors")
+      log.error(s"$user switched chat")
 
       getOrCreate(channel) ! AddUser(actor, user)
 
@@ -101,7 +95,7 @@ class ChannelsActor extends ViLeNetClusterActor {
     channels.getOrElse(name, {
       val channelActor = context.actorOf(ChannelActor(name).withDispatcher(CHANNEL_DISPATCHER))
       channels += name -> channelActor
-      remoteChannelsActors.foreach(_ ! ChannelCreated(channelActor, name))
+      publish(TOPIC_CHANNELS, ChannelCreated(channelActor, name))
       channelActor
     })
   }

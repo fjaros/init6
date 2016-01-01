@@ -10,7 +10,11 @@ object Constants {
   val CHARSET = "windows-1252"
 
   val TOPIC_DAO = "dao"
+  val TOPIC_ONLINE = "online"
+  val TOPIC_CHANNEL = "channel"
   val TOPIC_CHANNELS = "channels"
+  val TOPIC_USERS = "users"
+  val TOPIC_SPLIT = "split"
 
   val VILE_NET = "ViLeNet"
   val VILE_NET_DAO_PATH = "DAO"

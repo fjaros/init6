@@ -29,10 +29,6 @@ trait Protocol extends Command
 case object BinaryProtocol extends Protocol
 case object TelnetProtocol extends Protocol
 
-/*
-[11:42:19 PM] There are currently 12750 users playing 2782 games of Starcraft Broodwar, and 54265 users playing 35437 games on Battle.net.
- */
-
 case object GetUsers extends Command
 case class ReceivedUser(user: (String, ActorRef)) extends Command
 case class ReceivedUsers(users: RealKeyedCaseInsensitiveHashMap[ActorRef]) extends Command
@@ -42,7 +38,6 @@ case class UsersUserAdded(userActor: ActorRef, user: User) extends Command
 class UsersActor extends ViLeNetClusterActor {
 
   var placeCounter = 1
-  var remoteUsersActors = mutable.HashSet[ActorRef]()
 
   val remoteUsersActor = (address: Address) =>
     system.actorSelection(s"akka.tcp://${address.hostPort}/user/$VILE_NET_USERS_PATH")
@@ -59,15 +54,25 @@ class UsersActor extends ViLeNetClusterActor {
 
   serverColumbus ! AddListener
 
+  subscribe(TOPIC_ONLINE)
+  subscribe(TOPIC_USERS)
+  subscribe(TOPIC_SPLIT)
+
   override def receive: Receive = {
     case MemberUp(member) =>
-      remoteUsersActor(member.address) ! GetUsers
+      if (!isLocal(member.address)) {
+        remoteUsersActor(member.address) ! GetUsers
+      }
+//      if (isLocal(member.address)) {
+//        publish(TOPIC_USERS, GetUsers)
+//      } else {
+//        remoteUsersActor(member.address) ! GetUsers
+//      }
 
     case ServerOnline =>
-      remoteUsersActor(sender().path.address) ! GetUsers
+      publish(TOPIC_USERS, GetUsers)
 
     case GetUsers =>
-      remoteUsersActors += sender()
       sender() ! ReceivedUsers(users)
 
     case ReceivedUser(remoteUser) =>
@@ -76,12 +81,14 @@ class UsersActor extends ViLeNetClusterActor {
       reverseUsers += remoteUser._2 -> remoteUser._1
 
     case ReceivedUsers(remoteUsers) =>
-      remoteUsers
-        .values
-        .map(_._2)
-        .foreach(context.watch)
-      users ++= remoteUsers
-      reverseUsers ++= remoteUsers.map(tuple => tuple._2._2 -> tuple._1)
+      if (!isLocal()) {
+        remoteUsers
+          .values
+          .map(_._2)
+          .foreach(context.watch)
+        users ++= remoteUsers
+        reverseUsers ++= remoteUsers.map(tuple => tuple._2._2 -> tuple._1)
+      }
 
     case command: UserToChannelCommand =>
       sender() ! users.get(command.toUsername)
@@ -102,10 +109,12 @@ class UsersActor extends ViLeNetClusterActor {
     case TopCommand(which) =>
       val topList = topMap(which)
       sender() ! UserInfo(s"Showing the top ${topList.getInitialSize} $which connections:")
-      for (i <- 1 to topList.size) {
-        val user = topList(i - 1)
-        sender() ! UserInfo(s"$i. ${TOP_LIST(user.name, encodeClient(user.client))}")
-      }
+      topList
+        .zipWithIndex
+        .foreach {
+          case (user, i) =>
+            sender() ! UserInfo(s"${i + 1}. ${TOP_LIST(user.name, encodeClient(user.client))}")
+        }
 
     case Terminated(actor) =>
       println(s"TERMINATED $actor $reverseUsers")
@@ -113,6 +122,8 @@ class UsersActor extends ViLeNetClusterActor {
         users.get(username).fold()(userActor => {
           context.unwatch(userActor._2)
           users -= username
+          reverseUsers -= userActor._2
+          localUsers -= userActor._2
         })
       })
 
@@ -128,7 +139,17 @@ class UsersActor extends ViLeNetClusterActor {
     case ServerOffline(columbus) =>
 
     case SplitMe =>
-      remoteUsersActors.foreach(_ ! RemoteEvent(RemActors(localUsers)))
+      if (isLocal()) {
+        publish(TOPIC_USERS, RemoteEvent(RemActors(localUsers)))
+        users
+          .filterNot(tuple => localUsers.contains(tuple._2._2))
+          .foreach(tuple => {
+            val actor = tuple._2._2
+            reverseUsers.get(actor).fold()(username => {
+              self ! RemoteEvent(Rem(username))
+            })
+          })
+      }
 
     case Add(connection, user, protocol) =>
       val newUser = getRealUser(user).copy(place = placeCounter)
@@ -145,20 +166,20 @@ class UsersActor extends ViLeNetClusterActor {
       users += newUser.name -> userActor
       reverseUsers += userActor -> newUser.name
       localUsers += userActor
-      remoteUsersActors.foreach(_ ! RemoteEvent(Add(userActor, newUser, protocol)))
+      publish(TOPIC_USERS, RemoteEvent(Add(userActor, newUser, protocol)))
       sender() ! UsersUserAdded(userActor, newUser)
 
     case Rem(username) =>
       users.get(username).fold()(userActor => {
         context.unwatch(userActor._2)
         users -= username
+        localUsers -= userActor._2
         reverseUsers -= userActor._2
-        remoteUsersActors.foreach(_ ! RemoteEvent(Rem(username)))
+        publish(TOPIC_USERS, RemoteEvent(Rem(username)))
       })
 
     case BroadcastCommand(message) =>
-      remoteUsersActors.foreach(_ ! RemoteEvent(BroadcastCommand(message)))
-      localUsers ! UserError(message)
+      publish(TOPIC_USERS, RemoteEvent(BroadcastCommand(message)))
 
     case _ =>
   }
@@ -176,22 +197,25 @@ class UsersActor extends ViLeNetClusterActor {
         reverseUsers -= userActor._2
       })
 
-    case RemActors(userActors) =>
-      userActors.foreach(userActor => {
-        reverseUsers.get(userActor).fold()(username => {
-          users -= username
-          reverseUsers -= userActor
+    case c @ RemActors(userActors) =>
+      if (!isLocal()) {
+        println(c)
+        userActors.foreach(userActor => {
+          reverseUsers.get(userActor).fold()(username => {
+            users -= username
+            reverseUsers -= userActor
+          })
         })
-      })
+      }
 
     case BroadcastCommand(message) =>
+      println(s"### Remote Broadcast $localUsers")
       localUsers ! UserError(message)
   }
 
   def getRealUser(user: User): User = {
     var number = 1
     var username = user.name
-    //println(s"$users $username $number")
     while (users.contains(username)) {
       number = number + 1
       username = s"${user.name}#$number"

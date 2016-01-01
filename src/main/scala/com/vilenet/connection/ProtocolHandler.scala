@@ -62,7 +62,7 @@ class ProtocolHandler(clientAddress: InetSocketAddress, client: ActorRef) extend
       client ! Write(data, Ack)
       goto (InitializedBuffering)
     case Event(x, protocolData: ConnectionProtocolData) =>
-      log.error(s"### RECEIVE3 connection $client message $x")
+      //log.error(s"### RECEIVE3 connection $client message $x")
       protocolData.messageHandler ! x
       stop()
     case x =>
@@ -89,7 +89,7 @@ class ProtocolHandler(clientAddress: InetSocketAddress, client: ActorRef) extend
           stay()
         })
     case Event(x, protocolData: ConnectionProtocolData) =>
-      log.error(s"### RECEIVE3 connection $client message $x")
+      //log.error(s"### RECEIVE3 connection $client message $x")
       protocolData.messageHandler ! x
       stop()
     case x =>

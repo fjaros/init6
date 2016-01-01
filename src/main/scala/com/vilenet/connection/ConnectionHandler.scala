@@ -12,10 +12,10 @@ import com.vilenet.ViLeNetActor
  * Created by filip on 9/19/15.
  */
 object ConnectionHandler {
-  def apply(bindAddress: InetSocketAddress, remoteAddresses: Array[String]) = Props(new ConnectionHandler(bindAddress, remoteAddresses))
+  def apply(bindAddress: InetSocketAddress) = Props(new ConnectionHandler(bindAddress))
 }
 
-class ConnectionHandler(bindAddress: InetSocketAddress, remoteAddresses: Array[String]) extends ViLeNetActor {
+class ConnectionHandler(bindAddress: InetSocketAddress) extends ViLeNetActor {
 
   IO(Tcp) ! Bind(self, bindAddress, pullMode = true)
 

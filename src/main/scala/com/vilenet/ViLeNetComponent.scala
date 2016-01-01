@@ -15,8 +15,6 @@ import scala.concurrent.duration.Duration
 private[vilenet] trait ViLeNetComponent {
 
   implicit val system = SystemContext.system
-  lazy val cluster = SystemContext.cluster
-  lazy val mediator = SystemContext.mediator
 
   lazy val serverColumbus = system.actorSelection(s"/user/$VILE_NET_SERVERS_PATH")
   lazy val channelsActor = system.actorSelection(s"/user/$VILE_NET_CHANNELS_PATH")

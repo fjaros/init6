@@ -1,13 +1,11 @@
 package com.vilenet.users
 
 import akka.actor.{Terminated, ActorRef, Props}
-import akka.cluster.pubsub.DistributedPubSubMediator.Publish
-import akka.cluster.pubsub.{DistributedPubSubMediator, DistributedPubSub}
 import akka.io.Tcp.Received
 import com.vilenet.Constants._
 import com.vilenet.coders.commands._
 import com.vilenet.connection.WriteOut
-import com.vilenet.ViLeNetActor
+import com.vilenet.ViLeNetClusterActor
 import com.vilenet.channels._
 import com.vilenet.coders._
 import com.vilenet.coders.binary.BinaryChatEncoder
@@ -31,7 +29,7 @@ case object GetUser
 case class UserUpdated(user: User)
 
 
-class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends ViLeNetActor {
+class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends ViLeNetClusterActor {
 
   var channelActor: ActorRef = _
   var squelchedUsers = CaseInsensitiveHashSet()
@@ -172,11 +170,11 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
                 dndMessage = DND_DEFAULT_MSG
               }
             case AccountMade(username, passwordHash) =>
-              mediator ! Publish(TOPIC_DAO, CreateAccount(username, passwordHash))
+              publish(TOPIC_DAO, CreateAccount(username, passwordHash))
             case SplitMe =>
-              if (Flags.isAdmin(user)) serverColumbus ! SplitMe
+              if (Flags.isAdmin(user)) publish(TOPIC_SPLIT, SplitMe)
             case SendBirth =>
-              if (Flags.isAdmin(user)) mediator ! Publish(TOPIC_CHANNELS, ServerOnline)
+              if (Flags.isAdmin(user)) publish(TOPIC_ONLINE, ServerOnline)
             case command @ BroadcastCommand(message) =>
               usersActor ! command
             case _ =>

@@ -1,7 +1,10 @@
 package com.vilenet.channels
 
 import akka.actor.{Terminated, ActorRef}
-import akka.cluster.ClusterEvent.{MemberUp, UnreachableMember, MemberEvent, InitialStateAsEvents}
+import akka.cluster.ClusterEvent.MemberUp
+import akka.cluster.pubsub.DistributedPubSubMediator.{Subscribe, SubscribeAck}
+import com.vilenet.Constants._
+import com.vilenet.ViLeNetClusterActor
 import com.vilenet.channels.utils.RemoteChannelsMultiMap
 import com.vilenet.coders.commands.{Command, EmoteCommand, ChatCommand}
 import com.vilenet.servers.{SplitMe, ServerOffline, RemoteEvent}
@@ -13,21 +16,43 @@ case class RemAll(remoteUsers: mutable.HashSet[ActorRef]) extends Command
 /**
   * Created by filip on 11/14/15.
   */
-trait RemoteChannelActor extends ChannelActor {
+trait RemoteChannelActor extends ChannelActor with ViLeNetClusterActor {
 
   // Map of Actor -> Set[User], actor key is remote server's copy of this channel.
   var remoteUsers = RemoteChannelsMultiMap()
 
+  subscribe(TOPIC_CHANNEL)
+  subscribe(TOPIC_SPLIT)
+
+  override def preStart(): Unit = {
+    super.preStart()
+
+    subscribe("channel_" + name.toLowerCase)
+  }
+
   override def receiveEvent: Receive = {
+    case SubscribeAck(Subscribe(topic, _, actor)) if topic == TOPIC_CHANNEL =>
+      log.error(s"### SUBSCRIBEACK $TOPIC_CHANNEL")
+
+    case c @ SubscribeAck(Subscribe(topic, _, actor)) if topic == "channel_" + name.toLowerCase =>
+      println(c)
+      publish("channel_" + name.toLowerCase, GetChannels)
+
+
     case ServerOffline(columbus) =>
       remoteUsers ! SplitMe
 
     case SplitMe =>
-      remoteUsers
-        .values
-        .foreach(_.foreach(remoteRem))
-      remoteUsers ! RemAll(localUsers)
-      remoteUsers.clear()
+      if (isLocal()) {
+        remoteUsers
+          .values
+          .foreach(_.foreach(remoteRem))
+        remoteUsers ! RemAll(localUsers)
+        remoteUsers.clear()
+      }
+
+    case ChannelUsersResponse(n,u,ru) =>
+      self ! RemoteEvent(ChannelUsersLoad(sender(), u, ru))
 
     case ChannelCreated(remoteChannelActor, _) =>
       println(s"ChannelCreated $remoteChannelActor")
@@ -35,9 +60,18 @@ trait RemoteChannelActor extends ChannelActor {
       remoteUsers += remoteChannelActor
       remoteChannelActor ! RemoteEvent(ChannelUsersLoad(self, users, localUsers))
 
+
     case ChannelUsersRequest(remoteChannelsActor) =>
       println(s"ChannelUsersRequest $remoteChannelsActor")
       remoteChannelsActor ! ChannelUsersResponse(name, users, localUsers)
+
+
+    case GetChannels =>
+      log.error(s"### ChannelUsersRequest ${sender()} ${isLocal()}")
+      if (!isLocal()) {
+        val remoteChannelsActor = sender()
+        remoteChannelsActor ! ChannelUsersResponse(name, users, localUsers)
+      }
 
     case RemoteEvent(event) =>
       println(s"Received Remote $event ${this.getClass.toString}")
@@ -56,9 +90,13 @@ trait RemoteChannelActor extends ChannelActor {
   def receiveRemoteEvent: Receive = {
     case ChannelUsersLoad(remoteChannelActor, allUsers, remoteUsersLoad) =>
       log.error(s"ChannelUsersLoad $remoteChannelActor $allUsers $remoteUsersLoad")
-      onChannelUsersLoad(remoteChannelActor, allUsers, remoteUsersLoad)
-      remoteUsersLoad.foreach(context.watch)
-      remoteUsers += remoteChannelActor -> remoteUsersLoad
+      if (allUsers.nonEmpty) {
+        onChannelUsersLoad(allUsers, remoteUsersLoad)
+      }
+      if (remoteUsersLoad.nonEmpty) {
+        remoteUsersLoad.foreach(context.watch)
+        remoteUsers += remoteChannelActor -> remoteUsersLoad
+      }
 
     case AddUser(actor, user) => remoteAdd(actor, user)
     case RemUser(actor) => remoteRem(actor)
@@ -74,9 +112,9 @@ trait RemoteChannelActor extends ChannelActor {
     case event =>
   }
 
-  def onChannelUsersLoad(remoteChannelActor: ActorRef, allUsers: mutable.Map[ActorRef, User], remoteUsersLoad: mutable.Set[ActorRef]) = {
+  def onChannelUsersLoad(allUsers: mutable.Map[ActorRef, User], remoteUsersLoad: mutable.Set[ActorRef]) = {
     allUsers
-      .filterNot(tuple => users.contains(tuple._1))
+      .filterNot { case (actor, _) => users.contains(actor) }
       .foreach(tuple => {
         log.error(s"Adding User From Load $tuple")
         users += tuple

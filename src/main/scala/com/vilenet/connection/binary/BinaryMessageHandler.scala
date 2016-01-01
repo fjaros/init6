@@ -1,9 +1,9 @@
 package com.vilenet.connection.binary
 
 import java.net.InetSocketAddress
-import java.util.concurrent.{Executors, TimeUnit}
+import java.util.concurrent.{TimeUnit}
 
-import akka.actor.{PoisonPill, ActorRef, FSM, Props}
+import akka.actor.{ActorRef, FSM, Props}
 import akka.cluster.pubsub.DistributedPubSubMediator.Publish
 import akka.pattern.ask
 import akka.io.Tcp.Received
@@ -18,7 +18,7 @@ import com.vilenet.connection._
 import com.vilenet.db.{DAOAck, CreateAccount, DAO}
 import com.vilenet.users.{Add, BinaryProtocol, UsersUserAdded}
 import com.vilenet.utils.LimitedAction
-import com.vilenet.{Config, ViLeNetActor}
+import com.vilenet.{ViLeNetClusterActor, Config, ViLeNetActor}
 
 import scala.concurrent.Await
 import scala.util.Random
@@ -44,15 +44,12 @@ object BinaryMessageHandler {
   def apply(clientAddress: InetSocketAddress, connection: ActorRef) = Props(new BinaryMessageHandler(clientAddress, connection))
 }
 
-class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRef) extends ViLeNetActor with FSM[BinaryState, ActorRef] {
+class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRef) extends ViLeNetClusterActor with ViLeNetKeepAliveActor with FSM[BinaryState, ActorRef] {
 
   implicit val timeout = Timeout(1, TimeUnit.MINUTES)
 
   startWith(StartLoginState, ActorRef.noSender)
   context.watch(connection)
-
-  val keepAliveExecutor = Executors.newSingleThreadScheduledExecutor()
-  var keptAlive: Boolean = true
 
   val pingCookie: Int = Random.nextInt
   val serverToken: Int = Random.nextInt
@@ -66,10 +63,6 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
   var oldUsername: String = _
   var productId: String = _
 
-
-  override def postStop(): Unit = {
-    keepAliveExecutor.shutdown()
-  }
 
   def handleRest(binaryPacket: BinaryPacket): State = {
     binaryPacket.packetId match {
@@ -206,7 +199,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
 
     val maxLenUser = username.take(Config.Accounts.maxLength)
     DAO.getUser(maxLenUser).fold({
-      mediator ! Publish(TOPIC_DAO, CreateAccount(username, passwordHash))
+      publish(TOPIC_DAO, CreateAccount(username, passwordHash))
     })(dbUser => {
       send(SidCreateAccount2(SidCreateAccount2.RESULT_ALREADY_EXISTS))
     })
@@ -281,18 +274,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
             case SidEnterChat(packet) =>
               send(SidEnterChat(username, oldUsername, productId))
               send(BinaryChatEncoder(UserInfoArray(Config.motd)).get)
-
-              keepAliveExecutor.scheduleWithFixedDelay(new Runnable {
-                override def run(): Unit = {
-                  if (keptAlive) {
-                    keptAlive = false
-                    sendPing()
-                  } else {
-                    actor ! PoisonPill
-                  }
-                }
-              }, 1, 1, TimeUnit.MINUTES)
-
+              keepAlive(actor, sendPing)
               goto(LoggedIn)
           }
         case _ => handleRest(BinaryPacket(packetId, data))

@@ -19,8 +19,8 @@ object UptimeCommand {
           uptime.toMinutes % 60 -> "minute",
           uptime.toSeconds % 60 -> "second"
         )
-          .filter(_._1 > 0)
-          .map(tuple => s"${tuple._1} ${addS(tuple._1, tuple._2)}")
+          .filter { case (value, _) => value > 0 }
+          .map { case (value, text) => s"$value ${addS(value, text)}" }
           .mkString(" ")
       }."""
     )

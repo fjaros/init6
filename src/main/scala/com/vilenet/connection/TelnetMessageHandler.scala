@@ -74,12 +74,16 @@ object TelnetMessageHandler {
   def apply(clientAddress: InetSocketAddress, connection: ActorRef) = Props(new TelnetMessageHandler(clientAddress, connection))
 }
 
-class TelnetMessageHandler(clientAddress: InetSocketAddress, connection: ActorRef) extends ViLeNetActor with FSM[State, Data] {
+class TelnetMessageHandler(clientAddress: InetSocketAddress, connection: ActorRef) extends ViLeNetKeepAliveActor with FSM[State, Data] {
 
   implicit val timeout = Timeout(1, TimeUnit.MINUTES)
 
   startWith(ExpectingUsername, UnauthenticatedUser)
   context.watch(connection)
+
+  def sendNull() = {
+    connection ! WriteOut(TelnetEncoder(UserNull).get)
+  }
 
   when (ExpectingUsername) {
     case Event(Received(data), _) =>
@@ -110,9 +114,10 @@ class TelnetMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
       connection ! WriteOut(TelnetEncoder(TELNET_CONNECTED(clientAddress.toString)))
       connection ! WriteOut(TelnetEncoder(UserName(buffer.user.name)).get)
       connection ! WriteOut(TelnetEncoder(UserInfoArray(Config.motd)).get)
+      //keepAlive(buffer.actor, sendNull)
       stay()
     case Event(Received(data), buffer: AuthenticatedUser) =>
-      //log.error(s"Received $data")
+      keptAlive = true
       buffer.actor ! Received(data)
       stay()
   }
