@@ -52,8 +52,6 @@ class UsersActor extends ViLeNetClusterActor {
     "all" -> FiniteArrayBuffer[User]()
   )
 
-  serverColumbus ! AddListener
-
   subscribe(TOPIC_ONLINE)
   subscribe(TOPIC_USERS)
   subscribe(TOPIC_SPLIT)
@@ -136,8 +134,6 @@ class UsersActor extends ViLeNetClusterActor {
   }
 
   def handleLocal: Receive = {
-    case ServerOffline(columbus) =>
-
     case SplitMe =>
       if (isLocal()) {
         publish(TOPIC_USERS, RemoteEvent(RemActors(localUsers)))

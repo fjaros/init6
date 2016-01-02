@@ -17,6 +17,7 @@ sealed class VoidedChannelActor(channelName: String)
   override val name = channelName
 
   override def receiveEvent = ({
+    case ChannelCreated(_, _) => // No-op
     case EmoteCommand(_, message) => sender() ! UserEmote(users(sender()), message)
   }: Receive)
     .orElse(super.receiveEvent)

@@ -1,13 +1,12 @@
 package com.vilenet.channels
 
 import akka.actor.{Terminated, ActorRef}
-import akka.cluster.ClusterEvent.MemberUp
 import akka.cluster.pubsub.DistributedPubSubMediator.{Subscribe, SubscribeAck}
 import com.vilenet.Constants._
 import com.vilenet.ViLeNetClusterActor
 import com.vilenet.channels.utils.RemoteChannelsMultiMap
 import com.vilenet.coders.commands.{Command, EmoteCommand, ChatCommand}
-import com.vilenet.servers.{SplitMe, ServerOffline, RemoteEvent}
+import com.vilenet.servers.{ServerOnline, SplitMe, RemoteEvent}
 
 import scala.collection.mutable
 
@@ -24,26 +23,17 @@ trait RemoteChannelActor extends ChannelActor with ViLeNetClusterActor {
   subscribe(TOPIC_CHANNEL)
   subscribe(TOPIC_SPLIT)
 
-  override def preStart(): Unit = {
-    super.preStart()
-
-    subscribe("channel_" + name.toLowerCase)
-  }
-
   override def receiveEvent: Receive = {
     case SubscribeAck(Subscribe(topic, _, actor)) if topic == TOPIC_CHANNEL =>
       log.error(s"### SUBSCRIBEACK $TOPIC_CHANNEL")
 
-    case c @ SubscribeAck(Subscribe(topic, _, actor)) if topic == "channel_" + name.toLowerCase =>
-      println(c)
-      publish("channel_" + name.toLowerCase, GetChannels)
-
-
-    case ServerOffline(columbus) =>
-      remoteUsers ! SplitMe
+    case ServerOnline =>
+      subscribe(TOPIC_CHANNEL)
 
     case SplitMe =>
+      println(s"### SplitMe ${isLocal()}")
       if (isLocal()) {
+        unsubscribe(TOPIC_CHANNEL)
         remoteUsers
           .values
           .foreach(_.foreach(remoteRem))
@@ -124,6 +114,7 @@ trait RemoteChannelActor extends ChannelActor with ViLeNetClusterActor {
 
   override def add(actor: ActorRef, user: User): User = {
     val finalUser = super.add(actor, user)
+    println(s"remote localAdd $remoteUsers")
     remoteUsers ! AddUser(actor, finalUser)
     finalUser
   }

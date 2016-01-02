@@ -29,10 +29,9 @@ class ChannelsActor extends ViLeNetClusterActor {
 
   var channels = CaseInsensitiveHashMap[ActorRef]()
 
-  serverColumbus ! AddListener
-
   subscribe(TOPIC_ONLINE)
   subscribe(TOPIC_CHANNELS)
+  subscribe(TOPIC_SPLIT)
 
 
   override def receive: Receive = {
@@ -42,14 +41,12 @@ class ChannelsActor extends ViLeNetClusterActor {
       }
 
     case ServerOnline =>
+      subscribe(TOPIC_CHANNEL)
       println("ServerOnline?")
       publish(TOPIC_CHANNEL, GetChannels)
 
-    case ServerOffline(columbus) =>
-      log.error(s"ServerOffline: $columbus")
-      channels
-        .values
-        .foreach(_ ! ServerOffline(columbus))
+    case SplitMe =>
+      unsubscribe(TOPIC_CHANNELS)
 
     case GetChannels =>
       log.error(s"GetChannels sender ${sender()} ${isLocal()} $channels")
@@ -61,7 +58,9 @@ class ChannelsActor extends ViLeNetClusterActor {
 
     case ChannelCreated(actor, name) =>
       log.error(s"ChannelCreated $actor $name")
-      if (!isLocal()) {
+      if (!isLocal() &&
+        name != "The Void" // haaackk:'(
+      ) {
         getOrCreate(name) ! ChannelCreated(actor, name)
       }
 

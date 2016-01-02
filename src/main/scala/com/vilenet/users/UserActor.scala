@@ -25,8 +25,7 @@ object UserActor {
   }))
 }
 
-case object GetUser
-case class UserUpdated(user: User)
+case class UserUpdated(user: User) extends Command
 
 
 class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends ViLeNetClusterActor {

@@ -21,7 +21,7 @@ trait RemoteBannableChannelActor extends RemoteChannelActor {
     .orElse(super.receiveRemoteEvent)
 
   def banAction(banningActor: ActorRef, bannedActor: ActorRef, banned: String, message: String) = {
-    println(s"RemoteBannable banAction $banned")
+    println(s"RemoteBannable banAction $banned $remoteUsers")
     remoteUsers ! BanCommand(banned, message)
   }
 

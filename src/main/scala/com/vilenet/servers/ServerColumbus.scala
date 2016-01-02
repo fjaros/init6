@@ -18,14 +18,6 @@ import scala.util.Random
 case object SendBirth extends Command
 
 case object ServerOnline extends Command
-case class ServerOnline(actor: ActorRef) extends Command
-case object ServerOnlineAck extends Command
-
-case object ServerOffline extends Command
-case class ServerOffline(actor: ActorRef) extends Command
-
-case object AddListener extends Command
-
 case object SplitMe extends Command
 
 
@@ -44,7 +36,7 @@ class ServerSplitter(serverName: String) extends ViLeNetComponent {
 
 
   def go() = {
-    splitExecutor.schedule(AnnounceSplit, 120 + random.nextInt(600), TimeUnit.SECONDS)
+    splitExecutor.schedule(AnnounceSplit,15 , TimeUnit.SECONDS)
   }
 
   def stop() = {
@@ -63,7 +55,7 @@ class ServerSplitter(serverName: String) extends ViLeNetComponent {
 
     override def run(): Unit = {
       mediator ! Publish(TOPIC_SPLIT, SplitMe)
-      splitExecutor.schedule(Recon, 15 + random.nextInt(30), TimeUnit.SECONDS)
+      splitExecutor.schedule(Recon, 60, TimeUnit.SECONDS)
     }
   }
 
@@ -72,7 +64,7 @@ class ServerSplitter(serverName: String) extends ViLeNetComponent {
     override def run(): Unit = {
       mediator ! Publish(TOPIC_ONLINE, ServerOnline)
       usersActor ! BroadcastCommand(s">>> $serverName has reconnected to ViLeNet!")
-      splitExecutor.schedule(AnnounceSplit, 600 + random.nextInt(1200), TimeUnit.SECONDS)
+      splitExecutor.schedule(AnnounceSplit, 30, TimeUnit.SECONDS)
     }
   }
 }
@@ -97,54 +89,7 @@ class ServerColumbus(serverName: String) extends ViLeNetClusterActor {
     case MemberUp(member) =>
       println(s"### MEMBERUP $member ${isLocal(member.address)}")
       if (isLocal(member.address)) {
-        serverSplitter.go()
+        //serverSplitter.go()
       }
-
-//    case SendBirth =>
-//      remoteServers.foreach(server => system.actorSelection(buildPath(server)) ! ServerOnline)
-
-    case ServerOnline =>
-      val remoteServer = sender()
-      context.watch(remoteServer)
-      listeners.foreach(_ ! ServerOnline(remoteServer))
-      servers += remoteServer
-      remoteServer ! ServerOnlineAck
-
-    case ServerOnlineAck =>
-      listeners.foreach(_ ! ServerOnline(sender()))
-      servers += sender()
-
-
-    case ServerOffline =>
-      val remoteServer = sender()
-      context.unwatch(remoteServer)
-      servers -= remoteServer
-      listeners.foreach(_ ! ServerOffline(remoteServer))
-      sendServersOffline(remoteServer)
-
-    case Terminated(actor) =>
-      val remoteServer = sender()
-      context.unwatch(remoteServer)
-      servers -= remoteServer
-      listeners.foreach(_ ! ServerOffline(remoteServer))
-      sendServersOffline(remoteServer)
-
-    case AddListener =>
-      listeners += sender()
-      sendServersOnline(sender())
-
-    case SplitMe =>
-      usersActor ! SplitMe
-      channelsActor ! SplitMe
   }
-
-
-  def sendServersOnline(remoteServer: ActorRef) =
-    servers
-      .filterNot(_ == remoteServer)
-      .foreach(remoteServer ! ServerOnline(_))
-
-  def sendServersOffline(remoteServer: ActorRef) =
-    servers
-      .foreach(remoteServer ! ServerOffline(_))
 }

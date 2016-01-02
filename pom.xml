@@ -107,6 +107,9 @@
             <artifactId>scala-library</artifactId>
             <version>${scala.version}</version>
         </dependency>
+
+        <!-- Force usage of current scala-library artifact -->
+
         <dependency>
             <groupId>org.scala-lang.modules</groupId>
             <artifactId>scala-parser-combinators_${scala.version.major}</artifactId>

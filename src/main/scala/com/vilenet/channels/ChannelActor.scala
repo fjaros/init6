@@ -37,7 +37,6 @@ case class User(
                  channel: String = ""
                ) extends Command
 
-case class ServerTerminated(columbus: ActorRef) extends Command
 case class ChannelUsersRequest(remoteChannelsActor: ActorRef) extends Command
 case class ChannelUsersResponse(name: String, allUsers: mutable.Map[ActorRef, User], remoteUsers: mutable.Set[ActorRef]) extends Command
 case class ChannelUsersLoad(remoteChannelActor: ActorRef, allUsers: mutable.Map[ActorRef, User], remoteUsers: mutable.Set[ActorRef]) extends Command
@@ -80,6 +79,7 @@ trait ChannelActor extends ViLeNetActor {
     val userOpt = users.get(actor)
     users.get(actor).fold()(_ => users -= actor)
     if (users.isEmpty) {
+      println("ChatEmptied")
       channelsActor ! ChatEmptied(name)
       self ! PoisonPill
     }

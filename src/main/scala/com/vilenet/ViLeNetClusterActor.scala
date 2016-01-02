@@ -2,7 +2,7 @@ package com.vilenet
 
 import akka.actor.Address
 import akka.cluster.ClusterEvent.{UnreachableMember, MemberEvent, InitialStateAsEvents}
-import akka.cluster.pubsub.DistributedPubSubMediator.{Send, Publish, Subscribe}
+import akka.cluster.pubsub.DistributedPubSubMediator.{Publish, Subscribe, Unsubscribe}
 
 /**
   * Created by filip on 12/28/15.
@@ -23,7 +23,7 @@ private[vilenet] trait ViLeNetClusterActor extends ViLeNetActor {
 
   def subscribe(topic: String) = mediator ! Subscribe(topic, self)
 
-  def publish(topic: String, msg: Any) = mediator ! Publish(topic, msg)
+  def unsubscribe(topic: String) = mediator ! Unsubscribe(topic, self)
 
-  def send(path: String, msg: Any) = mediator ! Send(path, msg, localAffinity = false)
+  def publish(topic: String, msg: Any) = mediator ! Publish(topic, msg)
 }

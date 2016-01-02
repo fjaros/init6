@@ -83,6 +83,8 @@ trait ChattableChannelActor extends RemoteChattableChannelActor {
   override def remoteRem(actor: ActorRef): Option[User] = {
     val userOpt = super.remoteRem(actor)
 
+    println(s"remoteRem Users $users")
+
     userOpt.fold()(user => {
       remoteUsers.get(sender()).fold(log.error(s"Remote user removed but no remote channel actor found ${sender()}"))(_ -= actor)
       val userLeft = UserLeft(user)
