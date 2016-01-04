@@ -61,11 +61,6 @@ class UsersActor extends ViLeNetClusterActor {
       if (!isLocal(member.address)) {
         remoteUsersActor(member.address) ! GetUsers
       }
-//      if (isLocal(member.address)) {
-//        publish(TOPIC_USERS, GetUsers)
-//      } else {
-//        remoteUsersActor(member.address) ! GetUsers
-//      }
 
     case ServerOnline =>
       publish(TOPIC_USERS, GetUsers)
@@ -74,16 +69,16 @@ class UsersActor extends ViLeNetClusterActor {
       sender() ! ReceivedUsers(users)
 
     case ReceivedUser(remoteUser) =>
-      context.watch(remoteUser._2)
+//      context.watch(remoteUser._2)
       users += remoteUser
       reverseUsers += remoteUser._2 -> remoteUser._1
 
     case ReceivedUsers(remoteUsers) =>
       if (!isLocal()) {
-        remoteUsers
-          .values
-          .map(_._2)
-          .foreach(context.watch)
+//        remoteUsers
+//          .values
+//          .map(_._2)
+//          .foreach(context.watch)
         users ++= remoteUsers
         reverseUsers ++= remoteUsers.map(tuple => tuple._2._2 -> tuple._1)
       }
@@ -114,17 +109,6 @@ class UsersActor extends ViLeNetClusterActor {
             sender() ! UserInfo(s"${i + 1}. ${TOP_LIST(user.name, encodeClient(user.client))}")
         }
 
-    case Terminated(actor) =>
-      println(s"TERMINATED $actor $reverseUsers")
-      reverseUsers.get(actor).fold()(username => {
-        users.get(username).fold()(userActor => {
-          context.unwatch(userActor._2)
-          users -= username
-          reverseUsers -= userActor._2
-          localUsers -= userActor._2
-        })
-      })
-
     case RemoteEvent(event) =>
       handleRemote(event)
 
@@ -142,7 +126,7 @@ class UsersActor extends ViLeNetClusterActor {
           .foreach(tuple => {
             val actor = tuple._2._2
             reverseUsers.get(actor).fold()(username => {
-              self ! RemoteEvent(Rem(username))
+              self ! Rem(username)
             })
           })
       }
@@ -151,7 +135,7 @@ class UsersActor extends ViLeNetClusterActor {
       val newUser = getRealUser(user).copy(place = placeCounter)
       placeCounter += 1
       val userActor = context.actorOf(UserActor(connection, newUser, protocol))
-      context.watch(userActor)
+//      context.watch(userActor)
       topMap(
         newUser.client match {
           case "CHAT" | "TAHC" => "chat"
@@ -167,11 +151,11 @@ class UsersActor extends ViLeNetClusterActor {
 
     case Rem(username) =>
       users.get(username).fold()(userActor => {
-        context.unwatch(userActor._2)
         users -= username
-        localUsers -= userActor._2
         reverseUsers -= userActor._2
-        publish(TOPIC_USERS, RemoteEvent(Rem(username)))
+        if (isLocal()) {
+          localUsers -= userActor._2
+        }
       })
 
     case BroadcastCommand(message) =>
@@ -182,16 +166,8 @@ class UsersActor extends ViLeNetClusterActor {
 
   def handleRemote: Receive = {
     case Add(userActor, user, _) =>
-      context.watch(userActor)
       users += user.name -> userActor
       reverseUsers += userActor -> user.name
-
-    case Rem(username) =>
-      users.get(username).fold()(userActor => {
-        context.unwatch(userActor._2)
-        users -= username
-        reverseUsers -= userActor._2
-      })
 
     case c @ RemActors(userActors) =>
       if (!isLocal()) {

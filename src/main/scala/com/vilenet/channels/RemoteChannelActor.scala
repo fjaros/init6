@@ -85,8 +85,8 @@ trait RemoteChannelActor extends ChannelActor with ViLeNetClusterActor {
       }
       if (remoteUsersLoad.nonEmpty) {
         remoteUsersLoad.foreach(context.watch)
-        remoteUsers += remoteChannelActor -> remoteUsersLoad
       }
+      remoteUsers += remoteChannelActor -> remoteUsersLoad
 
     case AddUser(actor, user) => remoteAdd(actor, user)
     case RemUser(actor) => remoteRem(actor)

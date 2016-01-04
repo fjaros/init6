@@ -1,6 +1,6 @@
 package com.vilenet.servers
 
-import java.util.concurrent.{Callable, TimeUnit, Executors}
+import java.util.concurrent.{TimeUnit, Executors}
 
 import akka.actor.{Terminated, Props, ActorRef}
 import akka.cluster.ClusterEvent.MemberUp
@@ -36,7 +36,7 @@ class ServerSplitter(serverName: String) extends ViLeNetComponent {
 
 
   def go() = {
-    splitExecutor.schedule(AnnounceSplit,15 , TimeUnit.SECONDS)
+    splitExecutor.schedule(AnnounceSplit, 300 + random.nextInt(1200), TimeUnit.SECONDS)
   }
 
   def stop() = {
@@ -55,7 +55,7 @@ class ServerSplitter(serverName: String) extends ViLeNetComponent {
 
     override def run(): Unit = {
       mediator ! Publish(TOPIC_SPLIT, SplitMe)
-      splitExecutor.schedule(Recon, 60, TimeUnit.SECONDS)
+      splitExecutor.schedule(Recon, 15 + random.nextInt(45), TimeUnit.SECONDS)
     }
   }
 
@@ -64,7 +64,7 @@ class ServerSplitter(serverName: String) extends ViLeNetComponent {
     override def run(): Unit = {
       mediator ! Publish(TOPIC_ONLINE, ServerOnline)
       usersActor ! BroadcastCommand(s">>> $serverName has reconnected to ViLeNet!")
-      splitExecutor.schedule(AnnounceSplit, 30, TimeUnit.SECONDS)
+      splitExecutor.schedule(AnnounceSplit, 600 + random.nextInt(1200), TimeUnit.SECONDS)
     }
   }
 }

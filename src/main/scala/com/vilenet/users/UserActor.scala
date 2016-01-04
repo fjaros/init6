@@ -1,6 +1,6 @@
 package com.vilenet.users
 
-import akka.actor.{Terminated, ActorRef, Props}
+import akka.actor.{PoisonPill, Terminated, ActorRef, Props}
 import akka.io.Tcp.Received
 import com.vilenet.Constants._
 import com.vilenet.coders.commands._
@@ -187,8 +187,8 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
       channelActor ! command
 
     case Terminated(actor) =>
-      usersActor ! Rem(user.name)
-      context.stop(self)
+      publish(TOPIC_USERS, Rem(user.name))
+      self ! PoisonPill
 
     case x =>
       //log.error(s"### UserActor Unhandled: $x")

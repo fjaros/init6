@@ -16,16 +16,16 @@ private[vilenet] trait ViLeNetComponent {
 
   implicit val system = SystemContext.system
 
-  lazy val channelsActor = system.actorSelection(s"/user/$VILE_NET_CHANNELS_PATH")
-  lazy val usersActor = system.actorSelection(s"/user/$VILE_NET_USERS_PATH")
+  val channelsActor = system.actorSelection(s"/user/$VILE_NET_CHANNELS_PATH")
+  val usersActor = system.actorSelection(s"/user/$VILE_NET_USERS_PATH")
 }
 
 private[vilenet] object SystemContext {
 
-  private val start = System.currentTimeMillis()
-  lazy val system = ActorSystem(Constants.VILE_NET, Config.load("akka.conf"))
-  lazy val cluster = Cluster(system)
-  lazy val mediator = DistributedPubSub(system).mediator
+  val system = ActorSystem(Constants.VILE_NET, Config.load("akka.conf"))
+  val cluster = Cluster(system)
+  val mediator = DistributedPubSub(system).mediator
 
+  private val start = System.currentTimeMillis()
   def getUptime = Duration(System.currentTimeMillis() - start, TimeUnit.MILLISECONDS)
 }

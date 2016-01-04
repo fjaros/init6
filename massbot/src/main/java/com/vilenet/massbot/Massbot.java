@@ -58,7 +58,7 @@ public class Massbot {
 
         public void run() {
             try {
-                for (;;) {
+                //for (;;) {
                     Socket socket = new Socket(host, port);
                     out = new PrintWriter(socket.getOutputStream(), true);
 //                    BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -67,17 +67,19 @@ public class Massbot {
                     out.write(4);
 //                    send("boatbawt");
 //                    send("boatbawt#$&(*)!@vsdh9ai@$!Q^911");
-                    send(name); send("1234");
+                    send(name);
+                    send("1234");
                     send("/j vile");
+                    send("/makeaccount bawtboat" + name.substring(8) + " 1234");
 
-                    Thread.sleep(100);
+                    Thread.sleep(1000);
                     try {
                         socket.close();
                         Thread.sleep(10);
                     } catch (Exception e) {
 
                     }
-                }
+                //}
 
 //                String s;
 //                while ((s = in.readLine()) != null) {
