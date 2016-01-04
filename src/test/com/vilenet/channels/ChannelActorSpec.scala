@@ -28,8 +28,8 @@ class ChannelActorSpec extends FunSuite with BeforeAndAfter with Matchers with V
   }
 
   after {
-    println(s"Expected: $expectedQueue")
-    println(s"  Actual: $actualQueue")
+    //println(s"Expected: $expectedQueue")
+    //println(s"  Actual: $actualQueue")
     while (expectedQueue.nonEmpty) {
       actualQueue.dequeue() should be(expectedQueue.dequeue())
     }

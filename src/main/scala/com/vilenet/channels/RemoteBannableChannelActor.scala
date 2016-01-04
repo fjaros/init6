@@ -14,14 +14,14 @@ trait RemoteBannableChannelActor extends RemoteChannelActor {
 
   override def receiveRemoteEvent = ({
     case BanCommand(banned, message) =>
-      println(s"Got banned Remote $banned")
+      //println(s"Got banned Remote $banned")
       bannedUsers += banned
     case UnbanCommand(unbanned) => bannedUsers -= unbanned
   }: Receive)
     .orElse(super.receiveRemoteEvent)
 
   def banAction(banningActor: ActorRef, bannedActor: ActorRef, banned: String, message: String) = {
-    println(s"RemoteBannable banAction $banned $remoteUsers")
+    //println(s"RemoteBannable banAction $banned $remoteUsers")
     remoteUsers ! BanCommand(banned, message)
   }
 

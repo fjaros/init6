@@ -73,7 +73,7 @@ trait ChattableChannelActor extends RemoteChattableChannelActor {
   override def remoteAdd(actor: ActorRef, user: User): Unit = {
     super.remoteAdd(actor, user)
 
-    remoteUsers.get(sender()).fold(log.error(s"Remote user added but no remote channel actor found ${sender()}"))(_ += actor)
+    remoteUsers.get(sender()).fold(/*log.error(s"Remote user added but no remote channel actor found ${sender()}"*/)(_ += actor)
 
     val userJoined = UserJoined(user)
     localUsers
@@ -83,10 +83,10 @@ trait ChattableChannelActor extends RemoteChattableChannelActor {
   override def remoteRem(actor: ActorRef): Option[User] = {
     val userOpt = super.remoteRem(actor)
 
-    println(s"remoteRem Users $users")
+    //println(s"remoteRem Users $users")
 
     userOpt.fold()(user => {
-      remoteUsers.get(sender()).fold(log.error(s"Remote user removed but no remote channel actor found ${sender()}"))(_ -= actor)
+      remoteUsers.get(sender()).fold(/*log.error(s"Remote user removed but no remote channel actor found ${sender()}"*/)(_ -= actor)
       val userLeft = UserLeft(user)
       localUsers
         .foreach(_ ! userLeft)

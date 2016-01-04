@@ -9,6 +9,6 @@ import com.vilenet.users.UsersActor
 class ServerInfo extends ViLeNetActor {
 
   override def receive: Receive = {
-    case x => println(s"SERVERINFO $x")
+    case x => //println(s"SERVERINFO $x")
   }
 }

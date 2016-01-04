@@ -42,14 +42,14 @@ class ChannelsActor extends ViLeNetClusterActor {
 
     case ServerOnline =>
       subscribe(TOPIC_CHANNEL)
-      println("ServerOnline?")
+      //println("ServerOnline?")
       publish(TOPIC_CHANNEL, GetChannels)
 
     case SplitMe =>
       unsubscribe(TOPIC_CHANNELS)
 
     case GetChannels =>
-      log.error(s"GetChannels sender ${sender()} ${isLocal()} $channels")
+      //log.error(s"GetChannels sender ${sender()} ${isLocal()} $channels")
       if (!isLocal()) {
         channels
           .values
@@ -57,7 +57,7 @@ class ChannelsActor extends ViLeNetClusterActor {
       }
 
     case ChannelCreated(actor, name) =>
-      log.error(s"ChannelCreated $actor $name")
+      //log.error(s"ChannelCreated $actor $name")
       if (!isLocal() &&
         name != "The Void" // haaackk:'(
       ) {
@@ -65,16 +65,16 @@ class ChannelsActor extends ViLeNetClusterActor {
       }
 
     case ChannelUsersResponse(name, allUsers, remoteUsers) =>
-      log.error(s"ChannelUsersResponse $name $allUsers $remoteUsers")
+      //log.error(s"ChannelUsersResponse $name $allUsers $remoteUsers")
       getOrCreate(name) ! RemoteEvent(ChannelUsersLoad(sender(), allUsers, remoteUsers))
 
     case UserSwitchedChat(actor, user, channel) =>
-      log.error(s"$user switched chat")
+      //log.error(s"$user switched chat")
 
       getOrCreate(channel) ! AddUser(actor, user)
 
     case UserAdded(actor, channel) =>
-      channels.get(channel).fold(log.error(s"Channel $channel not found"))(_ ! RemUser(actor))
+      channels.get(channel).fold(/*log.error(s"Channel $channel not found")*/)(_ ! RemUser(actor))
 
     case ChatEmptied(channel) =>
       val lowerChannel = channel.toLowerCase

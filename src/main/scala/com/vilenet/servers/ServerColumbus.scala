@@ -87,7 +87,7 @@ class ServerColumbus(serverName: String) extends ViLeNetClusterActor {
 
   override def receive: Receive = {
     case MemberUp(member) =>
-      println(s"### MEMBERUP $member ${isLocal(member.address)}")
+      //println(s"### MEMBERUP $member ${isLocal(member.address)}")
       if (isLocal(member.address)) {
         //serverSplitter.go()
       }

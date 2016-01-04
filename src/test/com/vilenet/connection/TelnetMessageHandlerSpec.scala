@@ -35,10 +35,10 @@ class TelnetMessageHandlerSpec extends FlatSpec {
     } else {
       // End of packet found
       if (buffer.nonEmpty) {
-        println(s"1 ${ByteString(buffer.toArray[Byte] ++ readData.toArray[Byte])}")
+        //println(s"1 ${ByteString(buffer.toArray[Byte] ++ readData.toArray[Byte])}")
         buffer.clear()
       } else if (readData.nonEmpty) {
-        println(s"2 $readData")
+        //println(s"2 $readData")
       }
     }
     val restOfData = data.drop(readData.length).dropWhile(b => b == '\r' || b == '\n')

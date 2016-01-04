@@ -10,7 +10,7 @@ import akka.util.{Timeout, ByteString}
 import com.vilenet.Constants._
 import com.vilenet.coders.binary.hash.BSHA1
 import com.vilenet.db.DAO
-import com.vilenet.{Config, ViLeNetActor}
+import com.vilenet.{ViLeNetActor, ViLeNetClusterActor, Config}
 import com.vilenet.channels._
 import com.vilenet.coders.telnet.TelnetEncoder
 import com.vilenet.users.{UsersUserAdded, TelnetProtocol, Add}
@@ -46,7 +46,7 @@ class TelnetMessageReceiver(clientAddress: InetSocketAddress, connection: ActorR
 
   override def receive: Receive = {
     case Received(data) =>
-      //println(data.utf8String.replace('\r','~').replace('\n','|'))
+      ////println(data.utf8String.replace('\r','~').replace('\n','|'))
       val readData = data.takeWhile(b => b != '\r' && b != '\n')
       if (data.length == readData.length) {
         // Split packet
@@ -65,7 +65,7 @@ class TelnetMessageReceiver(clientAddress: InetSocketAddress, connection: ActorR
         receive(Received(restOfData))
       }
     case x =>
-      println(s"Received $x and closing handler.")
+      //println(s"Received $x and closing handler.")
       handler ! Close
   }
 }
@@ -107,7 +107,7 @@ class TelnetMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
           goto (Blocked)
         }
       })
-    }
+  }
 
   when (LoggedIn) {
     case Event(JustLoggedIn, buffer: AuthenticatedUser) =>
@@ -128,7 +128,7 @@ class TelnetMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
 
   whenUnhandled {
     case x =>
-      log.error(s"Unhandled Event $x")
+      //log.error(s"Unhandled Event $x")
       stop()
   }
 
@@ -139,7 +139,7 @@ class TelnetMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
 
   onTermination {
     case x =>
-      log.error(s"Connection stopped $x")
+      //log.error(s"Connection stopped $x")
       context.stop(self)
   }
 }

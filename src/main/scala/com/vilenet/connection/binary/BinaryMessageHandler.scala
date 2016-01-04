@@ -35,6 +35,8 @@ case object ExpectingSidAuthInfo extends BinaryState
 case object ExpectingSidAuthCheck extends BinaryState
 case object ExpectingSidLogonResponse extends BinaryState
 case object ExpectingSidEnterChat extends BinaryState
+case object ExpectingLogonHandled extends BinaryState
+case object ExpectingLogon2Handled extends BinaryState
 case object LoggedIn extends BinaryState
 
 case class BinaryPacket(packetId: Byte, packet: ByteString)
@@ -86,7 +88,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
         binaryPacket.packet match {
           case SidLeaveChat(packet) =>
             stateData ! UserLeftChat
-          case x => //println(s"${x.getClass}")
+          case x => ////println(s"${x.getClass}")
         }
       case _ =>
     }
@@ -180,7 +182,22 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
     case Event(DAOAck(_, _), _) =>
       send(SidCreateAccount2(SidCreateAccount2.RESULT_ACCOUNT_CREATED))
       stay()
-    case x => println(x) ; stay()
+    case _ => stay()
+    //case x => //println(x) ; stay()
+  }
+
+  when(ExpectingLogonHandled) {
+    case Event(UsersUserAdded(userActor, user), _) =>
+      this.username = user.name
+      send(SidLogonResponse(SidLogonResponse.RESULT_SUCCESS))
+      goto(ExpectingSidEnterChat) using userActor
+  }
+
+  when(ExpectingLogon2Handled) {
+    case Event(UsersUserAdded(userActor, user), _) =>
+      this.username = user.name
+      send(SidLogonResponse2(SidLogonResponse2.RESULT_SUCCESS))
+      goto(ExpectingSidEnterChat) using userActor
   }
 
   def createAccount2(passwordHash: Array[Byte], username: String): State = {
@@ -215,13 +232,15 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
     })(dbUser => {
       if (BSHA1(clientToken, serverToken, dbUser.passwordHash).sameElements(passwordHash)) {
         val u = User(oldUsername, dbUser.flags, ping, client = productId)
-        Await.result(usersActor ? Add(connection, u, BinaryProtocol), timeout.duration) match {
-          case UsersUserAdded(userActor, user) =>
-            this.username = user.name
-            send(SidLogonResponse(SidLogonResponse.RESULT_SUCCESS))
-            goto(ExpectingSidEnterChat) using userActor
-          case _ => stop()
-        }
+        usersActor ! Add(connection, u, BinaryProtocol)
+        goto(ExpectingLogonHandled)
+//        Await.result(usersActor ? Add(connection, u, BinaryProtocol), timeout.duration) match {
+//          case UsersUserAdded(userActor, user) =>
+//            this.username = user.name
+//            send(SidLogonResponse(SidLogonResponse.RESULT_SUCCESS))
+//            goto(ExpectingSidEnterChat) using userActor
+//          case _ => stop()
+//        }
       } else {
         send(SidLogonResponse(SidLogonResponse.RESULT_INVALID_PASSWORD))
         goto(ExpectingSidLogonResponse)
@@ -237,13 +256,15 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
     })(dbUser => {
       if (BSHA1(clientToken, serverToken, dbUser.passwordHash).sameElements(passwordHash)) {
         val u = User(oldUsername, dbUser.flags, ping, client = productId)
-        Await.result(usersActor ? Add(connection, u, BinaryProtocol), timeout.duration) match {
-          case UsersUserAdded(userActor, user) =>
-            this.username = user.name
-            send(SidLogonResponse2(SidLogonResponse2.RESULT_SUCCESS))
-            goto(ExpectingSidEnterChat) using userActor
-          case _ => stop()
-        }
+        usersActor ! Add(connection, u, BinaryProtocol)
+        goto(ExpectingLogon2Handled)
+//        Await.result(usersActor ? Add(connection, u, BinaryProtocol), timeout.duration) match {
+//          case UsersUserAdded(userActor, user) =>
+//            this.username = user.name
+//            send(SidLogonResponse2(SidLogonResponse2.RESULT_SUCCESS))
+//            goto(ExpectingSidEnterChat) using userActor
+//          case _ => stop()
+//        }
       } else {
         send(SidLogonResponse2(SidLogonResponse2.RESULT_INVALID_PASSWORD))
         goto(ExpectingSidLogonResponse)
@@ -309,7 +330,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
 
   onTermination {
     case _ =>
-      log.error("Connection stopped 4")
+      //log.error("Connection stopped 4")
       context.stop(self)
   }
 }

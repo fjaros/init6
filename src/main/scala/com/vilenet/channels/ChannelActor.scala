@@ -79,7 +79,7 @@ trait ChannelActor extends ViLeNetActor {
     val userOpt = users.get(actor)
     users.get(actor).fold()(_ => users -= actor)
     if (users.isEmpty) {
-      println("ChatEmptied")
+      //println("ChatEmptied")
       channelsActor ! ChatEmptied(name)
       self ! PoisonPill
     }

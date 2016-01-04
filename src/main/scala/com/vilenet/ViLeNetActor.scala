@@ -1,6 +1,6 @@
 package com.vilenet
 
-import akka.actor.{Address, ActorLogging, Actor}
+import akka.actor.{ActorLogging, Actor}
 
 /**
  * Created by filip on 9/19/15.
@@ -8,4 +8,5 @@ import akka.actor.{Address, ActorLogging, Actor}
 private[vilenet] trait ViLeNetActor extends Actor with ActorLogging with ViLeNetComponent {
 
   def isLocal(): Boolean = self.path.address == sender().path.address
+  def isRemote(): Boolean = !isLocal()
 }

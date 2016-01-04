@@ -20,12 +20,13 @@ public class Massbot {
         String host = args[1].split(":")[0];
         int port = Integer.valueOf(args[1].split(":")[1]);
         int number = Integer.valueOf(args[2]);
+        int time = Integer.valueOf(args[3]);
 
         ExecutorService executor = Executors.newFixedThreadPool(number);
         Bot bot = null;
 
         for (int i = 0; i != number; i++) {
-            bot = new Bot(host, port, name + (i + 1), i + 1 == number);
+            bot = new Bot(host, port, name + (i + 1), i + 1 == number, time);
             executor.submit(bot);
         }
 
@@ -46,19 +47,34 @@ public class Massbot {
         final int port;
         final String name;
         final boolean showOutput;
+        final int time;
 
         PrintWriter out;
 
-        Bot(String host, int port, String name, boolean showOutput) {
+        Bot(String host, int port, String name, boolean showOutput, int time) {
             this.host = host;
             this.port = port;
             this.name = name;
             this.showOutput = showOutput;
+            this.time = time;
+        }
+
+        @Override
+        public String toString() {
+            return "Bot{" +
+                    "host='" + host + '\'' +
+                    ", port=" + port +
+                    ", name='" + name + '\'' +
+                    ", showOutput=" + showOutput +
+                    ", time=" + time +
+                    ", out=" + out +
+                    '}';
         }
 
         public void run() {
+            System.out.println(this);
             try {
-                //for (;;) {
+                for (;;) {
                     Socket socket = new Socket(host, port);
                     out = new PrintWriter(socket.getOutputStream(), true);
 //                    BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -70,16 +86,16 @@ public class Massbot {
                     send(name);
                     send("1234");
                     send("/j vile");
-                    send("/makeaccount bawtboat" + name.substring(8) + " 1234");
+                    //send("/makeaccount bawtboat" + name.substring(8) + " 1234");
 
-                    Thread.sleep(1000);
+                    Thread.sleep(time);
                     try {
                         socket.close();
                         Thread.sleep(10);
                     } catch (Exception e) {
 
                     }
-                //}
+                }
 
 //                String s;
 //                while ((s = in.readLine()) != null) {

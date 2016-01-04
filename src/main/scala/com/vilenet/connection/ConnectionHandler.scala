@@ -25,14 +25,14 @@ class ConnectionHandler(bindAddress: InetSocketAddress) extends ViLeNetClusterAc
       }
 
     case Bound(local) =>
-      log.error("Local address {} bound", local)
+      //log.error("Local address {} bound", local)
       sender ! ResumeAccepting(1)
       context.become(accept(sender()))
   }
 
   def accept(listener: ActorRef): Receive = {
     case Connected(remote, _) =>
-      log.error("Remote address {} connected", remote)
+      //log.error("Remote address {} connected", remote)
       sender ! Register(context.actorOf(ProtocolHandler(remote, sender())), keepOpenOnPeerClosed = true)
       listener ! ResumeAccepting(1)
   }
