@@ -13,7 +13,7 @@ case class DesignateAction(actor: ActorRef, designatee: ActorRef) extends Comman
 trait RemoteOperableChannelActor extends RemoteChannelActor {
 
   // Designate Users actor -> actor
-  var designatedActors = mutable.HashMap[ActorRef, ActorRef]()
+  val designatedActors = mutable.HashMap[ActorRef, ActorRef]()
 
   override def receiveRemoteEvent = ({
     case DesignateAction(actor, designatee) => designatedActors += actor -> designatee

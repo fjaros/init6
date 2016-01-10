@@ -3,7 +3,7 @@ package com.vilenet.channels
 import akka.actor.ActorRef
 import com.vilenet.Constants._
 import com.vilenet.coders.commands.{UnsquelchCommand, SquelchCommand, EmoteCommand, ChatCommand}
-import com.vilenet.users.{UserToChannelCommandAck}
+import com.vilenet.users.UserToChannelCommandAck
 
 /**
   * Created by filip on 11/15/15.

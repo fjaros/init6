@@ -1,7 +1,10 @@
 package com.vilenet.users
 
+import java.util.concurrent.TimeUnit
+
 import akka.actor.{Address, Terminated, Props, ActorRef}
 import akka.cluster.ClusterEvent.{UnreachableMember, MemberRemoved, MemberUp}
+import akka.util.Timeout
 import com.vilenet.channels.utils.{RemoteMultiMap, RemoteChannelsMultiMap, LocalUsersSet}
 import com.vilenet.coders.commands._
 import com.vilenet.servers._
@@ -11,6 +14,8 @@ import com.vilenet.Constants._
 import com.vilenet.utils.{FiniteArrayBuffer, RealKeyedCaseInsensitiveHashMap}
 
 import scala.collection.mutable
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.util.{Failure, Success}
 
 /**
  * Created by filip on 9/28/15.
@@ -57,10 +62,22 @@ class UsersActor extends ViLeNetClusterActor {
   subscribe(TOPIC_USERS)
   subscribe(TOPIC_SPLIT)
 
+  private def sendGetUsers(address: Address): Unit = {
+    remoteUsersActor(address).resolveOne(Timeout(5, TimeUnit.SECONDS).duration).onComplete {
+      case Success(actor) =>
+        actor ! GetUsers
+
+      case Failure(ex) =>
+        system.scheduler.scheduleOnce(Timeout(500, TimeUnit.MILLISECONDS).duration, new Runnable {
+          override def run(): Unit = sendGetUsers(address)
+        })
+    }
+  }
+
   override def receive: Receive = {
     case MemberUp(member) =>
       if (!isLocal(member.address)) {
-        remoteUsersActor(member.address) ! GetUsers
+        sendGetUsers(member.address)
       }
 
     case UnreachableMember(member) =>

@@ -1,17 +1,22 @@
 package com.vilenet.channels
 
-import akka.actor.{Address, Terminated, ActorRef}
-import akka.cluster.ClusterEvent.{UnreachableMember, MemberRemoved}
-import akka.cluster.pubsub.DistributedPubSubMediator.{Subscribe, SubscribeAck}
+import java.util.concurrent.TimeUnit
+
+import akka.actor.{PoisonPill, Address, Terminated, ActorRef}
+import akka.cluster.ClusterEvent.UnreachableMember
+import akka.util.Timeout
 import com.vilenet.Constants._
 import com.vilenet.ViLeNetClusterActor
 import com.vilenet.channels.utils.RemoteChannelsMultiMap
 import com.vilenet.coders.commands.{Command, EmoteCommand, ChatCommand}
-import com.vilenet.servers.{ServerOnline, SplitMe, RemoteEvent}
+import com.vilenet.servers.{SplitMe, RemoteEvent}
 
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.collection.mutable
 
 case class RemAll(remoteUsers: mutable.HashSet[ActorRef]) extends Command
+case class ChannelUsersLoad(remoteChannelActor: ActorRef, allUsers: Map[ActorRef, User], remoteUsers: Set[ActorRef]) extends Command
+//case class ChannelUsersLoad(remoteChannelActor: ActorRef, allUsers: Seq[(ActorRef, User)], remoteUsers: Set[ActorRef]) extends Command
 
 /**
   * Created by filip on 11/14/15.
@@ -19,31 +24,38 @@ case class RemAll(remoteUsers: mutable.HashSet[ActorRef]) extends Command
 trait RemoteChannelActor extends ChannelActor with ViLeNetClusterActor {
 
   // Map of Actor -> Set[User], actor key is remote server's copy of this channel.
-  var remoteUsers = RemoteChannelsMultiMap()
+  val remoteUsers = RemoteChannelsMultiMap()
 
-  var remoteServers = mutable.HashMap[Address, ActorRef]()
+  val remoteServers = mutable.HashMap[Address, ActorRef]()
 
-  subscribe(TOPIC_CHANNEL)
   subscribe(TOPIC_SPLIT)
 
+  val duration = Timeout(5, TimeUnit.SECONDS).duration
+
+//  system.scheduler.schedule(duration, duration, self, "Hello")
+
   override def receiveEvent: Receive = {
+//    case "Hello" =>
+//      log.error(s"##### CHANNEL STATUS: $name $self")
+//      log.error(s"##### users: ")
+//      users.foreach(msg => log.error(msg.toString()))
+//      log.error(s"##### localUsers")
+//      localUsers.foreach(msg => log.error(msg.toString()))
+//      log.error(s"##### remoteUsers")
+//      remoteUsers.foreach(msg => log.error(msg.toString()))
+
     case UnreachableMember(member) =>
       remoteServers.get(member.address).fold()(removedActor => {
-        remoteUsers(removedActor).foreach(remoteRem)
-        remoteUsers -= removedActor
+        remoteUsers.get(removedActor).fold()(actorSet => {
+          actorSet.foreach(remoteRem)
+          remoteUsers -= removedActor
+        })
       })
       remoteServers -= member.address
-
-    case SubscribeAck(Subscribe(topic, _, actor)) if topic == TOPIC_CHANNEL =>
-      //log.error(s"### SUBSCRIBEACK $TOPIC_CHANNEL")
-
-    case ServerOnline =>
-      subscribe(TOPIC_CHANNEL)
 
     case SplitMe =>
       //println(s"### SplitMe ${isLocal()}")
       if (isLocal()) {
-        unsubscribe(TOPIC_CHANNEL)
         remoteUsers
           .values
           .foreach(_.foreach(remoteRem))
@@ -51,28 +63,15 @@ trait RemoteChannelActor extends ChannelActor with ViLeNetClusterActor {
         remoteUsers.clear()
       }
 
-    case ChannelUsersResponse(n,u,ru) =>
-      self ! RemoteEvent(ChannelUsersLoad(sender(), u, ru))
-
-    case ChannelCreated(remoteChannelActor, _) =>
-      //println(s"ChannelCreated $remoteChannelActor")
+    case c@ ChannelCreated(remoteChannelActor, _) =>
+//      log.error(s"##### $c")
       context.watch(remoteChannelActor)
       remoteUsers += remoteChannelActor
       remoteServers += remoteChannelActor.path.address -> remoteChannelActor
-      remoteChannelActor ! RemoteEvent(ChannelUsersLoad(self, users, localUsers))
-
-
-    case ChannelUsersRequest(remoteChannelsActor) =>
-      //println(s"ChannelUsersRequest $remoteChannelsActor")
-      remoteChannelsActor ! ChannelUsersResponse(name, users, localUsers)
-
-
-    case GetChannels =>
-      //log.error(s"### ChannelUsersRequest ${sender()} ${isLocal()}")
-      if (!isLocal()) {
-        val remoteChannelsActor = sender()
-        remoteChannelsActor ! ChannelUsersResponse(name, users, localUsers)
-      }
+      val shit = RemoteEvent(ChannelUsersLoad(self, users.toMap, localUsers.toSet))
+//      log.error(s"##### SENDING $shit")
+      //remoteChannelActor ! RemoteEvent(ChannelUsersLoad(self, users.toSeq, localUsers.toSet))
+      remoteChannelActor ! shit
 
     case RemoteEvent(event) =>
       //println(s"Received Remote $event ${this.getClass.toString}")
@@ -89,15 +88,16 @@ trait RemoteChannelActor extends ChannelActor with ViLeNetClusterActor {
   }
 
   def receiveRemoteEvent: Receive = {
-    case ChannelUsersLoad(remoteChannelActor, allUsers, remoteUsersLoad) =>
-      //log.error(s"ChannelUsersLoad $remoteChannelActor $allUsers $remoteUsersLoad")
+    case c@ ChannelUsersLoad(remoteChannelActor, allUsers, remoteUsersLoad) =>
+//      log.error(s"##### $c - ${sender()}")
       if (allUsers.nonEmpty) {
         onChannelUsersLoad(allUsers, remoteUsersLoad)
       }
+//      log.error(s"remoteUsersLoad ${remoteUsersLoad.getClass}")
       if (remoteUsersLoad.nonEmpty) {
         remoteUsersLoad.foreach(context.watch)
       }
-      remoteUsers += remoteChannelActor -> remoteUsersLoad
+      remoteUsers += remoteChannelActor -> mutable.Set(remoteUsersLoad.toSeq: _*)
 
     case AddUser(actor, user) => remoteAdd(actor, user)
     case RemUser(actor) => remoteRem(actor)
@@ -113,7 +113,7 @@ trait RemoteChannelActor extends ChannelActor with ViLeNetClusterActor {
     case event =>
   }
 
-  def onChannelUsersLoad(allUsers: mutable.Map[ActorRef, User], remoteUsersLoad: mutable.Set[ActorRef]) = {
+  def onChannelUsersLoad(allUsers: Map[ActorRef, User], remoteUsersLoad: Set[ActorRef]) = {
     allUsers
       .filterNot { case (actor, _) => users.contains(actor) }
       .foreach(tuple => {
@@ -124,6 +124,7 @@ trait RemoteChannelActor extends ChannelActor with ViLeNetClusterActor {
   }
 
   override def add(actor: ActorRef, user: User): User = {
+    //log.error(s"### add $actor $user")
     val finalUser = super.add(actor, user)
     //println(s"remote localAdd $remoteUsers")
     remoteUsers ! AddUser(actor, finalUser)
@@ -138,9 +139,11 @@ trait RemoteChannelActor extends ChannelActor with ViLeNetClusterActor {
   }
 
   def remoteAdd(actor: ActorRef, user: User): Unit = {
+    //log.error(s"### remoteAdd $actor $user")
     //println(s"REMOTEADD $name ${user.name}")
     context.watch(actor)
     users += actor -> user
+    remoteUsers += sender() -> actor // ?
   }
 
   def remoteRem(actor: ActorRef): Option[User] = {
@@ -150,9 +153,6 @@ trait RemoteChannelActor extends ChannelActor with ViLeNetClusterActor {
       users -= actor
     })
 
-    if (users.isEmpty) {
-      channelsActor ! ChatEmptied(name)
-    }
     userOpt
   }
 }

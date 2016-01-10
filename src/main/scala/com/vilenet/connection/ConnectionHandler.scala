@@ -18,11 +18,14 @@ object ConnectionHandler {
 
 class ConnectionHandler(bindAddress: InetSocketAddress) extends ViLeNetClusterActor {
 
+  IO(Tcp) ! Bind(self, bindAddress, pullMode = true)
+
+
   override def receive: Receive = {
-    case MemberUp(member) =>
-      if (isLocal(member.address)) {
-        IO(Tcp) ! Bind(self, bindAddress, pullMode = true)
-      }
+//    case MemberUp(member) =>
+//      if (isLocal(member.address)) {
+//        IO(Tcp) ! Bind(self, bindAddress, pullMode = true)
+//      }
 
     case Bound(local) =>
       //log.error("Local address {} bound", local)

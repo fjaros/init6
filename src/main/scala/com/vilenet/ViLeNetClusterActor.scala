@@ -9,8 +9,8 @@ import akka.cluster.pubsub.DistributedPubSubMediator.{Publish, Subscribe, Unsubs
   */
 private[vilenet] trait ViLeNetClusterActor extends ViLeNetActor {
 
-  lazy val cluster = SystemContext.cluster
-  lazy val mediator = SystemContext.mediator
+  val cluster = SystemContext.cluster
+  val mediator = SystemContext.mediator
 
   override def preStart(): Unit = {
     super.preStart()

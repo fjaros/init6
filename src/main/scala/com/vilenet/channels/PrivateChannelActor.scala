@@ -6,16 +6,19 @@ import akka.actor.ActorRef
   * Created by filip on 11/12/15.
   */
 object PrivateChannelActor {
-  def apply(name: String) = new PrivateChannelActor(name)
+  def apply(name: String, remoteActor: Option[ActorRef]) = new PrivateChannelActor(name, remoteActor)
 }
 
-sealed class PrivateChannelActor(channelName: String)
+sealed class PrivateChannelActor(
+                                  override val name: String,
+                                  val remoteActor: Option[ActorRef]
+                                )
   extends ChattableChannelActor
   with BannableChannelActor
   with OperableChannelActor
   with FullableChannelActor {
 
-  override val name = channelName
+  remoteActor.foreach(remoteUsers += _)
 
   override def add(actor: ActorRef, user: User): User = {
     users.getOrElse(actor, super.add(actor, Flags.deOp(user)))

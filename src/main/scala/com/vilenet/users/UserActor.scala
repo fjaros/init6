@@ -120,7 +120,7 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
     case Received(data) =>
       CommandDecoder(user, data) match {
         case command: Command =>
-          //log.error(s"UserMessageDecoder $command")
+          log.error(s"UserMessageDecoder $command")
           command match {
             /**
              * The channel command and user command have two different flows.
@@ -183,7 +183,7 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
       }
 
     case command: UserToChannelCommandAck =>
-      //log.error(s"UTCCA $command")
+      log.error(s"UTCCA $command")
       channelActor ! command
 
     case Terminated(actor) =>

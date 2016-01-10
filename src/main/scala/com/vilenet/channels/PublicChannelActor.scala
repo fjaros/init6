@@ -7,16 +7,19 @@ import com.vilenet.Constants._
   * Created by filip on 11/25/15.
   */
 object PublicChannelActor {
-  def apply(name: String) = new PublicChannelActor(name)
+  def apply(name: String, remoteActor: Option[ActorRef]) = new PublicChannelActor(name, remoteActor)
 }
 
-sealed class PublicChannelActor(channelName: String)
+sealed class PublicChannelActor(
+                                  override val name: String,
+                                  val remoteActor: Option[ActorRef]
+                               )
   extends ChattableChannelActor
   with BannableChannelActor
   with NonOperableChannelActor
   with FullableChannelActor {
 
-  override val name = channelName
+  remoteActor.foreach(remoteUsers += _)
 
   override def add(actor: ActorRef, user: User): User = {
     users.getOrElse(actor, {

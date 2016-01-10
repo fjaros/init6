@@ -1,15 +1,15 @@
 package com.vilenet.servers
 
-import java.util.concurrent.{TimeUnit, Executors}
+import java.util.concurrent.TimeUnit
 
-import akka.actor.{Terminated, Props, ActorRef}
-import akka.cluster.ClusterEvent.MemberUp
+import akka.actor.Props
 import akka.cluster.pubsub.DistributedPubSubMediator.Publish
+import akka.util.Timeout
 import com.vilenet.Constants._
 import com.vilenet.coders.commands.{BroadcastCommand, Command}
-import com.vilenet.{SystemContext, ViLeNetClusterActor, ViLeNetComponent}
+import com.vilenet.{ViLeNetClusterActor, ViLeNetComponent}
 
-import scala.collection.mutable
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.Random
 
 /**
@@ -25,71 +25,30 @@ object ServerColumbus extends ViLeNetComponent {
   def apply(serverName: String) = system.actorOf(Props(new ServerColumbus(serverName)), VILE_NET_SERVERS_PATH)
 }
 
-class ServerSplitter(serverName: String) extends ViLeNetComponent {
-
-  val cluster = SystemContext.cluster
-  val mediator = SystemContext.mediator
-
-  val random = new Random(System.currentTimeMillis())
-
-  val splitExecutor = Executors.newSingleThreadScheduledExecutor()
-
-
-  def go() = {
-    splitExecutor.schedule(AnnounceSplit, 300 + random.nextInt(1200), TimeUnit.SECONDS)
-  }
-
-  def stop() = {
-    splitExecutor.shutdown()
-  }
-
-  private object AnnounceSplit extends Runnable {
-
-    override def run(): Unit = {
-      usersActor ! BroadcastCommand(s">>> $serverName is going to split from ViLeNet in 10 seconds!")
-      splitExecutor.schedule(Split, 10, TimeUnit.SECONDS)
-    }
-  }
-
-  private object Split extends Runnable {
-
-    override def run(): Unit = {
-      mediator ! Publish(TOPIC_SPLIT, SplitMe)
-      splitExecutor.schedule(Recon, 15 + random.nextInt(45), TimeUnit.SECONDS)
-    }
-  }
-
-  private object Recon extends Runnable {
-
-    override def run(): Unit = {
-      mediator ! Publish(TOPIC_ONLINE, ServerOnline)
-      usersActor ! BroadcastCommand(s">>> $serverName has reconnected to ViLeNet!")
-      splitExecutor.schedule(AnnounceSplit, 600 + random.nextInt(1200), TimeUnit.SECONDS)
-    }
-  }
-}
+case object AnnounceSplit extends Command
+case object Split extends Command
+case object Recon extends Command
 
 class ServerColumbus(serverName: String) extends ViLeNetClusterActor {
 
   val buildPath = (server: String) => s"akka.tcp://$VILE_NET@$server/user/$VILE_NET_SERVERS_PATH"
 
-  var servers = mutable.HashSet[ActorRef]()
-  var listeners = mutable.HashSet[ActorRef]()
+  val random = new Random(System.currentTimeMillis())
 
-  val serverSplitter = new ServerSplitter(serverName)
-
-
-  override def postStop(): Unit = {
-    serverSplitter.stop()
-
-    super.postStop()
-  }
+  system.scheduler.scheduleOnce(Timeout(10 + random.nextInt(60), TimeUnit.SECONDS).duration, self, AnnounceSplit)
 
   override def receive: Receive = {
-    case MemberUp(member) =>
-      //println(s"### MEMBERUP $member ${isLocal(member.address)}")
-      if (isLocal(member.address)) {
-        //serverSplitter.go()
-      }
+    case AnnounceSplit =>
+      usersActor ! BroadcastCommand(s">>> $serverName is going to split from ViLeNet in 10 seconds!")
+      system.scheduler.scheduleOnce(Timeout(10, TimeUnit.SECONDS).duration, self, Split)
+
+    case Split =>
+      mediator ! Publish(TOPIC_SPLIT, SplitMe)
+      system.scheduler.scheduleOnce(Timeout(15, TimeUnit.SECONDS).duration, self, Recon)
+
+    case Recon =>
+      mediator ! Publish(TOPIC_ONLINE, ServerOnline)
+      usersActor ! BroadcastCommand(s">>> $serverName has reconnected to ViLeNet!")
+      system.scheduler.scheduleOnce(Timeout(10 + random.nextInt(10), TimeUnit.SECONDS).duration, self, AnnounceSplit)
   }
 }

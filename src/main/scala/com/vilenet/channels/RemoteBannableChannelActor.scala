@@ -10,7 +10,7 @@ import com.vilenet.utils.CaseInsensitiveFiniteHashSet
 trait RemoteBannableChannelActor extends RemoteChannelActor {
 
   // Banned users
-  var bannedUsers = CaseInsensitiveFiniteHashSet(limit)
+  val bannedUsers = CaseInsensitiveFiniteHashSet(limit)
 
   override def receiveRemoteEvent = ({
     case BanCommand(banned, message) =>
