@@ -13,9 +13,9 @@ import scala.util.Try
   */
 private object UserCache {
 
-  private var cache = CaseInsensitiveHashMap[DbUser]()
-  private var inserted = mutable.HashSet[String]()
-  private var updated = mutable.HashSet[String]()
+  private val cache = CaseInsensitiveHashMap[DbUser]()
+  private val inserted = mutable.HashSet[String]()
+  private val updated = mutable.HashSet[String]()
 
   lazy val executorService = Executors.newSingleThreadScheduledExecutor()
 

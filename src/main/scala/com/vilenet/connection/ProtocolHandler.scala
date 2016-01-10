@@ -110,4 +110,8 @@ class ProtocolHandler(clientAddress: InetSocketAddress, client: ActorRef) extend
       }
     case _ => stop()
   }
+
+  onTermination {
+    case _ => ipLimiterActor ! Disconnected(clientAddress.getAddress.getAddress)
+  }
 }

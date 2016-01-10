@@ -47,12 +47,12 @@ class UsersActor extends ViLeNetClusterActor {
   val remoteUsersActor = (address: Address) =>
     system.actorSelection(s"akka.tcp://${address.hostPort}/user/$VILE_NET_USERS_PATH")
 
-  var users = RealKeyedCaseInsensitiveHashMap[ActorRef]()
-  var reverseUsers = mutable.HashMap[ActorRef, String]()
-  var localUsers = LocalUsersSet()
-  var remoteUsersMap = RemoteMultiMap[Address, ActorRef]()
+  val users = RealKeyedCaseInsensitiveHashMap[ActorRef]()
+  val reverseUsers = mutable.HashMap[ActorRef, String]()
+  val localUsers = LocalUsersSet()
+  val remoteUsersMap = RemoteMultiMap[Address, ActorRef]()
 
-  var topMap = Map(
+  val topMap = Map(
     "binary" -> FiniteArrayBuffer[User](),
     "chat" -> FiniteArrayBuffer[User](),
     "all" -> FiniteArrayBuffer[User]()

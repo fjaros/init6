@@ -21,6 +21,7 @@ object Constants {
   val VILE_NET_SERVERS_PATH = "Servers"
   val VILE_NET_CHANNELS_PATH = "Channels"
   val VILE_NET_USERS_PATH = "Users"
+  val VILE_NET_IP_LIMITER_PATH = "IpLimiter"
   val CHANNEL_DISPATCHER = "channel-dispatcher"
 
 

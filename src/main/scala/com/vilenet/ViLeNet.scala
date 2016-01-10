@@ -3,7 +3,7 @@ package com.vilenet
 import java.net.InetSocketAddress
 
 import com.vilenet.channels.ChannelsActor
-import com.vilenet.connection.ConnectionHandler
+import com.vilenet.connection.{IpLimitActor, ConnectionHandler}
 import Constants.VILE_NET
 import com.vilenet.db.{DAO, DAOActor}
 import com.vilenet.servers.ServerColumbus
@@ -23,13 +23,15 @@ object ViLeNet extends App with ViLeNetComponent {
   DAO
   DAOActor()
   ServerColumbus(name)
+  IpLimitActor(1)
   UsersActor()
   ChannelsActor()
 
   val bind = new InetSocketAddress(host, port)
-  system.actorOf(ConnectionHandler(bind), VILE_NET)
+  ConnectionHandler(bind)
 
   StdIn.readLine(s"Hit ENTER to exit ...${System.getProperty("line.separator")}")
+
   system.terminate()
   DAO.close()
 }

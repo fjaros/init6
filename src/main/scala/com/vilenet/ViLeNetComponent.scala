@@ -18,6 +18,7 @@ private[vilenet] trait ViLeNetComponent {
 
   val channelsActor = system.actorSelection(s"/user/$VILE_NET_CHANNELS_PATH")
   val usersActor = system.actorSelection(s"/user/$VILE_NET_USERS_PATH")
+  val ipLimiterActor = system.actorSelection(s"/user/$VILE_NET_IP_LIMITER_PATH")
 }
 
 private[vilenet] object SystemContext {
