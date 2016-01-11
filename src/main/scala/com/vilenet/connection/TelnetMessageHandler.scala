@@ -66,7 +66,7 @@ class TelnetMessageReceiver(clientAddress: InetSocketAddress, connection: ActorR
       }
     case x =>
       //println(s"Received $x and closing handler.")
-      handler ! Close
+      connection ! Close
   }
 }
 

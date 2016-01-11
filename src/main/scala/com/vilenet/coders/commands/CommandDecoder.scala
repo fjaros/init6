@@ -58,7 +58,9 @@ object CommandDecoder {
         case "kick" => OneCommand(KickCommand(message), UserError(USER_NOT_LOGGED_ON))
         case "makeaccount" => MakeAccountCommand(message)
         case "motd" => MotdCommand()
+        case "null" => EmptyCommand
         case "place" => PlaceCommand(user)
+        case "pong" => PongCommand(message)
         case "rejoin" => RejoinCommand
         case "resign" => ResignCommand
         case "serveruptime" | "uptime" => UptimeCommand()

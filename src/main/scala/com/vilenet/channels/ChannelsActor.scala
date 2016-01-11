@@ -25,7 +25,7 @@ object ChannelsActor extends ViLeNetComponent {
 
 case object GetChannels extends Command
 case object CleanChannels extends Command
-case class ChannelsAre(channels: RealKeyedCaseInsensitiveHashMap[ActorRef]) extends Command
+case class ChannelsAre(channels: Seq[(String, ActorRef)]) extends Command
 case class ChannelCreated(actor: ActorRef, name: String) extends Command
 case class GetChannelUsers(remoteActor: ActorRef) extends Command
 case class ReceivedChannel(channel: (String, ActorRef)) extends Command
@@ -85,15 +85,14 @@ class ChannelsActor extends ViLeNetClusterActor {
     case c@ GetChannels =>
       //log.error(s"### $c $channels")
       if (!isLocal()) {
-        val remoteChannelActor = sender()
-        remoteChannelsActors += remoteChannelActor.path.address -> remoteChannelActor
-        remoteChannelActor ! ChannelsAre(channels) // (remoteChannelActor == remote CHANNELS actor)
+        val remoteActor = sender()
+        remoteChannelsActors += remoteActor.path.address -> remoteActor
+        remoteActor ! ChannelsAre(channels.values.toSeq)
       }
 
     case c@ ChannelsAre(remoteChannels) =>
       //log.error(s"### $c")
       remoteChannels
-        .values
         .foreach {
           case (name, actor) => getOrCreate(name, Some(actor))
         }
@@ -114,11 +113,12 @@ class ChannelsActor extends ViLeNetClusterActor {
       getOrCreate(channel) ! AddUser(actor, user)
 
     case ChannelsCommand =>
-      sender() ! UserInfo(CHANNEL_LIST(channels.size))
+      val replyActor = sender()
+      replyActor ! UserInfo(CHANNEL_LIST(channels.size))
       channels
         .values
         .foreach {
-          case (_, actor) => actor ! ChannelsCommand(sender())
+          case (_, actor) => actor ! ChannelsCommand(replyActor)
         }
 
     case WhoCommand(user, channel) =>

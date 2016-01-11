@@ -6,6 +6,7 @@ import akka.actor.{FSM, Props, ActorRef}
 import akka.io.Tcp._
 import akka.util.ByteString
 import com.vilenet.ViLeNetActor
+import com.vilenet.connection.chat1.Chat1Receiver
 
 object ProtocolHandler {
   def apply(clientAddress: InetSocketAddress, client: ActorRef) = Props(new ProtocolHandler(clientAddress, client))
@@ -28,6 +29,8 @@ class ProtocolHandler(clientAddress: InetSocketAddress, client: ActorRef) extend
   val BINARY: Byte = 0x01
   val TELNET: Byte = 0x03
   val TELNET_2: Byte = 0x04
+  val VILENET_CHAT: Byte = 'C'.toByte
+  val VILENET_CHAT_1: Byte = '1'.toByte
 
   startWith(Uninitialized, EmptyProtocolData)
 
@@ -43,6 +46,13 @@ class ProtocolHandler(clientAddress: InetSocketAddress, client: ActorRef) extend
           dataTail.head match {
             case TELNET_2 =>
               goto (Initialized) using ConnectionProtocolData(context.actorOf(TelnetMessageReceiver(clientAddress, self)), dataTail.tail)
+            case _ => stop()
+          }
+        case VILENET_CHAT =>
+          val dataTail = data.tail
+          dataTail.head match {
+            case VILENET_CHAT_1 =>
+              goto (Initialized) using ConnectionProtocolData(context.actorOf(Chat1Receiver(clientAddress, self)), dataTail.tail)
             case _ => stop()
           }
         case _ => stop()

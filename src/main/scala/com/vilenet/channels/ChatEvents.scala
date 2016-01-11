@@ -18,7 +18,7 @@ case class UserJoined(user: User) extends ChatEvent
 case class UserLeft(user: User) extends ChatEvent
 case class UserWhisperedFrom(override val user: User, message: String) extends SquelchableTalkEvent
 case class UserTalked(override val user: User, message: String) extends SquelchableTalkEvent
-case class UserBroadcast(message: String) extends ChatEvent
+case class UserBroadcast(user: User, message: String) extends ChatEvent
 case class UserChannel(user: User, channelName: String, channelActor: ActorRef) extends ChatEvent
 case class UserFlags(user: User) extends ChatEvent
 case class UserWhisperedTo(user: User, message: String) extends ChatEvent
@@ -28,6 +28,7 @@ case class UserError(message: String = INVALID_COMMAND) extends ChatEvent with R
 case class UserErrorArray(message: Array[String]) extends ChatEvent with ReturnableCommand
 case object UserNull extends ChatEvent
 case class UserName(name: String) extends ChatEvent
+case class UserPing(cookie: String) extends ChatEvent
 case class UserEmote(override val user: User, message: String) extends SquelchableTalkEvent
 
 // Internal actor events

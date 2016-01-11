@@ -23,7 +23,7 @@ object ViLeNet extends App with ViLeNetComponent {
   DAO
   DAOActor()
   ServerColumbus(name)
-  IpLimitActor(1)
+  IpLimitActor(8)
   UsersActor()
   ChannelsActor()
 

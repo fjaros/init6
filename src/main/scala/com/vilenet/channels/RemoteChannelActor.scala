@@ -2,7 +2,7 @@ package com.vilenet.channels
 
 import java.util.concurrent.TimeUnit
 
-import akka.actor.{PoisonPill, Address, Terminated, ActorRef}
+import akka.actor.{Address, Terminated, ActorRef}
 import akka.cluster.ClusterEvent.UnreachableMember
 import akka.util.Timeout
 import com.vilenet.Constants._
@@ -14,7 +14,7 @@ import com.vilenet.servers.{SplitMe, RemoteEvent}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.collection.mutable
 
-case class RemAll(remoteUsers: mutable.HashSet[ActorRef]) extends Command
+case class RemAll(remoteUsers: Set[ActorRef]) extends Command
 case class ChannelUsersLoad(remoteChannelActor: ActorRef, allUsers: Map[ActorRef, User], remoteUsers: Set[ActorRef]) extends Command
 //case class ChannelUsersLoad(remoteChannelActor: ActorRef, allUsers: Seq[(ActorRef, User)], remoteUsers: Set[ActorRef]) extends Command
 
@@ -59,7 +59,7 @@ trait RemoteChannelActor extends ChannelActor with ViLeNetClusterActor {
         remoteUsers
           .values
           .foreach(_.foreach(remoteRem))
-        remoteUsers ! RemAll(localUsers)
+        remoteUsers ! RemAll(localUsers.toSet)
         remoteUsers.clear()
       }
 

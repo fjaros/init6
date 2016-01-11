@@ -3,6 +3,7 @@ package com.vilenet.users
 import akka.actor.{PoisonPill, Terminated, ActorRef, Props}
 import akka.io.Tcp.Received
 import com.vilenet.Constants._
+import com.vilenet.coders.chat1.Chat1Encoder
 import com.vilenet.coders.commands._
 import com.vilenet.connection.WriteOut
 import com.vilenet.ViLeNetClusterActor
@@ -22,10 +23,12 @@ object UserActor {
     protocol match {
       case BinaryProtocol => BinaryChatEncoder
       case TelnetProtocol => TelnetEncoder
+      case Chat1Protocol => Chat1Encoder
   }))
 }
 
 case class UserUpdated(user: User) extends Command
+case class PingSent(time: Long, cookie: String) extends Command
 
 
 class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends ViLeNetClusterActor {
@@ -36,6 +39,9 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
   var awayMessage: String = _
   var dnd: Boolean = false
   var dndMessage: String = _
+
+  var pingTime: Long = 0
+  var pingCookie: String = ""
 
   context.watch(connection)
 
@@ -53,6 +59,10 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
   }
 
   override def receive: Receive = {
+    case PingSent(time, cookie) =>
+      pingTime = time
+      pingCookie = cookie
+
     case UserUpdated(newUser) =>
       user = newUser
 
@@ -122,6 +132,11 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
         case command: Command =>
           log.error(s"UserMessageDecoder $command")
           command match {
+            case PongCommand(cookie) =>
+              if (pingCookie == cookie) {
+                // Implement Later
+              }
+
             /**
              * The channel command and user command have two different flows.
              *  A user has to go through a middle-man users actor because there is no guarantee the receiving user is online.

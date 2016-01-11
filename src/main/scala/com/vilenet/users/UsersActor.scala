@@ -3,9 +3,9 @@ package com.vilenet.users
 import java.util.concurrent.TimeUnit
 
 import akka.actor.{Address, Terminated, Props, ActorRef}
-import akka.cluster.ClusterEvent.{UnreachableMember, MemberRemoved, MemberUp}
+import akka.cluster.ClusterEvent.{UnreachableMember, MemberUp}
 import akka.util.Timeout
-import com.vilenet.channels.utils.{RemoteMultiMap, RemoteChannelsMultiMap, LocalUsersSet}
+import com.vilenet.channels.utils.{RemoteMultiMap, LocalUsersSet}
 import com.vilenet.coders.commands._
 import com.vilenet.servers._
 import com.vilenet.{ViLeNetClusterActor, Constants, ViLeNetComponent}
@@ -22,7 +22,7 @@ import scala.util.{Failure, Success}
  */
 case class Add(connection: ActorRef, user: User, protocol: Protocol) extends Command
 case class Rem(username: String) extends Command
-case class RemActors(userActors: mutable.Set[ActorRef]) extends Command
+case class RemActors(userActors: Set[ActorRef]) extends Command
 
 case class WhisperTo(user: User, username: String, message: String)  extends Command
 
@@ -33,10 +33,11 @@ object UsersActor extends ViLeNetComponent {
 trait Protocol extends Command
 case object BinaryProtocol extends Protocol
 case object TelnetProtocol extends Protocol
+case object Chat1Protocol extends Protocol
 
 case object GetUsers extends Command
 case class ReceivedUser(user: (String, ActorRef)) extends Command
-case class ReceivedUsers(users: RealKeyedCaseInsensitiveHashMap[ActorRef]) extends Command
+case class ReceivedUsers(users: Seq[(String, ActorRef)]) extends Command
 case class UserToChannelCommandAck(userActor: ActorRef, realUsername: String, command: UserToChannelCommand) extends Command
 case class UsersUserAdded(userActor: ActorRef, user: User) extends Command
 
@@ -93,7 +94,7 @@ class UsersActor extends ViLeNetClusterActor {
       publish(TOPIC_USERS, GetUsers)
 
     case GetUsers =>
-      sender() ! ReceivedUsers(users)
+      sender() ! ReceivedUsers(users.values.toSeq)
 
     case ReceivedUser(remoteUser) =>
       context.watch(remoteUser._2)
@@ -104,12 +105,14 @@ class UsersActor extends ViLeNetClusterActor {
       if (!isLocal()) {
         val address = sender().path.address
         remoteUsers
-          .values
           .map(_._2)
           .foreach(context.watch)
-        remoteUsersMap ++= address -> remoteUsers.values.map(_._2)
-        users ++= remoteUsers
-        reverseUsers ++= remoteUsers.map(tuple => tuple._2._2 -> tuple._1)
+        remoteUsersMap ++= address -> remoteUsers.map(_._2)
+        remoteUsers.foreach(users += _)
+        reverseUsers ++=
+          remoteUsers.map {
+            case (name, actor) => actor -> name
+          }
       }
 
     case command: UserToChannelCommand =>
@@ -152,7 +155,7 @@ class UsersActor extends ViLeNetClusterActor {
   def handleLocal: Receive = {
     case SplitMe =>
       if (isLocal()) {
-        publish(TOPIC_USERS, RemoteEvent(RemActors(localUsers)))
+        publish(TOPIC_USERS, RemoteEvent(RemActors(localUsers.toSet)))
         users
           .filterNot(tuple => localUsers.contains(tuple._2._2))
           .foreach(tuple => {
