@@ -1,6 +1,7 @@
 package com.vilenet.coders
 
 import akka.util.ByteString
+import com.vilenet.Constants._
 
 /**
  * Created by filip on 9/20/15.

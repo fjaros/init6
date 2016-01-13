@@ -11,7 +11,7 @@ import com.vilenet.ViLeNetActor
 trait ViLeNetKeepAliveActor extends ViLeNetActor {
 
   private val keepAliveExecutor = Executors.newSingleThreadScheduledExecutor()
-  protected var keptAlive = true
+  protected var keptAlive = 0
 
   override def postStop(): Unit = {
     keepAliveExecutor.shutdown()
@@ -20,14 +20,14 @@ trait ViLeNetKeepAliveActor extends ViLeNetActor {
   }
 
   def keepAlive(actor: ActorRef, f: () => Unit): Unit = {
-    keepAlive(actor, f, 1, TimeUnit.MINUTES)
+    keepAlive(actor, f, 25, TimeUnit.SECONDS)
   }
 
   def keepAlive(actor: ActorRef, f: () => Unit, delay: Long, unit: TimeUnit): Unit = {
     keepAliveExecutor.scheduleWithFixedDelay(new Runnable {
       override def run(): Unit = {
-        if (keptAlive) {
-          keptAlive = false
+        if (keptAlive < 4) {
+          keptAlive += 1
           f()
         } else {
           actor ! PoisonPill

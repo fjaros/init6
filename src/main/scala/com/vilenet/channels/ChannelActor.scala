@@ -1,11 +1,12 @@
 package com.vilenet.channels
 
-import akka.actor.{PoisonPill, Terminated, Props, ActorRef}
+import akka.actor.{Terminated, Props, ActorRef}
 import com.vilenet.Constants._
 import com.vilenet.ViLeNetActor
 import com.vilenet.channels.utils.LocalUsersSet
 import com.vilenet.coders.commands.Command
 import com.vilenet.coders.commands.{WhoCommandToChannel, ChannelsCommand}
+import com.vilenet.users.{UserUpdated, UpdatePing}
 
 import scala.annotation.switch
 import scala.collection.mutable
@@ -81,9 +82,23 @@ trait ChannelActor extends ViLeNetActor {
     case RemUser(actor) => rem(actor)
     case Terminated(actor) => rem(actor)
     case ChannelsCommand(actor) =>
-      actor ! UserInfo(CHANNEL_INFO(name, users.size))
+      if (users.nonEmpty) {
+        actor ! UserInfo(CHANNEL_INFO(name, users.size))
+      }
     case WhoCommandToChannel(actor, user) => whoCommand(actor, user)
+    case UpdatePing(ping) =>
+      val userActor = sender()
+      users.get(userActor).fold(/* ??? */)(user => {
+        val newUser = user.copy(ping = ping)
+        users += userActor -> newUser
+        userActor ! UserUpdated(newUser)
+        sendUserUpdate(newUser)
+      })
     case event =>
+  }
+
+  def sendUserUpdate(user: User) = {
+    localUsers ! UserFlags(user)
   }
 
   def whoCommand(actor: ActorRef, user: User) = {

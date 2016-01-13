@@ -66,10 +66,13 @@ class Chat1Handler(clientAddress: InetSocketAddress, connection: ActorRef) exten
     case Event(JustLoggedInChat1, loggedInUser: LoggedInUser) =>
       connection ! WriteOut(Chat1Encoder(UserInfo(TELNET_CONNECTED(clientAddress.toString))).get)
       connection ! WriteOut(Chat1Encoder(UserInfoArray(Config.motd)).get)
-      //keepAlive(buffer.actor, sendNull)
+      keepAlive(loggedInUser.actor, () => {
+        connection ! WriteOut(Chat1Encoder(UserPing("ABCD")).get)
+        loggedInUser.actor ! PingSent(System.currentTimeMillis(), "ABCD")
+      })
       stay()
     case Event(Received(data), loggedInUser: LoggedInUser) =>
-      keptAlive = true
+      keptAlive = 0
       loggedInUser.actor ! Received(data)
       stay()
     case x => println(x) ; stay()
@@ -92,6 +95,7 @@ class Chat1Handler(clientAddress: InetSocketAddress, connection: ActorRef) exten
           val u = User(userCredentials.username, dbUser.flags | Flags.UDP, 0, client = "TAHC")
           Await.result(usersActor ? Add(connection, u, Chat1Protocol), timeout.duration) match {
             case UsersUserAdded(actor, user) =>
+              connection ! WriteOut(Chat1Encoder(LoginOK).get)
               connection ! WriteOut(Chat1Encoder(UserPing("ABCD")).get)
               actor ! PingSent(System.currentTimeMillis(), "ABCD")
               actor ! Received(ByteString(s"/j ${userCredentials.home}"))
@@ -99,7 +103,7 @@ class Chat1Handler(clientAddress: InetSocketAddress, connection: ActorRef) exten
             case _ => stop()
           }
         } else {
-          connection ! WriteOut(Chat1Encoder(TELNET_INCORRECT_PASSWORD))
+          connection ! WriteOut(Chat1Encoder(LoginFailed(TELNET_INCORRECT_PASSWORD)).get)
           goto (BlockedInChat1State)
         }
       })

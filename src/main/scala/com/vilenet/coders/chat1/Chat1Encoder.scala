@@ -17,6 +17,10 @@ object Chat1Encoder extends Encoder {
 
   override def apply(data: Any): Option[ByteString] = {
     (data: @switch) match {
+      case LoginOK =>
+        s"OK"
+      case LoginFailed(reason) =>
+        s"FAIL $reason"
       case UserIn(user) =>
         s"USER IN   ${user.flags} ${user.ping} ${user.name} NONE"
       case UserJoined(user) =>

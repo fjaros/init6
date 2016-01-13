@@ -117,7 +117,7 @@ class TelnetMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
       //keepAlive(buffer.actor, sendNull)
       stay()
     case Event(Received(data), buffer: AuthenticatedUser) =>
-      keptAlive = true
+      keptAlive = 0
       buffer.actor ! Received(data)
       stay()
   }

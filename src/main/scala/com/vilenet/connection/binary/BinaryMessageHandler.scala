@@ -14,9 +14,10 @@ import com.vilenet.coders.binary.BinaryChatEncoder
 import com.vilenet.coders.binary.hash.BSHA1
 import com.vilenet.coders.binary.packets._
 import com.vilenet.coders.binary.packets.Packets._
+import com.vilenet.coders.commands.PongCommand
 import com.vilenet.connection._
 import com.vilenet.db.{DAOAck, CreateAccount, DAO}
-import com.vilenet.users.{Add, BinaryProtocol, UsersUserAdded}
+import com.vilenet.users.{PingSent, Add, BinaryProtocol, UsersUserAdded}
 import com.vilenet.utils.LimitedAction
 import com.vilenet.{ViLeNetClusterActor, Config, ViLeNetActor}
 
@@ -65,6 +66,8 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
   var oldUsername: String = _
   var productId: String = _
 
+  var actor: ActorRef = ActorRef.noSender
+
 
   def handleRest(binaryPacket: BinaryPacket): State = {
     binaryPacket.packetId match {
@@ -76,9 +79,13 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
       case SID_PING =>
         binaryPacket.packet match {
           case SidPing(packet) =>
+            val time = System.currentTimeMillis
+            if (actor != ActorRef.noSender) {
+              actor ! PongCommand(String.valueOf(packet.cookie))
+            }
             if (ping == -1) {
               ping = if (pingCookie == packet.cookie) {
-                Math.max(0, (System.currentTimeMillis() - pingTime).toInt)
+                Math.max(0, (time - pingTime).toInt)
               } else {
                 0
               }
@@ -98,7 +105,10 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
   def send(data: ByteString) = connection ! WriteOut(data)
   def sendPing() = {
     send(SidPing(pingCookie))
-    pingTime = System.currentTimeMillis()
+    pingTime = System.currentTimeMillis
+    if (actor != ActorRef.noSender) {
+      actor ! PingSent(pingTime, String.valueOf(pingCookie))
+    }
   }
 
   when(StartLoginState) {
@@ -188,6 +198,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
 
   when(ExpectingLogonHandled) {
     case Event(UsersUserAdded(userActor, user), _) =>
+      this.actor = userActor
       this.username = user.name
       send(SidLogonResponse(SidLogonResponse.RESULT_SUCCESS))
       goto(ExpectingSidEnterChat) using userActor
@@ -195,6 +206,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
 
   when(ExpectingLogon2Handled) {
     case Event(UsersUserAdded(userActor, user), _) =>
+      this.actor = userActor
       this.username = user.name
       send(SidLogonResponse2(SidLogonResponse2.RESULT_SUCCESS))
       goto(ExpectingSidEnterChat) using userActor
@@ -304,7 +316,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
 
   when(LoggedIn) {
     case Event(BinaryPacket(packetId, data), actor) =>
-      keptAlive = true
+      keptAlive = 0
       packetId match {
         case SID_JOINCHANNEL =>
           data match {
@@ -320,7 +332,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
         case SID_CHATCOMMAND =>
           data match {
             case SidChatCommand(packet) =>
-              actor ! Received(ByteString(packet.message))
+              actor ! Received(ByteString(packet.message, CHARSET))
               stay()
             case _ => stop()
           }

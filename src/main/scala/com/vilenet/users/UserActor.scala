@@ -29,6 +29,7 @@ object UserActor {
 
 case class UserUpdated(user: User) extends Command
 case class PingSent(time: Long, cookie: String) extends Command
+case class UpdatePing(ping: Int) extends Command
 
 
 class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends ViLeNetClusterActor {
@@ -63,6 +64,9 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
       pingTime = time
       pingCookie = cookie
 
+    case PongCommand(cookie) =>
+      handlePingResponse(cookie)
+
     case UserUpdated(newUser) =>
       user = newUser
 
@@ -77,6 +81,9 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
 
     case UserJoined(user) =>
       encodeAndSend(UserJoined(checkSquelched(user)))
+
+    case UserFlags(user) =>
+      encodeAndSend(UserFlags(checkSquelched(user)))
 
     case UserLeftChat =>
       user = user.copy(channel = "")
@@ -130,12 +137,10 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
     case Received(data) =>
       CommandDecoder(user, data) match {
         case command: Command =>
-          log.error(s"UserMessageDecoder $command")
+          //log.error(s"UserMessageDecoder $command")
           command match {
             case PongCommand(cookie) =>
-              if (pingCookie == cookie) {
-                // Implement Later
-              }
+              handlePingResponse(cookie)
 
             /**
              * The channel command and user command have two different flows.
@@ -198,7 +203,7 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
       }
 
     case command: UserToChannelCommandAck =>
-      log.error(s"UTCCA $command")
+      //log.error(s"UTCCA $command")
       channelActor ! command
 
     case Terminated(actor) =>
@@ -207,6 +212,15 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
 
     case x =>
       ////log.error(s"### UserActor Unhandled: $x")
+  }
+
+  private def handlePingResponse(cookie: String) = {
+    if (pingCookie == cookie) {
+      val updatedPing = Math.max(0, System.currentTimeMillis() - pingTime).toInt
+      if (updatedPing <= 60000) {
+        channelActor ! UpdatePing(updatedPing)
+      }
+    }
   }
 
   private def resign() = {

@@ -98,7 +98,7 @@ class ChannelsActor extends ViLeNetClusterActor {
         }
 
     case c@ ChannelCreated(actor, name) =>
-      //log.error(s"### CHANNEL CREATED $c")
+      log.error(s"### $c")
       //log.error(s"ChannelCreated $actor $name")
       if (!isLocal() &&
         name != "The Void" // haaackk:'(
@@ -135,7 +135,7 @@ class ChannelsActor extends ViLeNetClusterActor {
     val channelActor = channels.getOrElse(name, {
       val channelActor = context.actorOf(ChannelActor(name, remoteActor).withDispatcher(CHANNEL_DISPATCHER))
       channels += name -> channelActor
-      //log.error(s"### getOrCreate Publishing ${ChannelCreated(channelActor, name)}")
+      log.error(s"### getOrCreate Publishing ${ChannelCreated(channelActor, name)}")
       remoteChannelsActors.values.foreach(_ ! ChannelCreated(channelActor, name))
       name -> channelActor
     })._2
