@@ -36,10 +36,8 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
 
   var channelActor: ActorRef = _
   var squelchedUsers = CaseInsensitiveHashSet()
-  var away: Boolean = false
-  var awayMessage: String = _
-  var dnd: Boolean = false
-  var dndMessage: String = _
+  val awayAvailablity = AwayAvailablity(user.name)
+  val dndAvailablity = DndAvailablity(user.name)
 
   var pingTime: Long = 0
   var pingCookie: String = ""
@@ -109,15 +107,13 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
     case (actor: ActorRef, WhisperMessage(fromUser, toUsername, message)) =>
       encoder(UserWhisperedFrom(fromUser, message))
         .fold()(msg => {
-          if (dnd) {
-           actor ! UserInfo(DND_UNAVAILABLE(user.name, dndMessage))
-          } else {
-            connection ! WriteOut(msg)
-            if (away) {
-              actor ! UserInfo(AWAY_UNAVAILABLE(user.name, awayMessage))
-            }
-            actor ! UserWhisperedTo(user, message)
-          }
+          dndAvailablity
+            .whisperAction(actor)
+            .getOrElse({
+              connection ! WriteOut(msg)
+              awayAvailablity.whisperAction(actor)
+              actor ! UserWhisperedTo(user, message)
+            })
         })
 
     case (actor: ActorRef, WhoisCommand(fromUser, username)) =>
@@ -158,7 +154,7 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
             case ChannelsCommand => channelsActor ! ChannelsCommand
             case command: WhoCommand => channelsActor ! command
             case command: OperableCommand =>
-              if (Flags.isOp(user)) {
+              if (Flags.canBan(user)) {
                 usersActor ! command
               } else {
                 encoder(UserError(NOT_OPERATOR)).fold()(connection ! WriteOut(_))
@@ -168,26 +164,8 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
             case command: ReturnableCommand => encoder(command).fold()(connection ! WriteOut(_))
             case command @ UsersCommand => usersActor ! command
             case command: TopCommand => usersActor ! command
-            case AwayCommand(message) =>
-              if (message.nonEmpty) {
-                self ! UserInfo(AWAY_ENGAGED)
-                away = true
-                awayMessage = message
-              } else {
-                self ! UserInfo(if (away) AWAY_CANCELLED else AWAY_ENGAGED)
-                away = !away
-                awayMessage = DND_DEFAULT_MSG
-              }
-            case DndCommand(message) =>
-              if (message.nonEmpty) {
-                self ! UserInfo(DND_ENGAGED)
-                dnd = true
-                dndMessage = message
-              } else {
-                self ! UserInfo(if (dnd) DND_CANCELLED else DND_ENGAGED)
-                dnd = !dnd
-                dndMessage = DND_DEFAULT_MSG
-              }
+            case AwayCommand(message) => awayAvailablity.enableAction(message)
+            case DndCommand(message) => dndAvailablity.enableAction(message)
             case AccountMade(username, passwordHash) =>
               publish(TOPIC_DAO, CreateAccount(username, passwordHash))
             case SplitMe =>

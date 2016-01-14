@@ -2,8 +2,9 @@ package com.vilenet.channels
 
 import java.util.concurrent.TimeUnit
 
-import akka.actor.{Address, ActorRef, Props}
+import akka.actor.{PoisonPill, Address, ActorRef, Props}
 import akka.cluster.ClusterEvent.{UnreachableMember, MemberUp}
+import akka.pattern.ask
 import akka.util.Timeout
 import com.vilenet.Constants._
 import com.vilenet.coders.commands.{WhoCommandToChannel, WhoCommand, ChannelsCommand, Command}
@@ -12,6 +13,7 @@ import com.vilenet.servers._
 import com.vilenet.utils.RealKeyedCaseInsensitiveHashMap
 
 import scala.collection.mutable
+import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success}
 
@@ -30,9 +32,14 @@ case class ChannelCreated(actor: ActorRef, name: String) extends Command
 case class GetChannelUsers(remoteActor: ActorRef) extends Command
 case class ReceivedChannel(channel: (String, ActorRef)) extends Command
 case class UserAdded(actor: ActorRef, channel: String) extends Command
+case object ChannelEmpty extends Command
+case object ChannelNotEmpty extends Command
+case class ChannelDeleted(name: String) extends Command
 
 
 class ChannelsActor extends ViLeNetClusterActor {
+
+  implicit val timeout = Timeout(100, TimeUnit.MILLISECONDS)
 
   val remoteChannelsActor = (address: Address) =>
     system.actorSelection(s"akka.tcp://${address.hostPort}/user/$VILE_NET_CHANNELS_PATH")
@@ -100,16 +107,40 @@ class ChannelsActor extends ViLeNetClusterActor {
     case c@ ChannelCreated(actor, name) =>
       log.error(s"### $c")
       //log.error(s"ChannelCreated $actor $name")
-      if (!isLocal() &&
-        name != "The Void" // haaackk:'(
-      ) {
+      if (!isLocal()) {
         getOrCreate(name) ! ChannelCreated(actor, name)
+      }
+
+    case ChannelDeleted(channel) =>
+      val senderChannelsActor = sender()
+      channels.get(channel).foreach {
+        case (_, channelActor) =>
+          Await.result(channelActor ? CheckSize, timeout.duration) match {
+            case ChannelSize(size) =>
+              if (size > 0) {
+                // Problem... Channels unsynced. Force resync
+                senderChannelsActor ! ChannelsAre(channels.values.toSeq)
+              } else {
+                // OK, delete channel
+                channelActor ! PoisonPill
+                channels -= channel
+              }
+          }
       }
 
     case UserSwitchedChat(actor, user, channel) =>
       //log.error(s"$user switched chat")
 
-      getOrCreate(channel) ! RemUser(actor)
+      channels.get(user.channel).foreach {
+        case (_, oldChannelActor) =>
+          Await.result(oldChannelActor ? RemUser(actor), timeout.duration) match {
+            case ChannelEmpty =>
+              oldChannelActor ! PoisonPill
+              channels -= user.channel
+              remoteChannelsActors.values.foreach(_ ! ChannelDeleted(user.channel))
+            case _ =>
+          }
+      }
       getOrCreate(channel) ! AddUser(actor, user)
 
     case ChannelsCommand =>

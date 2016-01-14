@@ -40,7 +40,7 @@ object Constants {
   )
   val CHANNEL_RESTRICTED = "That channel is restricted."
   val DND_CANCELLED = "Do Not Disturb mode cancelled."
-  val DND_DEFAULT_MSG = "Not available"
+  val UNAVAILABLE_DEFAULT_MSG = "Not available"
   val DND_ENGAGED = "Do Not Disturb mode engaged."
   val DND_UNAVAILABLE = (name: String, message: String) => s"$name is unavailable ($message)"
   val INVALID_COMMAND = "That is not a valid command. Type /help or /? for more info."

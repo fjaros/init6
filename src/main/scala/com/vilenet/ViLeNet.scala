@@ -30,7 +30,7 @@ object ViLeNet extends App with ViLeNetComponent {
   val bind = new InetSocketAddress(host, port)
   ConnectionHandler(bind)
 
-  StdIn.readLine(s"Hit ENTER to exit ...${System.getProperty("line.separator")}")
+  StdIn.readLine(s"Hit ENTER to exit ...${System.lineSeparator}")
 
   system.terminate()
   DAO.close()

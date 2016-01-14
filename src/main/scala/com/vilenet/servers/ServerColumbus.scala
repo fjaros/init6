@@ -35,7 +35,7 @@ class ServerColumbus(serverName: String) extends ViLeNetClusterActor {
 
   val random = new Random(System.currentTimeMillis())
 
-  system.scheduler.scheduleOnce(Timeout(15 + random.nextInt(45), TimeUnit.MINUTES).duration, self, AnnounceSplit)
+  system.scheduler.scheduleOnce(Timeout(15 + random.nextInt(90), TimeUnit.MINUTES).duration, self, AnnounceSplit)
 
   override def receive: Receive = {
     case AnnounceSplit =>
@@ -49,6 +49,6 @@ class ServerColumbus(serverName: String) extends ViLeNetClusterActor {
     case Recon =>
       mediator ! Publish(TOPIC_ONLINE, ServerOnline)
       usersActor ! BroadcastCommand(s">>> $serverName has reconnected to ViLeNet!")
-      system.scheduler.scheduleOnce(Timeout(60 + random.nextInt(120), TimeUnit.MINUTES).duration, self, AnnounceSplit)
+      system.scheduler.scheduleOnce(Timeout(90 + random.nextInt(150), TimeUnit.MINUTES).duration, self, AnnounceSplit)
   }
 }
