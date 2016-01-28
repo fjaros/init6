@@ -21,21 +21,21 @@ case object ServerOnline extends Command
 case object SplitMe extends Command
 
 
-object ServerColumbus extends ViLeNetComponent {
-  def apply(serverName: String) = system.actorOf(Props(new ServerColumbus(serverName)), VILE_NET_SERVERS_PATH)
+object ServerPantyDropper extends ViLeNetComponent {
+  def apply(serverName: String) = system.actorOf(Props(new ServerPantyDropper(serverName)), VILE_NET_SERVERS_PATH)
 }
 
 case object AnnounceSplit extends Command
 case object Split extends Command
 case object Recon extends Command
 
-class ServerColumbus(serverName: String) extends ViLeNetClusterActor {
+class ServerPantyDropper(serverName: String) extends ViLeNetClusterActor {
 
   val buildPath = (server: String) => s"akka.tcp://$VILE_NET@$server/user/$VILE_NET_SERVERS_PATH"
 
   val random = new Random(System.currentTimeMillis())
 
-  system.scheduler.scheduleOnce(Timeout(15 + random.nextInt(90), TimeUnit.MINUTES).duration, self, AnnounceSplit)
+  system.scheduler.scheduleOnce(Timeout(45 + random.nextInt(150), TimeUnit.MINUTES).duration, self, AnnounceSplit)
 
   override def receive: Receive = {
     case AnnounceSplit =>
@@ -49,6 +49,6 @@ class ServerColumbus(serverName: String) extends ViLeNetClusterActor {
     case Recon =>
       mediator ! Publish(TOPIC_ONLINE, ServerOnline)
       usersActor ! BroadcastCommand(s">>> $serverName has reconnected to ViLeNet!")
-      system.scheduler.scheduleOnce(Timeout(90 + random.nextInt(150), TimeUnit.MINUTES).duration, self, AnnounceSplit)
+      system.scheduler.scheduleOnce(Timeout(90 + random.nextInt(300), TimeUnit.MINUTES).duration, self, AnnounceSplit)
   }
 }

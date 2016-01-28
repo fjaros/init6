@@ -7,4 +7,6 @@ import akka.actor.ActorRef
   */
 case object ChannelsCommand extends Command
 
-case class ChannelsCommand(actor: ActorRef) extends Command
+//case class ChannelsCommand(actor: ActorRef) extends Command
+
+case class ChannelInfo(name: String, size: Int) extends Command

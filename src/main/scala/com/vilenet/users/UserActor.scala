@@ -1,7 +1,11 @@
 package com.vilenet.users
 
+import java.util.concurrent.TimeUnit
+
 import akka.actor.{PoisonPill, Terminated, ActorRef, Props}
 import akka.io.Tcp.Received
+import akka.pattern.ask
+import akka.util.Timeout
 import com.vilenet.Constants._
 import com.vilenet.coders.chat1.Chat1Encoder
 import com.vilenet.coders.commands._
@@ -14,6 +18,8 @@ import com.vilenet.coders.telnet._
 import com.vilenet.db.{DAOAck, CreateAccount}
 import com.vilenet.servers.{ServerOnline, SendBirth, SplitMe}
 import com.vilenet.utils.CaseInsensitiveHashSet
+
+import scala.concurrent.Await
 
 /**
  * Created by filip on 9/27/15.
@@ -30,6 +36,7 @@ object UserActor {
 case class UserUpdated(user: User) extends Command
 case class PingSent(time: Long, cookie: String) extends Command
 case class UpdatePing(ping: Int) extends Command
+case object KillSelf extends Command
 
 
 class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends ViLeNetClusterActor {
@@ -96,12 +103,6 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
       }
 
     case channelEvent: ChatEvent =>
-      channelEvent match {
-        case UserChannel(newUser, channel, channelActor) =>
-          user = newUser
-          this.channelActor = channelActor
-        case _ =>
-      }
       encodeAndSend(channelEvent)
 
     case (actor: ActorRef, WhisperMessage(fromUser, toUsername, message)) =>
@@ -145,8 +146,15 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
              *  channel exists.
              */
             case JoinUserCommand(fromUser, channel) =>
+              implicit val timeout = Timeout(250, TimeUnit.MILLISECONDS)
               if (!user.channel.equalsIgnoreCase(channel)) {
-                channelsActor ! UserSwitchedChat(self, fromUser, channel)
+                Await.result(channelsActor ? UserSwitchedChat(self, fromUser, channel), timeout.duration) match {
+                  case command @ UserChannel(newUser, channel, channelActor) =>
+                    this.channelActor = channelActor
+                    user = user.copy(channel = channel)
+                    encodeAndSend(command)
+                  case _ =>
+                }
               }
             case ResignCommand => resign()
             case RejoinCommand => rejoin()
@@ -185,15 +193,20 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
       channelActor ! command
 
     case Terminated(actor) =>
+      channelsActor ! UserLeftChat(user)
       publish(TOPIC_USERS, Rem(user.name))
       self ! PoisonPill
+
+    case KillSelf =>
+      channelsActor ! UserLeftChat(user)
+      connection ! PoisonPill
 
     case x =>
       ////log.error(s"### UserActor Unhandled: $x")
   }
 
   private def handlePingResponse(cookie: String) = {
-    if (pingCookie == cookie) {
+    if (channelActor != ActorRef.noSender && pingCookie == cookie) {
       val updatedPing = Math.max(0, System.currentTimeMillis() - pingTime).toInt
       if (updatedPing <= 60000) {
         channelActor ! UpdatePing(updatedPing)

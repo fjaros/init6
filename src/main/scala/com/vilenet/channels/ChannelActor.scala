@@ -4,8 +4,7 @@ import akka.actor.{Terminated, Props, ActorRef}
 import com.vilenet.Constants._
 import com.vilenet.ViLeNetActor
 import com.vilenet.channels.utils.LocalUsersSet
-import com.vilenet.coders.commands.Command
-import com.vilenet.coders.commands.{WhoCommandToChannel, ChannelsCommand}
+import com.vilenet.coders.commands.{ChannelInfo, Command, WhoCommandToChannel, ChannelsCommand}
 import com.vilenet.users.{UserUpdated, UpdatePing}
 
 import scala.annotation.switch
@@ -41,7 +40,7 @@ case class User(
 case class AddUser(actor: ActorRef, user: User) extends Command
 case class RemUser(actor: ActorRef) extends Command
 case object CheckSize extends Command
-case class ChannelSize(size: Int) extends Command
+case class ChannelSize(actor: ActorRef, name: String, size: Int) extends Command
 
 trait ChannelActor extends ViLeNetActor {
 
@@ -61,27 +60,16 @@ trait ChannelActor extends ViLeNetActor {
   }
 
   def add(actor: ActorRef, user: User): User = {
-    context.watch(actor)
-
     val newUser = user.copy(channel = name)
 
     users += actor -> newUser
-    actor ! UserChannel(newUser, name, self)
+    sender() ! UserChannel(newUser, name, self)
     newUser
   }
 
   def rem(actor: ActorRef): Option[User] = {
-    context.unwatch(actor)
-
     val userOpt = users.get(actor)
     users.get(actor).fold()(_ => users -= actor)
-
-    sender() !
-      (if (users.isEmpty) {
-        ChannelEmpty
-      } else {
-        ChannelNotEmpty
-      })
 
     userOpt
   }
@@ -89,22 +77,11 @@ trait ChannelActor extends ViLeNetActor {
   def receiveEvent: Receive = {
     case AddUser(actor, user) => add(actor, user)
     case RemUser(actor) => rem(actor)
-    case Terminated(actor) => rem(actor)
-    case CheckSize => sender() ! ChannelSize(users.size)
-    case ChannelsCommand(actor) =>
-      if (users.nonEmpty) { // Stale channels may occur during split
-        /*
-          1. Synced servers -> user joins new channel
-          2. Servers split
-          3. user leaves new channel
-          4. Servers resync
-
-          Server that split won't see that remote user left the new channel and so he will still have old state
-          with 0 users (since ChannelsUserLoad will be 0)
-         */
-        actor ! UserInfo(CHANNEL_INFO(name, users.size))
-      }
-    case WhoCommandToChannel(actor, user) => whoCommand(actor, user)
+    case CheckSize => sender() ! ChannelSize(self, name, users.size)
+    case ChannelsCommand => sender() ! ChannelInfo(name, users.size)
+    case c@ WhoCommandToChannel(actor, user) =>
+      println(c)
+      whoCommand(actor, user)
     case UpdatePing(ping) =>
       val userActor = sender()
       users.get(userActor).fold(/* ??? */)(user => {
@@ -132,6 +109,8 @@ trait ChannelActor extends ViLeNetActor {
       })
       .grouped(2)
       .map(_.mkString(", "))
+
+    println(usernames)
 
     actor ! UserInfo(WHO_CHANNEL(name))
     usernames.foreach(actor ! UserInfo(_))

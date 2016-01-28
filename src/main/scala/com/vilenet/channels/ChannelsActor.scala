@@ -7,26 +7,26 @@ import akka.cluster.ClusterEvent.{UnreachableMember, MemberUp}
 import akka.pattern.ask
 import akka.util.Timeout
 import com.vilenet.Constants._
-import com.vilenet.coders.commands.{WhoCommandToChannel, WhoCommand, ChannelsCommand, Command}
+import com.vilenet.coders.commands._
 import com.vilenet.{ViLeNetClusterActor, ViLeNetComponent}
 import com.vilenet.servers._
+import com.vilenet.utils.FutureCollector.futureSeqToFutureCollector
 import com.vilenet.utils.RealKeyedCaseInsensitiveHashMap
 
 import scala.collection.mutable
-import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.util.{Failure, Success}
+import scala.concurrent.Await
+import scala.util.{Try, Failure, Success}
 
 
 /**
  * Created by filip on 9/20/15.
  */
 object ChannelsActor extends ViLeNetComponent {
-  def apply() = system.actorOf(Props[ChannelsActor], VILE_NET_CHANNELS_PATH)
+  def apply() = system.actorOf(Props[ChannelsActor].withDispatcher(CHANNELS_DISPATCHER), VILE_NET_CHANNELS_PATH)
 }
 
 case object GetChannels extends Command
-case object CleanChannels extends Command
 case class ChannelsAre(channels: Seq[(String, ActorRef)]) extends Command
 case class ChannelCreated(actor: ActorRef, name: String) extends Command
 case class GetChannelUsers(remoteActor: ActorRef) extends Command
@@ -35,6 +35,7 @@ case class UserAdded(actor: ActorRef, channel: String) extends Command
 case object ChannelEmpty extends Command
 case object ChannelNotEmpty extends Command
 case class ChannelDeleted(name: String) extends Command
+case object MrCleanChannelEraser extends Command
 
 
 class ChannelsActor extends ViLeNetClusterActor {
@@ -52,9 +53,9 @@ class ChannelsActor extends ViLeNetClusterActor {
   subscribe(TOPIC_CHANNELS)
   subscribe(TOPIC_SPLIT)
 
-//  system.scheduler.schedule(
-//    Timeout(5, TimeUnit.SECONDS).duration, Timeout(5, TimeUnit.SECONDS).duration, self, CleanChannels
-//  )
+  system.scheduler.schedule(
+    Timeout(15, TimeUnit.SECONDS).duration, Timeout(15, TimeUnit.SECONDS).duration, self, MrCleanChannelEraser
+  )
 
   private def sendGetChannels(address: Address): Unit = {
     remoteChannelsActor(address).resolveOne(Timeout(5, TimeUnit.SECONDS).duration).onComplete {
@@ -79,7 +80,24 @@ class ChannelsActor extends ViLeNetClusterActor {
     case UnreachableMember(member) =>
       remoteChannelsActors -= member.address
 
-    case CleanChannels =>
+    case MrCleanChannelEraser =>
+      val futureSeq = channels
+        .values
+        .map {
+          case (_, actor) =>
+            actor ? CheckSize
+        }
+
+      Try {
+        Await.result(futureSeq.collectResults {
+          case ChannelSize(actor, name, size) =>
+            if (size == 0) {
+              actor ! PoisonPill
+              channels -= name
+            }
+            None
+        }, Timeout(1, TimeUnit.SECONDS).duration)
+      }.getOrElse(log.error("Failed to clean channels due to timeout."))
 
     case SplitMe =>
       if (!isLocal()) {
@@ -105,55 +123,58 @@ class ChannelsActor extends ViLeNetClusterActor {
         }
 
     case c@ ChannelCreated(actor, name) =>
-      log.error(s"### $c")
-      //log.error(s"ChannelCreated $actor $name")
+      //log.error(s"### $c")
       if (!isLocal()) {
         getOrCreate(name) ! ChannelCreated(actor, name)
       }
 
-    case ChannelDeleted(channel) =>
-      val senderChannelsActor = sender()
-      channels.get(channel).foreach {
-        case (_, channelActor) =>
-          Await.result(channelActor ? CheckSize, timeout.duration) match {
-            case ChannelSize(size) =>
-              if (size > 0) {
-                // Problem... Channels unsynced. Force resync
-                senderChannelsActor ! ChannelsAre(channels.values.toSeq)
-              } else {
-                // OK, delete channel
-                channelActor ! PoisonPill
-                channels -= channel
-              }
-          }
-      }
-
-    case UserSwitchedChat(actor, user, channel) =>
-      //log.error(s"$user switched chat")
-
+    case command @ UserLeftChat(user) =>
       channels.get(user.channel).foreach {
         case (_, oldChannelActor) =>
-          Await.result(oldChannelActor ? RemUser(actor), timeout.duration) match {
-            case ChannelEmpty =>
-              oldChannelActor ! PoisonPill
-              channels -= user.channel
-              remoteChannelsActors.values.foreach(_ ! ChannelDeleted(user.channel))
-            case _ =>
-          }
+          oldChannelActor ! RemUser(sender())
       }
-      getOrCreate(channel) ! AddUser(actor, user)
+
+    case command @ UserSwitchedChat(actor, user, channel) =>
+      //log.error(s"$user switched chat")
+      channels.get(user.channel).foreach {
+        case (_, oldChannelActor) =>
+          oldChannelActor ! RemUser(actor)
+      }
+
+      val userActor = sender()
+      (getOrCreate(channel) ? AddUser(actor, user)).onComplete {
+        case Success(reply) => userActor ! reply
+        case reply => userActor ! reply
+      }
 
     case ChannelsCommand =>
       val replyActor = sender()
-      replyActor ! UserInfo(CHANNEL_LIST(channels.size))
+
       channels
         .values
-        .foreach {
-          case (_, actor) => actor ! ChannelsCommand(replyActor)
+        .map {
+          case (_, actor) => actor ? ChannelsCommand
+        }
+        .collectResults {
+          case ChannelInfo(name, size) if size > 0 => Some(name -> size)
+          case _ => None
+        }
+        .onSuccess {
+          case responses if responses.nonEmpty =>
+            val sortedResponses = responses.sortBy(_._2)(Ordering[Int].reverse)
+
+            replyActor ! UserInfo(CHANNEL_LIST(sortedResponses.size))
+            sortedResponses.foreach {
+              case (name, size) => replyActor ! UserInfo(CHANNEL_INFO(name, size))
+            }
+
+          case _ => replyActor ! UserInfo(CHANNEL_LIST_EMPTY)
         }
 
     case WhoCommand(user, channel) =>
-      getChannel(channel).fold(sender() ! UserErrorArray(CHANNEL_NOT_EXIST))(_ ! WhoCommandToChannel(sender(), user))
+      getChannel(channel).fold(sender() ! UserErrorArray(CHANNEL_NOT_EXIST))(actor => {
+        actor ! WhoCommandToChannel(sender(), user)
+      })
   }
 
   def getChannel(name: String): Option[ActorRef] = {
@@ -166,7 +187,7 @@ class ChannelsActor extends ViLeNetClusterActor {
     val channelActor = channels.getOrElse(name, {
       val channelActor = context.actorOf(ChannelActor(name, remoteActor).withDispatcher(CHANNEL_DISPATCHER))
       channels += name -> channelActor
-      log.error(s"### getOrCreate Publishing ${ChannelCreated(channelActor, name)}")
+      //log.error(s"### getOrCreate Publishing ${ChannelCreated(channelActor, name)}")
       remoteChannelsActors.values.foreach(_ ! ChannelCreated(channelActor, name))
       name -> channelActor
     })._2

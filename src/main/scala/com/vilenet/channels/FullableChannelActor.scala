@@ -10,7 +10,7 @@ trait FullableChannelActor extends ChannelActor {
 
   override def add(actor: ActorRef, user: User): User = {
     if (users.size >= limit) {
-      actor ! UserError(CHANNEL_FULL)
+      sender() ! UserError(CHANNEL_FULL)
       user
     } else {
       super.add(actor, user)

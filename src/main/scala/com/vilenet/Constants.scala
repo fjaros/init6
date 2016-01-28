@@ -23,6 +23,7 @@ object Constants {
   val VILE_NET_USERS_PATH = "Users"
   val VILE_NET_IP_LIMITER_PATH = "IpLimiter"
   val CHANNEL_DISPATCHER = "channel-dispatcher"
+  val CHANNELS_DISPATCHER = "channels-dispatcher"
 
 
   val ALREADY_OPERATOR = "That user is already an operator."
@@ -32,8 +33,9 @@ object Constants {
   val CANNOT_BAN_OPERATOR = "You can't ban a channel operator."
   val CANNOT_KICK_OPERATOR = "You can't kick a channel operator."
   val CHANNEL_FULL = "Channel is full."
-  val CHANNEL_INFO = (name: String, size: Int) => s"$name with $size user${if (size != 1) "s" else ""}."
-  val CHANNEL_LIST = (size: Int) => s"Listing $size channel${if (size != 1) "s" else ""}:"
+  val CHANNEL_INFO = (name: String, size: Int) => s"$name with $size ${addS(size, "user")}."
+  val CHANNEL_LIST = (size: Int) => s"Listing $size ${addS(size, "channel")}:"
+  val CHANNEL_LIST_EMPTY = "There are no visible channels."
   val CHANNEL_NOT_EXIST = Array(
     "That channel does not exist.",
     "(If you are trying to search for a user, use the /whois command.)"

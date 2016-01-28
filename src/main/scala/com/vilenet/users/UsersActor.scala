@@ -4,6 +4,7 @@ import java.util.concurrent.TimeUnit
 
 import akka.actor.{Address, Terminated, Props, ActorRef}
 import akka.cluster.ClusterEvent.{UnreachableMember, MemberUp}
+import akka.pattern.ask
 import akka.util.Timeout
 import com.vilenet.channels.utils.{RemoteMultiMap, LocalUsersSet}
 import com.vilenet.coders.commands._
@@ -96,11 +97,6 @@ class UsersActor extends ViLeNetClusterActor {
     case GetUsers =>
       sender() ! ReceivedUsers(users.values.toSeq)
 
-    case ReceivedUser(remoteUser) =>
-      context.watch(remoteUser._2)
-      users += remoteUser
-      reverseUsers += remoteUser._2 -> remoteUser._1
-
     case ReceivedUsers(remoteUsers) =>
       if (!isLocal()) {
         val address = sender().path.address
@@ -109,6 +105,17 @@ class UsersActor extends ViLeNetClusterActor {
           .foreach(context.watch)
         remoteUsersMap ++= address -> remoteUsers.map(_._2)
         remoteUsers.foreach(users += _)
+
+        // yeah .. but each server gets this...
+//        remoteUsers.foreach {
+//          case (name, actor) =>
+//            users.get(name).fold() {
+//              case (currentName, currentActor) =>
+//                currentActor ! KillSelf
+//                rem(currentActor, currentName)
+//            }
+//            users += name -> actor
+//        }
         reverseUsers ++=
           remoteUsers.map {
             case (name, actor) => actor -> name

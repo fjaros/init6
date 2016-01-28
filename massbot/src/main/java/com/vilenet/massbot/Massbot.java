@@ -30,15 +30,17 @@ public class Massbot {
             executor.submit(bot);
         }
 
-        Scanner stdIn = new Scanner(new BufferedReader(new InputStreamReader(System.in)));
-        String s;
-        while ((s = stdIn.nextLine()) != null) {
-            if (s.equals("/quit")) {
-                System.exit(0);
-            } else {
-                bot.send(s);
-            }
-        }
+        executor.shutdown();
+
+//        Scanner stdIn = new Scanner(new BufferedReader(new InputStreamReader(System.in)));
+//        String s;
+//        while ((s = stdIn.nextLine()) != null) {
+//            if (s.isEmpty() || s.equals("/quit")) {
+//                System.exit(0);
+//            } else {
+//                bot.send(s);
+//            }
+//        }
     }
 
     private static class Bot implements Runnable {
@@ -74,6 +76,7 @@ public class Massbot {
         public void run() {
             System.out.println(this);
             try {
+                //for (int i = 0;i !=100;i++) {
                 for (;;) {
                     Socket socket = new Socket(host, port);
                     out = new PrintWriter(socket.getOutputStream(), true);
@@ -85,12 +88,14 @@ public class Massbot {
 //                    send("boatbawt#$&(*)!@vsdh9ai@$!Q^911");
                     send(name);
                     send("1234");
+                    send("/j " + name);
                     send("/j vile");
                     //send("/makeaccount bawtboat" + name.substring(8) + " 1234");
 
                     Thread.sleep(time);
                     try {
                         socket.close();
+
                         Thread.sleep(10);
                     } catch (Exception e) {
 

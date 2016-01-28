@@ -35,7 +35,7 @@ trait BannableChannelActor extends RemoteBannableChannelActor {
 
   override def add(actor: ActorRef, user: User): User = {
     if (bannedUsers(user.name)) {
-      actor ! UserError(YOU_BANNED)
+      sender() ! UserError(YOU_BANNED)
       user
     } else {
       super.add(actor, user)

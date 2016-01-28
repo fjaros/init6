@@ -1,7 +1,6 @@
 package com.vilenet.utils
 
 import scala.collection.mutable
-import scala.util.Try
 
 /**
  * Created by filip on 10/11/15.
@@ -23,18 +22,7 @@ object RealKeyedCaseInsensitiveHashMap {
 }
 
 sealed class RealKeyedCaseInsensitiveHashMap[B] extends CaseInsensitiveHashMap[(String, B)] {
-
-  def +=(kv: (String, B)): this.type = {
-    super.+=(kv._1 -> kv)
-  }
-
-  override def -=(key: String): this.type = {
-    super.-=(key.toLowerCase)
-  }
-
-  override def remove(key: String): Option[(String, B)] = {
-    super.remove(key.toLowerCase)
-  }
+  def +=(kv: (String, B)): this.type = +=(kv._1 -> kv)
 }
 
 object CaseInsensitiveMultiMap {

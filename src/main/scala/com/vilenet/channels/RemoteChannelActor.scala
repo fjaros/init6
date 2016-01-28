@@ -61,18 +61,18 @@ trait RemoteChannelActor extends ChannelActor with ViLeNetClusterActor {
           .values
           .foreach(_.foreach(remoteRem))
         val shit = RemAll(localUsers.toSet)
-        log.error(s"##### SENDING $shit")
+        //log.error(s"##### SENDING $shit")
         remoteUsers ! RemAll(localUsers.toSet)
         remoteUsers.clear()
       }
 
     case c@ ChannelCreated(remoteChannelActor, _) =>
-      log.error(s"##### $c")
+      //log.error(s"##### $c")
       context.watch(remoteChannelActor)
       remoteUsers += remoteChannelActor
       remoteServers += remoteChannelActor.path.address -> remoteChannelActor
       val shit = RemoteEvent(ChannelUsersLoad(self, users.toMap, localUsers.toSet))
-      log.error(s"##### SENDING $shit")
+      //log.error(s"##### SENDING $shit")
       //remoteChannelActor ! RemoteEvent(ChannelUsersLoad(self, users.toSeq, localUsers.toSet))
       remoteChannelActor ! shit
 
@@ -92,7 +92,7 @@ trait RemoteChannelActor extends ChannelActor with ViLeNetClusterActor {
 
   def receiveRemoteEvent: Receive = {
     case c@ ChannelUsersLoad(remoteChannelActor, allUsers, remoteUsersLoad) =>
-      log.error(s"##### $c - ${sender()}")
+      //log.error(s"##### $c - ${sender()}")
       if (allUsers.nonEmpty) {
         onChannelUsersLoad(allUsers, remoteUsersLoad)
       }
@@ -108,7 +108,7 @@ trait RemoteChannelActor extends ChannelActor with ViLeNetClusterActor {
       super.sendUserUpdate(user)
 
     case c@ RemAll(userActors) =>
-      log.error(s"##### $c")
+      //log.error(s"##### $c")
       remoteUsers -= sender()
       userActors.foreach(remoteRem)
 

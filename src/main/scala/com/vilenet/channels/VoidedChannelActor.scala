@@ -2,7 +2,7 @@ package com.vilenet.channels
 
 import akka.actor.ActorRef
 import com.vilenet.Constants._
-import com.vilenet.coders.commands.EmoteCommand
+import com.vilenet.coders.commands.{ChannelInfo, ChannelsCommand, EmoteCommand}
 
 /**
   * Created by filip on 11/24/15.
@@ -17,7 +17,8 @@ sealed class VoidedChannelActor(channelName: String)
   override val name = channelName
 
   override def receiveEvent = ({
-    case ChannelCreated(_, _) => // No-op
+    case ChannelCreated => // No-op
+    case ChannelsCommand => sender() ! ChannelInfo(name, 0)
     case EmoteCommand(_, message) => sender() ! UserEmote(users(sender()), message)
   }: Receive)
     .orElse(super.receiveEvent)

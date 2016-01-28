@@ -4,12 +4,9 @@ import java.net.InetSocketAddress
 
 import com.vilenet.channels.ChannelsActor
 import com.vilenet.connection.{IpLimitActor, ConnectionHandler}
-import Constants.VILE_NET
 import com.vilenet.db.{DAO, DAOActor}
-import com.vilenet.servers.ServerColumbus
+import com.vilenet.servers.ServerPantyDropper
 import com.vilenet.users.UsersActor
-
-import scala.io.StdIn
 
 /**
  * Created by filip on 9/19/15.
@@ -22,16 +19,16 @@ object ViLeNet extends App with ViLeNetComponent {
 
   DAO
   DAOActor()
-  ServerColumbus(name)
+  ServerPantyDropper(name)
   IpLimitActor(8)
   UsersActor()
   ChannelsActor()
 
+  sys.addShutdownHook({
+    system.terminate()
+    DAO.close()
+  })
+
   val bind = new InetSocketAddress(host, port)
   ConnectionHandler(bind)
-
-  StdIn.readLine(s"Hit ENTER to exit ...${System.lineSeparator}")
-
-  system.terminate()
-  DAO.close()
 }
