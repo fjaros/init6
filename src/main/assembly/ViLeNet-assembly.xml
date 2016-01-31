@@ -13,7 +13,7 @@
 
     <fileSets>
         <fileSet>
-            <outputDirectory>/</outputDirectory>
+            <outputDirectory/>
             <directory>${project.build.directory}</directory>
             <includes>
                 <include>${project.artifactId}-${project.version}.jar</include>
@@ -21,12 +21,14 @@
             <fileMode>0755</fileMode>
         </fileSet>
         <fileSet>
-            <outputDirectory>/</outputDirectory>
+            <outputDirectory/>
             <directory>src/main/resources</directory>
             <includes>
                 <include>*.conf</include>
+                <include>*.sh</include>
                 <include>*.xml</include>
             </includes>
+            <fileMode>0755</fileMode>
         </fileSet>
     </fileSets>
 

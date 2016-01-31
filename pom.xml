@@ -32,13 +32,16 @@
                             <goal>compile</goal>
                         </goals>
                     </execution>
-                    <execution>
-                        <id>scala-test-compile</id>
-                        <phase>process-test-resources</phase>
-                        <goals>
-                            <goal>testCompile</goal>
-                        </goals>
-                    </execution>
+
+                    <!-- no tests currently ;) -->
+
+                    <!--<execution>-->
+                        <!--<id>scala-test-compile</id>-->
+                        <!--<phase>process-test-resources</phase>-->
+                        <!--<goals>-->
+                            <!--<goal>testCompile</goal>-->
+                        <!--</goals>-->
+                    <!--</execution>-->
                 </executions>
                 <configuration>
                     <scalaVersion>${scala.version}</scalaVersion>
@@ -62,15 +65,16 @@
                             <mainClass>com.vilenet.ViLeNet</mainClass>
                         </transformer>
                     </transformers>
-                    <!--<filters>-->
-                        <!--<filter>-->
-                            <!--<artifact>${project.groupId}:${project.artifactId}</artifact>-->
-                            <!--<excludes>-->
-                                <!--<exclude>*.conf</exclude>-->
-                                <!--<exclude>*.xml</exclude>-->
-                            <!--</excludes>-->
-                        <!--</filter>-->
-                    <!--</filters>-->
+                    <filters>
+                        <filter>
+                            <artifact>${project.groupId}:${project.artifactId}</artifact>
+                            <excludes>
+                                <exclude>*.conf</exclude>
+                                <exclude>*.sh</exclude>
+                                <exclude>*.xml</exclude>
+                            </excludes>
+                        </filter>
+                    </filters>
                 </configuration>
                 <executions>
                     <execution>
@@ -89,14 +93,14 @@
                     <descriptor>src/main/assembly/ViLeNet-assembly.xml</descriptor>
                     <appendAssemblyId>false</appendAssemblyId>
                 </configuration>
-                <!--<executions>-->
-                    <!--<execution>-->
-                        <!--<phase>package</phase>-->
-                        <!--<goals>-->
-                            <!--<goal>single</goal>-->
-                        <!--</goals>-->
-                    <!--</execution>-->
-                <!--</executions>-->
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
