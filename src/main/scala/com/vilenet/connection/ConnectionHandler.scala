@@ -45,7 +45,5 @@ class ConnectionHandler(bindAddress: InetSocketAddress) extends ViLeNetClusterAc
       }
 
       //log.error("Remote address {} connected", remote)
-      sender ! Register(context.actorOf(ProtocolHandler(remote, sender())), keepOpenOnPeerClosed = true)
-      listener ! ResumeAccepting(1)
   }
 }
