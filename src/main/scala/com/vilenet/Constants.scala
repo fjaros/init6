@@ -107,6 +107,10 @@ object Constants {
     if (number != 1) s"${string}s" else string
   }
 
+  def getStringFromArray(data: Array[Byte]): String = {
+    data.map("%02x".format(_)).mkString
+  }
+
   def getStringFromHash(hash: Array[Byte]) = {
     hash
     .grouped(4)

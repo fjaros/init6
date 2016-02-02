@@ -8,7 +8,7 @@ import akka.io.Tcp
 import akka.io.Tcp.{PeerClosed, Received}
 import akka.util.ByteString
 import com.vilenet.connection.binary.{BinaryPacket, BinaryMessageHandler}
-import com.vilenet.ViLeNetActor
+import com.vilenet.{Constants, ViLeNetActor}
 
 import scala.annotation.tailrec
 import scala.concurrent.duration.Duration
@@ -42,28 +42,33 @@ class BinaryMessageReceiver(clientAddress: InetSocketAddress, connection: ActorR
     case Event(Received(data), ReceivingData(buffer)) =>
       @tailrec
       def constructPackets(data: Array[Byte]): State = {
-        val fullLength = data.length + buffer.length
-        if (fullLength >= HEADER_SIZE) {
-          val fullData: Array[Byte] = buffer ++ data
+        val dataLen = data.length
+        if (dataLen >= HEADER_SIZE) {
+          val fullData: Array[Byte] = data
 
-          if (fullData.head == HEADER_BYTE) {
-            val packetId = fullData(1)
-            val length = (fullData(3) << 8 & 0xFF00 | fullData(2) & 0xFF).toShort
-            val packet = ByteString(fullData.slice(HEADER_SIZE, length))
+          if (data.head == HEADER_BYTE) {
+            val packetId = data(1)
+            val length = (data(3) << 8 & 0xFF00 | data(2) & 0xFF).toShort
 
-            handler ! BinaryPacket(packetId, packet)
+            if (dataLen >= length) {
+              val packet = ByteString(fullData.slice(HEADER_SIZE, length))
 
-            constructPackets(fullData.drop(length))
+              handler ! BinaryPacket(packetId, packet)
+
+              constructPackets(fullData.drop(length))
+            } else {
+              stay using ReceivingData(fullData)
+            }
           } else {
             stop()
           }
-        } else if (fullLength == 0) {
-          stay
+        } else if (dataLen == 0) {
+          stay using ReceivingData()
         } else {
-          stay using ReceivingData(buffer ++ data) forMax IN_HEADER_TIMEOUT
+          stay using ReceivingData(data) forMax IN_HEADER_TIMEOUT
         }
       }
-      constructPackets(data.toArray)
+      constructPackets(buffer ++ data.toArray[Byte])
 
     case Event(StateTimeout, _) =>
       stop()
