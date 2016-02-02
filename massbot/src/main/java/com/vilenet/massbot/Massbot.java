@@ -88,7 +88,7 @@ public class Massbot {
 //                    send("boatbawt#$&(*)!@vsdh9ai@$!Q^911");
                     send(name);
                     send("1234");
-                    send("/j " + name);
+                    //send("/j " + name);
                     send("/j vile");
                     //send("/makeaccount bawtboat" + name.substring(8) + " 1234");
 

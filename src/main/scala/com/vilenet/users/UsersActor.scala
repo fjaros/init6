@@ -13,6 +13,7 @@ import com.vilenet.{ViLeNetClusterActor, Constants, ViLeNetComponent}
 import com.vilenet.channels._
 import com.vilenet.Constants._
 import com.vilenet.utils.{FiniteArrayBuffer, RealKeyedCaseInsensitiveHashMap}
+import com.vilenet.utils.FutureCollector._
 
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -37,6 +38,8 @@ case object TelnetProtocol extends Protocol
 case object Chat1Protocol extends Protocol
 
 case object GetUsers extends Command
+case object GetUptime extends Command
+case class ReceivedUptime(actor: ActorRef, uptime: Long) extends Command
 case class ReceivedUser(user: (String, ActorRef)) extends Command
 case class ReceivedUsers(users: Seq[(String, ActorRef)]) extends Command
 case class UserToChannelCommandAck(userActor: ActorRef, realUsername: String, command: UserToChannelCommand) extends Command
@@ -104,22 +107,50 @@ class UsersActor extends ViLeNetClusterActor {
           .map(_._2)
           .foreach(context.watch)
         remoteUsersMap ++= address -> remoteUsers.map(_._2)
-        remoteUsers.foreach(users += _)
 
         // yeah .. but each server gets this...
+//        implicit val timeout = Timeout(10, TimeUnit.SECONDS)
+//        println(s"### REMOTEUSERS $remoteUsers $users")
 //        remoteUsers.foreach {
 //          case (name, actor) =>
-//            users.get(name).fold() {
+//            users.get(name).fold[Unit]({
+//              users += name -> actor
+//              reverseUsers += actor -> name
+//            }) {
 //              case (currentName, currentActor) =>
-//                currentActor ! KillSelf
-//                rem(currentActor, currentName)
+//                println(actor)
+//                println(currentActor)
+//                if (actor != currentActor) {
+//                  println(actor)
+//                  println(currentActor)
+//                  val remoteActorUptime = actor ? GetUptime
+//                  val localActorUptime = currentActor ? GetUptime
+//
+//                  Seq(remoteActorUptime, localActorUptime).collectResults {
+//                    case ReceivedUptime(actor, uptime) =>
+//                      println(uptime + " - " + sender())
+//                      Some(actor -> uptime)
+//                  }.onSuccess {
+//                    case uptimeSeq =>
+//                      println("Success " + uptimeSeq)
+//                      val (toKill, toKeep) =
+//                        if (uptimeSeq.head._2 > uptimeSeq.last._2) {
+//                          (uptimeSeq.head._1, uptimeSeq.last._1)
+//                        } else {
+//                          (uptimeSeq.last._1, uptimeSeq.head._1)
+//                        }
+//
+//                      println("toKill " + toKill)
+//
+//                      toKill ! KillSelf
+//                      rem(toKill)
+//
+//                      users += name -> toKeep
+//                      reverseUsers += toKeep -> name
+//                  }
+//                }
 //            }
-//            users += name -> actor
 //        }
-        reverseUsers ++=
-          remoteUsers.map {
-            case (name, actor) => actor -> name
-          }
       }
 
     case command: UserToChannelCommand =>
@@ -199,6 +230,14 @@ class UsersActor extends ViLeNetClusterActor {
       publish(TOPIC_USERS, RemoteEvent(BroadcastCommand(message)))
 
     case _ =>
+  }
+
+  def rem(userActor: ActorRef) = {
+    localUsers -= userActor
+    reverseUsers.get(userActor).fold()(username => {
+      reverseUsers -= userActor
+      users -= username
+    })
   }
 
   def rem(userActor: ActorRef, username: String) = {

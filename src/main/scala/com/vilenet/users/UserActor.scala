@@ -48,6 +48,7 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
 
   var pingTime: Long = 0
   var pingCookie: String = ""
+  val connectedTime = System.currentTimeMillis()
 
   context.watch(connection)
 
@@ -65,6 +66,9 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
   }
 
   override def receive: Receive = {
+    case GetUptime =>
+      sender() ! ReceivedUptime(self, connectedTime)
+
     case PingSent(time, cookie) =>
       pingTime = time
       pingCookie = cookie
