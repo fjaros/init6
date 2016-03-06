@@ -22,6 +22,7 @@ object Constants {
   val VILE_NET_CHANNELS_PATH = "Channels"
   val VILE_NET_USERS_PATH = "Users"
   val VILE_NET_IP_LIMITER_PATH = "IpLimiter"
+  val VILE_NET_TOP_COMMAND_ACTOR = "TopCommand"
   val CHANNEL_DISPATCHER = "channel-dispatcher"
   val CHANNELS_DISPATCHER = "channels-dispatcher"
 
@@ -72,7 +73,8 @@ object Constants {
   val WHO_CHANNEL = (name: String) => s"Users in channel $name:"
 
   val WHOAMI = (username: String, client: String, channel: String) => s"You are $username, using $client in the channel $channel."
-  val TOP_LIST = (username: String, client: String) => s"$username was using $client."
+  val TOP_INFO = (number: Int, protocol: String) => s"Showing the top $number $protocol connections:"
+  val TOP_LIST = (number: Int, username: String, client: String) => s"$number. $username was using $client."
 
   val THE_VOID = "The Void"
 

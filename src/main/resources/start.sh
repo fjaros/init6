@@ -11,6 +11,9 @@
 
 log_file=vilenet.log
 
+# if set to true, will block and log to console.
+debug=false
+
 akka_host=127.0.0.1
 akka_port=2552
 akka_nodes=(127.0.0.1:2552 127.0.0.1:2553)
@@ -68,7 +71,11 @@ java_run=" \
 
 while :; do
     echo "Starting ViLeNet..."
-    java $java_run > $log_file &
+    if [ "$debug" = true ]; then
+        java $java_run
+    else
+        java $java_run > $log_file &
+    fi
 
     pid=$!
     waited_time=0

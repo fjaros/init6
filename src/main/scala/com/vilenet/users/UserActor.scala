@@ -175,7 +175,7 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
             case command: UserCommand => usersActor ! command
             case command: ReturnableCommand => encoder(command).fold()(connection ! WriteOut(_))
             case command @ UsersCommand => usersActor ! command
-            case command: TopCommand => usersActor ! command
+            case command: TopCommand => topCommandActor ! command
             case AwayCommand(message) => awayAvailablity.enableAction(message)
             case DndCommand(message) => dndAvailablity.enableAction(message)
             case AccountMade(username, passwordHash) =>

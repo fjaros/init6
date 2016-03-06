@@ -2,7 +2,7 @@ package com.vilenet.utils
 
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.{Future, Promise}
-import scala.util.{Failure, Success}
+import scala.util.Success
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -24,31 +24,24 @@ class FutureCollector[A](futures: Iterable[Future[A]]) {
       val returnSeq = new ArrayBuffer[B](counter)
 
       futures.foreach(future => {
-        future.onComplete {
-          case Success(action) =>
-            synchronized {
-              counter = appendResultAndCheckPromise(counter, task(action), returnSeq, returnPromise)
+        future.onComplete(futureState => {
+          val valueOpt = futureState match {
+            case Success(action) => task(action)
+            case _ => None
+          }
+          synchronized {
+            valueOpt.foreach(returnSeq += _)
+            counter -= 1
+            if (counter <= 0) {
+              returnPromise.success(returnSeq)
             }
-          case Failure(ex) =>
-            synchronized {
-              counter = appendResultAndCheckPromise(counter, None, returnSeq, returnPromise)
-            }
-        }
+          }
+        })
       })
     } else {
       returnPromise.success(Seq.empty)
     }
 
     returnPromise.future
-  }
-
-  // Must be called within synchronized block
-  private def appendResultAndCheckPromise[B](counter: Int, valueOpt: Option[B], returnSeq: ArrayBuffer[B], returnPromise: Promise[Seq[B]]) = {
-    valueOpt.foreach(returnSeq += _)
-    val ret = counter - 1
-    if (ret == 0) {
-      returnPromise.success(returnSeq)
-    }
-    ret
   }
 }

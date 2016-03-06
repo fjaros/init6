@@ -108,7 +108,7 @@ class ChannelsActor extends ViLeNetClusterActor {
       publish(TOPIC_CHANNELS, GetChannels)
 
     case c@ GetChannels =>
-      //log.error(s"### $c $channels")
+      log.error(s"### $c $channels")
       if (!isLocal()) {
         val remoteActor = sender()
         remoteChannelsActors += remoteActor.path.address -> remoteActor
@@ -116,7 +116,7 @@ class ChannelsActor extends ViLeNetClusterActor {
       }
 
     case c@ ChannelsAre(remoteChannels) =>
-      //log.error(s"### $c")
+      log.error(s"### $c")
       remoteChannels
         .foreach {
           case (name, actor) => getOrCreate(name, Some(actor))

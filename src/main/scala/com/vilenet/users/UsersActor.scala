@@ -12,7 +12,7 @@ import com.vilenet.servers._
 import com.vilenet.{ViLeNetClusterActor, Constants, ViLeNetComponent}
 import com.vilenet.channels._
 import com.vilenet.Constants._
-import com.vilenet.utils.{FiniteArrayBuffer, RealKeyedCaseInsensitiveHashMap}
+import com.vilenet.utils.RealKeyedCaseInsensitiveHashMap
 import com.vilenet.utils.FutureCollector._
 
 import scala.collection.mutable
@@ -47,6 +47,8 @@ case class UsersUserAdded(userActor: ActorRef, user: User) extends Command
 
 class UsersActor extends ViLeNetClusterActor {
 
+  TopCommandActor()
+
   var placeCounter = 1
 
   val remoteUsersActor = (address: Address) =>
@@ -56,12 +58,6 @@ class UsersActor extends ViLeNetClusterActor {
   val reverseUsers = mutable.HashMap[ActorRef, String]()
   val localUsers = LocalUsersSet()
   val remoteUsersMap = RemoteMultiMap[Address, ActorRef]()
-
-  val topMap = Map(
-    "binary" -> FiniteArrayBuffer[User](),
-    "chat" -> FiniteArrayBuffer[User](),
-    "all" -> FiniteArrayBuffer[User]()
-  )
 
   subscribe(TOPIC_ONLINE)
   subscribe(TOPIC_USERS)
@@ -109,75 +105,66 @@ class UsersActor extends ViLeNetClusterActor {
         remoteUsersMap ++= address -> remoteUsers.map(_._2)
 
         // yeah .. but each server gets this...
-//        implicit val timeout = Timeout(10, TimeUnit.SECONDS)
-//        println(s"### REMOTEUSERS $remoteUsers $users")
-//        remoteUsers.foreach {
-//          case (name, actor) =>
-//            users.get(name).fold[Unit]({
-//              users += name -> actor
-//              reverseUsers += actor -> name
-//            }) {
-//              case (currentName, currentActor) =>
-//                println(actor)
-//                println(currentActor)
-//                if (actor != currentActor) {
-//                  println(actor)
-//                  println(currentActor)
-//                  val remoteActorUptime = actor ? GetUptime
-//                  val localActorUptime = currentActor ? GetUptime
-//
-//                  Seq(remoteActorUptime, localActorUptime).collectResults {
-//                    case ReceivedUptime(actor, uptime) =>
-//                      println(uptime + " - " + sender())
-//                      Some(actor -> uptime)
-//                  }.onSuccess {
-//                    case uptimeSeq =>
-//                      println("Success " + uptimeSeq)
-//                      val (toKill, toKeep) =
-//                        if (uptimeSeq.head._2 > uptimeSeq.last._2) {
-//                          (uptimeSeq.head._1, uptimeSeq.last._1)
-//                        } else {
-//                          (uptimeSeq.last._1, uptimeSeq.head._1)
-//                        }
-//
-//                      println("toKill " + toKill)
-//
-//                      toKill ! KillSelf
-//                      rem(toKill)
-//
-//                      users += name -> toKeep
-//                      reverseUsers += toKeep -> name
-//                  }
-//                }
-//            }
-//        }
+        implicit val timeout = Timeout(10, TimeUnit.SECONDS)
+        remoteUsers.foreach {
+          case (name, actor) =>
+            users.get(name).fold[Unit]({
+              users += name -> actor
+              reverseUsers += actor -> name
+            }) {
+              case (currentName, currentActor) =>
+                println(actor)
+                println(currentActor)
+                if (actor != currentActor) {
+                  println(actor)
+                  println(currentActor)
+                  val remoteActorUptime = actor ? GetUptime
+                  val localActorUptime = currentActor ? GetUptime
+
+                  Seq(remoteActorUptime, localActorUptime).collectResults {
+                    case ReceivedUptime(actor, uptime) =>
+                      println(uptime + " - " + sender())
+                      Some(actor -> uptime)
+                  }.onSuccess {
+                    case uptimeSeq =>
+                      val (toKill, toKeep) =
+                        if (uptimeSeq.head._2 > uptimeSeq.last._2) {
+                          (uptimeSeq.head._1, uptimeSeq.last._1)
+                        } else {
+                          (uptimeSeq.last._1, uptimeSeq.head._1)
+                        }
+
+                      toKill ! KillSelf
+                      // This is a race condition
+                      rem(toKill)
+
+                      users += name -> toKeep
+                      reverseUsers += toKeep -> name
+                  }
+                }
+            }
+        }
       }
 
     case command: UserToChannelCommand =>
       sender() ! users.get(command.toUsername)
-        .fold[Command](UserError(Constants.USER_NOT_LOGGED_ON))(keyedUser => UserToChannelCommandAck(keyedUser._2, keyedUser._1, command))
+        .fold[Command](UserError(Constants.USER_NOT_LOGGED_ON)) {
+          case (name, actor) => UserToChannelCommandAck(actor, name, command)
+      }
 
     case command: UserCommand =>
       //log.error(s"command sending $command")
       users.get(command.toUsername)
-        .fold(sender() ! UserError(Constants.USER_NOT_LOGGED_ON))(x => {
-        ////log.error(s"users $users")
-        //log.error(s"sending to $x from ${sender()}")
-        x._2 ! (sender(), command)
-      })
+        .fold(sender() ! UserError(Constants.USER_NOT_LOGGED_ON)) {
+          case (_, actor) =>
+            ////log.error(s"users $users")
+            //log.error(s"sending to $x from ${sender()}")
+            actor ! (sender(), command)
+          }
 
     case UsersCommand =>
+      println(users)
       sender() ! UserInfo(USERS(localUsers.size, users.size))
-
-    case TopCommand(which) =>
-      val topList = topMap(which)
-      sender() ! UserInfo(s"Showing the top ${topList.getInitialSize} $which connections:")
-      topList
-        .zipWithIndex
-        .foreach {
-          case (user, i) =>
-            sender() ! UserInfo(s"${i + 1}. ${TOP_LIST(user.name, encodeClient(user.client))}")
-        }
 
     case Terminated(actor) =>
       rem(actor, reverseUsers.getOrElse(actor, ""))
@@ -195,13 +182,16 @@ class UsersActor extends ViLeNetClusterActor {
       if (isLocal()) {
         publish(TOPIC_USERS, RemoteEvent(RemActors(localUsers.toSet)))
         users
-          .filterNot(tuple => localUsers.contains(tuple._2._2))
-          .foreach(tuple => {
-            val actor = tuple._2._2
-            reverseUsers.get(actor).fold()(username => {
-              self ! Rem(username)
-            })
-          })
+          .filterNot {
+            case (key, (name, actor)) =>
+              localUsers.contains(actor)
+          }
+          .foreach {
+            case (key, (name, actor)) =>
+              reverseUsers.get(actor).fold()(username => {
+                self ! Rem(username)
+              })
+          }
       }
 
     case c@ Add(connection, user, protocol) =>
@@ -210,13 +200,6 @@ class UsersActor extends ViLeNetClusterActor {
       placeCounter += 1
       val userActor = context.actorOf(UserActor(connection, newUser, protocol))
 //      context.watch(userActor)
-      topMap(
-        newUser.client match {
-          case "CHAT" | "TAHC" => "chat"
-          case _ => "binary"
-        }
-      ) += newUser
-      topMap("all") += newUser
       users += newUser.name -> userActor
       reverseUsers += userActor -> newUser.name
       localUsers += userActor
