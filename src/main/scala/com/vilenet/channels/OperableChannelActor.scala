@@ -12,7 +12,7 @@ trait OperableChannelActor extends RemoteOperableChannelActor {
 
   override def receiveEvent = ({
     case command: UserToChannelCommandAck =>
-    users.get(sender()).fold()(user => {
+    users.get(sender()).foreach(user => {
       if (Flags.canBan(user)) {
         command.command match {
           case DesignateCommand(_, designatee) =>
@@ -31,6 +31,7 @@ trait OperableChannelActor extends RemoteOperableChannelActor {
     .orElse(super.receiveEvent)
 
   override def add(actor: ActorRef, user: User): User = {
+    println("Operable add " + user)
     val newUser =
       if (users.isEmpty) {
         Flags.op(user)

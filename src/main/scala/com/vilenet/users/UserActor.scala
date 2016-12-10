@@ -61,8 +61,7 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
   }
 
   def encodeAndSend(chatEvent: ChatEvent) = {
-    encoder(chatEvent)
-      .fold()(message => connection ! WriteOut(message))
+    encoder(chatEvent).foreach(message => connection ! WriteOut(message))
   }
 
   override def receive: Receive = {
@@ -75,6 +74,11 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
 
     case PongCommand(cookie) =>
       handlePingResponse(cookie)
+
+    case command @ UserChannel(newUser, channel, channelActor) =>
+      this.channelActor = channelActor
+      user = newUser
+      encodeAndSend(command)
 
     case UserUpdated(newUser) =>
       user = newUser
@@ -138,7 +142,7 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
     case Received(data) =>
       CommandDecoder(user, data) match {
         case command: Command =>
-          //log.error(s"UserMessageDecoder $command")
+          log.error(s"UserMessageDecoder $command")
           command match {
             case PongCommand(cookie) =>
               handlePingResponse(cookie)
@@ -149,13 +153,16 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
              *  A command being sent to the user's channel can be done via actor selection, since we can guarantee the
              *  channel exists.
              */
-            case JoinUserCommand(fromUser, channel) =>
+            case c@ JoinUserCommand(fromUser, channel) =>
               implicit val timeout = Timeout(250, TimeUnit.MILLISECONDS)
+              println("JoinUserCommand" + c)
               if (!user.channel.equalsIgnoreCase(channel)) {
                 Await.result(channelsActor ? UserSwitchedChat(self, fromUser, channel), timeout.duration) match {
                   case command @ UserChannel(newUser, channel, channelActor) =>
                     this.channelActor = channelActor
-                    user = user.copy(channel = channel)
+                    user = newUser
+                    encodeAndSend(command)
+                  case command: ChatEvent =>
                     encodeAndSend(command)
                   case _ =>
                 }
@@ -169,11 +176,11 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
               if (Flags.canBan(user)) {
                 usersActor ! command
               } else {
-                encoder(UserError(NOT_OPERATOR)).fold()(connection ! WriteOut(_))
+                encoder(UserError(NOT_OPERATOR)).foreach(connection ! WriteOut(_))
               }
             case command: UserToChannelCommand => usersActor ! command
             case command: UserCommand => usersActor ! command
-            case command: ReturnableCommand => encoder(command).fold()(connection ! WriteOut(_))
+            case command: ReturnableCommand => encoder(command).foreach(connection ! WriteOut(_))
             case command @ UsersCommand => usersActor ! command
             case command: TopCommand => topCommandActor ! command
             case AwayCommand(message) => awayAvailablity.enableAction(message)
@@ -189,7 +196,7 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
             case _ =>
           }
         case x =>
-          ////log.error(s"### UserMessageDecoder Unhandled: $x")
+          log.error(s"### UserMessageDecoder Unhandled: $x")
       }
 
     case command: UserToChannelCommandAck =>
@@ -206,7 +213,7 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
       connection ! PoisonPill
 
     case x =>
-      ////log.error(s"### UserActor Unhandled: $x")
+      log.error(s"### UserActor Unhandled: $x")
   }
 
   private def handlePingResponse(cookie: String) = {

@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.util.Random;
 import java.util.Scanner;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -12,6 +13,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class Tester {
 
     //static final String hostName = "54.193.49.146";
+    static final Random random = new Random(System.currentTimeMillis());
     static final int portNumber = 6112;
     static final String hostName = "127.0.0.1";
     //static final int portNumber = 7112;
@@ -33,7 +35,7 @@ public class Tester {
             try {
 
 
-                Socket socket = new Socket(hostName, portNumber);
+                Socket socket = new Socket(hostName, portNumber + random.nextInt(2));
                 out =
                         new PrintWriter(socket.getOutputStream(), true);
                 BufferedReader in =

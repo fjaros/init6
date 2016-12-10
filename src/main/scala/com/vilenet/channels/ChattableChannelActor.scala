@@ -46,6 +46,8 @@ trait ChattableChannelActor extends RemoteChattableChannelActor {
   }
 
   override def add(actor: ActorRef, user: User): User = {
+    println("Chattable add " + user)
+
     val userJoined = UserJoined(user)
     localUsers
       .foreach(_ ! userJoined)
