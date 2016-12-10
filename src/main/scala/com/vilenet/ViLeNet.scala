@@ -16,7 +16,7 @@ object ViLeNet extends App with ViLeNetComponent {
   DAO
   DAOActor()
   ServerPantyDropper(Config.Server.name)
-  IpLimitActor(8)
+  IpLimitActor(10000)
   UsersActor()
   ChannelsActor()
 

@@ -1,5 +1,7 @@
-GRANT ALL PRIVILEGES ON *.* TO 'vileserv'@'localhost' IDENTIFIED BY '12345' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON *.* TO 'filip'@'localhost' IDENTIFIED BY '12345' WITH GRANT OPTION;
+DROP DATABASE vilenet;
 CREATE SCHEMA vilenet;
+USE vilenet;
 
 CREATE TABLE IF NOT EXISTS users (
     id INT(11) NOT NULL AUTO_INCREMENT,
@@ -10,17 +12,17 @@ CREATE TABLE IF NOT EXISTS users (
     UNIQUE KEY(username)
 );
 
-INSERT INTO users(username, password, flags) VALUES ('l2k-shadow', 'vile123456', b'10001');
-INSERT INTO users(username, password, flags) VALUES ('hackez', 'balls', b'10001');
-INSERT INTO users(username, password) VALUES ('chat1', 'balls');
-INSERT INTO users(username, password) VALUES ('chat2', 'balls');
+--INSERT INTO users(username, password, flags) VALUES ('l2k-shadow', 'vile123456', b'10001');
+--INSERT INTO users(username, password, flags) VALUES ('hackez', 'balls', b'10001');
+--INSERT INTO users(username, password) VALUES ('chat1', 'balls');
+--INSERT INTO users(username, password) VALUES ('chat2', 'balls');
 
 CREATE TABLE IF NOT EXISTS user_bans (
     id INT(11) NOT NULL AUTO_INCREMENT,
     username VARCHAR(16),
     banned_by VARCHAR(16),
     banned_time TIMESTAMP,
-    banned_until TIMESTAMP
+    banned_until TIMESTAMP,
     PRIMARY KEY(id),
     UNIQUE KEY(username)
 );
@@ -31,7 +33,7 @@ CREATE TABLE IF NOT EXISTS ip_bans (
     username VARCHAR(16),
     banned_by VARCHAR(16),
     banned_time TIMESTAMP,
-    banned_until TIMESTAMP
-    PRIMARY KEY(id)
+    banned_until TIMESTAMP,
+    PRIMARY KEY(id),
     UNIQUE KEY(ip_address)
 );

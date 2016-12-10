@@ -11,11 +11,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class Watcher {
 
-    static final String hostName = "45.63.55.10";
+    //static final String hostName = "45.63.55.10";
     static final int  portNumber = 6112;
     //static final String hostName = "54.193.49.146";
     //static final int portNumber = 6113;
-//    static final String hostName = "127.0.0.1";
+    static final String hostName = "127.0.0.1";
 //    static final int portNumber = 6112;
 
     static AtomicInteger i = new AtomicInteger();
@@ -43,9 +43,9 @@ public class Watcher {
 
                 out.write(3);
                 out.write(4);
-                send(name);
-                send("1234");
-                send("/j legacy");
+                send("hovno1000");
+                send("pw");
+                send("/j vile");
                 String s;
 
                 int joined =0;int left=0;

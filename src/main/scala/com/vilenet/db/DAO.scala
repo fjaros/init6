@@ -44,7 +44,7 @@ object DAO {
 
   def getUser(username: String) = UserCache.get(username)
 
-  private[db] def saveInserted(inserted: Set[DbUser]) = {
+  private[db] def saveInserted(inserted: Iterable[DbUser]) = {
     if (inserted.nonEmpty) {
       DB localTx { implicit session =>
         withSQL {
@@ -66,7 +66,7 @@ object DAO {
     }
   }
 
-  private[db] def saveUpdated(updated: Set[DbUser]) = {
+  private[db] def saveUpdated(updated: Iterable[DbUser]) = {
     if (updated.nonEmpty) {
       DB localTx { implicit session =>
         withSQL {

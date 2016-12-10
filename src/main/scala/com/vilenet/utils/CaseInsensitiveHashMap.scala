@@ -32,5 +32,5 @@ object CaseInsensitiveMultiMap {
 sealed class CaseInsensitiveMultiMap[B] extends CaseInsensitiveHashMap[mutable.Set[B]] with mutable.MultiMap[String, B] {
 
   def +=(kv: (String, B)): this.type = addBinding(kv._1.toLowerCase, kv._2)
-  def foreach[C](key: String, f: ((String, B)) => C): Unit = get(key).fold()(_.foreach(f(key, _)))
+  def foreach[C](key: String, f: ((String, B)) => C): Unit = get(key).foreach(_.foreach(f(key, _)))
 }

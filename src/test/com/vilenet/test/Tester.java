@@ -11,9 +11,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class Tester {
 
-    static final String hostName = "54.193.49.146";
+    //static final String hostName = "54.193.49.146";
     static final int portNumber = 6112;
-    //static final String hostName = "127.0.0.1";
+    static final String hostName = "127.0.0.1";
     //static final int portNumber = 7112;
 
     static AtomicInteger i = new AtomicInteger();
@@ -29,6 +29,7 @@ public class Tester {
 
         @Override
         public void run() {
+            for (;;){
             try {
 
 
@@ -44,17 +45,21 @@ public class Tester {
                 send(name);
                 send("pw");
                 send("/j vile");
-                System.out.println(i.addAndGet(1));
-                String s;
-                while ((s = in.readLine()) != null) {
-                    System.out.println(s);
-                    if (s.contains("$join")) {
-                        send("/j " + s.substring(s.indexOf("$join") + 5));
-                    }
-                }
+//                System.out.println(i.addAndGet(1));
+                Thread.sleep(100);
+                out.close();
+                in.close();
+                socket.close();
+//                String s;
+//                while ((s = in.readLine()) != null) {
+//                    System.out.println(s);
+//                    if (s.contains("$join")) {
+//                        send("/j " + s.substring(s.indexOf("$join") + 5));
+//                    }
+//                }
             } catch (Exception e) {
 
-            }
+            }}
         }
 
         public void send(String text) {
