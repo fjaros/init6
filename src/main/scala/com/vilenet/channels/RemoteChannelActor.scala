@@ -46,8 +46,8 @@ trait RemoteChannelActor extends ChannelActor with ViLeNetClusterActor {
 //      remoteUsers.foreach(msg => log.error(msg.toString()))
 
     case UnreachableMember(member) =>
-      remoteServers.get(member.address).fold()(removedActor => {
-        remoteUsers.get(removedActor).fold()(actorSet => {
+      remoteServers.get(member.address).foreach(removedActor => {
+        remoteUsers.get(removedActor).foreach(actorSet => {
           actorSet.foreach(remoteRem)
           remoteUsers -= removedActor
         })
@@ -155,7 +155,7 @@ trait RemoteChannelActor extends ChannelActor with ViLeNetClusterActor {
 
   def remoteRem(actor: ActorRef): Option[User] = {
     val userOpt = users.get(actor)
-    userOpt.fold()(_ => {
+    userOpt.foreach(_ => {
       context.unwatch(actor)
       users -= actor
     })

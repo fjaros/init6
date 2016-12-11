@@ -82,9 +82,9 @@ class UsersActor extends ViLeNetClusterActor {
       }
 
     case UnreachableMember(member) =>
-      remoteUsersMap.get(member.address).fold()(unreachableActors => {
+      remoteUsersMap.get(member.address).foreach(unreachableActors => {
         unreachableActors.foreach(unreachableActor => {
-          reverseUsers.get(unreachableActor).fold()(username => {
+          reverseUsers.get(unreachableActor).foreach(username => {
             rem(unreachableActor, username)
           })
         })
@@ -188,18 +188,17 @@ class UsersActor extends ViLeNetClusterActor {
           }
           .foreach {
             case (key, (name, actor)) =>
-              reverseUsers.get(actor).fold()(username => {
+              reverseUsers.get(actor).foreach(username => {
                 self ! Rem(username)
               })
           }
       }
 
-    case c@ Add(connection, user, protocol) =>
-      //println(c)
+    case c @ Add(connection, user, protocol) =>
+      println("#ADD " + c)
       val newUser = getRealUser(user).copy(place = placeCounter)
       placeCounter += 1
       val userActor = context.actorOf(UserActor(connection, newUser, protocol))
-//      context.watch(userActor)
       users += newUser.name -> userActor
       reverseUsers += userActor -> newUser.name
       localUsers += userActor
@@ -207,6 +206,7 @@ class UsersActor extends ViLeNetClusterActor {
       sender() ! UsersUserAdded(userActor, newUser)
 
     case c @ Rem(username) =>
+      println("#REM " + c)
       rem(sender(), username)
 
     case BroadcastCommand(message) =>
@@ -217,7 +217,7 @@ class UsersActor extends ViLeNetClusterActor {
 
   def rem(userActor: ActorRef) = {
     localUsers -= userActor
-    reverseUsers.get(userActor).fold()(username => {
+    reverseUsers.get(userActor).foreach(username => {
       reverseUsers -= userActor
       users -= username
     })
@@ -240,7 +240,7 @@ class UsersActor extends ViLeNetClusterActor {
       if (!isLocal()) {
         //println(c)
         userActors.foreach(userActor => {
-          reverseUsers.get(userActor).fold()(username => {
+          reverseUsers.get(userActor).foreach(username => {
             users -= username
             reverseUsers -= userActor
           })

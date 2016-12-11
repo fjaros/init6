@@ -62,7 +62,7 @@ private object UserCache {
   }
 
   def update(username: String, dbUser: DbUser) = {
-    get(username).fold()(originalDbUser => {
+    get(username).foreach(originalDbUser => {
       if (originalDbUser != dbUser) {
         cache += username -> (dbUser, UPDATED)
       }

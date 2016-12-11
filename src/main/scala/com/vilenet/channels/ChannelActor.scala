@@ -71,7 +71,7 @@ trait ChannelActor extends ViLeNetActor {
 
   def rem(actor: ActorRef): Option[User] = {
     val userOpt = users.get(actor)
-    users.get(actor).fold()(_ => users -= actor)
+    users.get(actor).foreach(_ => users -= actor)
 
     userOpt
   }

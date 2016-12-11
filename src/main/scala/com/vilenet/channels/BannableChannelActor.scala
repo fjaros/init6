@@ -12,7 +12,7 @@ trait BannableChannelActor extends RemoteBannableChannelActor {
 
   override def receiveEvent = ({
     case command: UserToChannelCommandAck =>
-      users.get(sender()).fold()(user => {
+      users.get(sender()).foreach(user => {
         if (Flags.canBan(user)) {
           command.command match {
             case KickCommand(kicked, message) =>

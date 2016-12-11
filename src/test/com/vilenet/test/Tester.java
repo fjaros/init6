@@ -24,8 +24,10 @@ public class Tester {
 
         PrintWriter out;
         String name;
+        int num;
 
-        Bot(String name) {
+        Bot(int num, String name) {
+            this.num = num;
             this.name = name;
         }
 
@@ -35,7 +37,7 @@ public class Tester {
             try {
 
 
-                Socket socket = new Socket(hostName, portNumber + random.nextInt(2));
+                Socket socket = new Socket(hostName, num >= 400 ? 6113 : 6112);//portNumber + random.nextInt(2));
                 out =
                         new PrintWriter(socket.getOutputStream(), true);
                 BufferedReader in =
@@ -48,7 +50,7 @@ public class Tester {
                 send("pw");
                 send("/j vile");
 //                System.out.println(i.addAndGet(1));
-                Thread.sleep(100);
+                Thread.sleep(50 + random.nextInt(50));
                 out.close();
                 in.close();
                 socket.close();
@@ -73,10 +75,10 @@ public class Tester {
     }
 
     public static void main(String[] args) throws Exception {
-        int threads = 200;
+        int threads = 800;
         ExecutorService e = Executors.newFixedThreadPool(threads+1);
         for (int i = 0; i != threads; i++) {
-            e.submit(new Bot(args[0] + i));
+            e.submit(new Bot(i, args[0] + i));
         }
 
         Scanner stdIn = new Scanner(new BufferedReader(new InputStreamReader(System.in)));

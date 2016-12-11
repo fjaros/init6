@@ -115,7 +115,7 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
 
     case (actor: ActorRef, WhisperMessage(fromUser, toUsername, message)) =>
       encoder(UserWhisperedFrom(fromUser, message))
-        .fold()(msg => {
+        .foreach(msg => {
           dndAvailablity
             .whisperAction(actor)
             .getOrElse({

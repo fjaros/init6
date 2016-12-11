@@ -34,7 +34,7 @@ object DAO {
   private[db] def createUser(username: String, passwordHash: Array[Byte]) = UserCache.insert(username, passwordHash)
 
   private[db] def updateUser(username: String, passwordHash: Array[Byte] = Array[Byte](), flags: Int = -1) = {
-    getUser(username).fold()(dbUser => {
+    getUser(username).foreach(dbUser => {
       UserCache.update(username, dbUser.copy(
         passwordHash = if (passwordHash.nonEmpty) passwordHash else dbUser.passwordHash,
         flags = if (flags != -1) flags else dbUser.flags

@@ -45,7 +45,7 @@ trait OperableChannelActor extends RemoteOperableChannelActor {
   override def rem(actor: ActorRef): Option[User] = {
     val userOpt = super.rem(actor)
 
-    userOpt.fold()(user => {
+    userOpt.foreach(user => {
       if (users.nonEmpty && Flags.isOp(user) && !existsOperator()) {
         val designateeActor = designatedActors.getOrElse(actor, users.head._1)
         val designatedUser = users(designateeActor)
@@ -62,7 +62,7 @@ trait OperableChannelActor extends RemoteOperableChannelActor {
   }
 
   override def designate(actor: ActorRef, designatee: ActorRef) = {
-    users.get(actor).fold()(user => {
+    users.get(actor).foreach(user => {
       actor !
         (if (Flags.isOp(user)) {
           users.get(designatee).fold[ChatEvent](UserError(INVALID_USER))(designatedUser => {
@@ -79,7 +79,7 @@ trait OperableChannelActor extends RemoteOperableChannelActor {
   override def remoteRem(actor: ActorRef) = {
     val userOpt = super.remoteRem(actor)
 
-    userOpt.fold()(user => {
+    userOpt.foreach(user => {
       if (users.nonEmpty && Flags.isOp(user) && !existsOperator()) {
         val designateeActor = designatedActors.getOrElse(actor, users.head._1)
         val designatedUser = users.getOrElse(designateeActor, users.head._2)

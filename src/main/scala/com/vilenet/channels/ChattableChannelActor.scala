@@ -21,11 +21,11 @@ trait ChattableChannelActor extends RemoteChattableChannelActor {
         case _: SquelchCommand =>
           sender() ! UserInfo(USER_SQUELCHED(command.realUsername))
           sender() ! UserSquelched(command.realUsername)
-          users.get(command.userActor).fold()(user => sender() ! UserFlags(Flags.squelch(user)))
+          users.get(command.userActor).foreach(user => sender() ! UserFlags(Flags.squelch(user)))
         case _: UnsquelchCommand =>
           sender() ! UserInfo(USER_UNSQUELCHED(command.realUsername))
           sender() ! UserUnsquelched(command.realUsername)
-          users.get(command.userActor).fold()(user => sender() ! UserFlags(Flags.unsquelch(user)))
+          users.get(command.userActor).foreach(user => sender() ! UserFlags(Flags.unsquelch(user)))
         case _ =>
       }
       super.receiveEvent(command)
@@ -65,7 +65,7 @@ trait ChattableChannelActor extends RemoteChattableChannelActor {
 
   override def rem(actor: ActorRef): Option[User] = {
     val userOpt = super.rem(actor)
-    userOpt.fold()(user => {
+    userOpt.foreach(user => {
       localUsers -= actor
       localUsers ! UserLeft(user)
     })
@@ -87,7 +87,7 @@ trait ChattableChannelActor extends RemoteChattableChannelActor {
 
     //println(s"remoteRem Users $users")
 
-    userOpt.fold()(user => {
+    userOpt.foreach(user => {
       remoteUsers.get(sender()).fold(/*log.error(s"Remote user removed but no remote channel actor found ${sender()}"*/)(_ -= actor)
       val userLeft = UserLeft(user)
       localUsers

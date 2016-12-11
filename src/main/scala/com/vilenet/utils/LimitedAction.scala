@@ -38,6 +38,9 @@ sealed class LimitedAction(limitedFor: Duration, maxTimes: Int) {
     }
   }
 
+  @inline final def foreach[A](ifReady: => A): Unit =
+    if (isReady) ifReady
+
   @inline final def fold[A](ifNotReady: => A)(ifReady: => A): A =
     if (isReady) ifReady else ifNotReady
 }
