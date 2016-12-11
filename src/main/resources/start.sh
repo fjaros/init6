@@ -5,18 +5,13 @@
 # Created by filip on 1/28/16.
 #
 
-# -----------
-# CONFIG VARS
-# -----------
-
+# --------------------
+# CONFIG VARS DEFAULTS
+# --------------------
 log_file=vilenet.log
 
 # if set to true, will block and log to console.
 debug=false
-
-akka_host=127.0.0.1
-akka_port=2552
-akka_nodes=(127.0.0.1:2552 127.0.0.1:2553)
 
 min_wait=120
 max_wait=300
@@ -24,6 +19,46 @@ between_drops=10
 
 restart_if_killed=false
 check_proc_interval=5
+
+# ---------------------
+# CONFIG VARS OVERRIDES
+# ---------------------
+while [ $# -gt 1 ]; do
+    key="$1"
+    case $key in
+        --debug)
+        debug="$2"
+        shift
+        ;;
+        --log_file)
+        log_file="$2"
+        shift
+        ;;
+        --min_wait)
+        min_wait="$2"
+        shift
+        ;;
+        --max_wait)
+        max_wait="$2"
+        shift
+        ;;
+        --between_drops)
+        between_drops="$2"
+        shift
+        ;;
+        --restart_if_killed)
+        restart_if_killed="$2"
+        shift
+        ;;
+        --check_proc_interval)
+        check_proc_interval="$2"
+        shift
+        ;;
+        *)
+        ;;
+    esac
+    shift
+done
 
 # ------
 # SCRIPT
@@ -55,15 +90,7 @@ if [[ ! "$java_version" > 1.8.* ]]; then
     exit
 fi
 
-# build the java run string
-for i in "${!akka_nodes[@]}"; do
-    node_string="$node_string -Dakka.cluster.seed-nodes.$i=akka://ViLeNet@${akka_nodes[$i]}"
-done
-
 java_run=" \
-    -Dakka.remote.artery.canonical.hostname=$akka_host \
-    -Dakka.remote.artery.canonical.port=$akka_port \
-    $node_string \
     -jar vilenet-0.1.jar \
     akka.conf \
     vilenet.conf"

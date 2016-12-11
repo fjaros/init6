@@ -5,7 +5,7 @@ import java.io.File
 import com.typesafe.config.ConfigFactory
 
 import scala.collection.JavaConverters._
-
+import scala.util.Try
 
 /**
   * Created by filip on 12/17/15.
@@ -32,6 +32,10 @@ object Config {
     val name = p.getString("name")
     val host = p.getString("host")
     val port = p.getInt("port")
+
+    val akka_nodes = p.getStringList("akka_nodes").asScala
+    val akka_host = Try(p.getString("akka_host")).getOrElse(host)
+    val akka_port = p.getInt("akka_port")
   }
 
   object Accounts {
