@@ -142,7 +142,7 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
     case Received(data) =>
       CommandDecoder(user, data) match {
         case command: Command =>
-          log.error(s"UserMessageDecoder $command")
+          //log.error(s"UserMessageDecoder $command")
           command match {
             case PongCommand(cookie) =>
               handlePingResponse(cookie)
@@ -155,7 +155,6 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
              */
             case c@ JoinUserCommand(fromUser, channel) =>
               implicit val timeout = Timeout(250, TimeUnit.MILLISECONDS)
-              println("JoinUserCommand" + c)
               if (!user.channel.equalsIgnoreCase(channel)) {
                 Await.result(channelsActor ? UserSwitchedChat(self, fromUser, channel), timeout.duration) match {
                   case command @ UserChannel(newUser, channel, channelActor) =>
@@ -213,7 +212,7 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
       connection ! PoisonPill
 
     case x =>
-      log.error(s"### UserActor Unhandled: $x")
+      //log.error(s"### UserActor Unhandled: $x")
   }
 
   private def handlePingResponse(cookie: String) = {

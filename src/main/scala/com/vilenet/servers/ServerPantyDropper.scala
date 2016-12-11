@@ -31,7 +31,7 @@ case object Recon extends Command
 
 class ServerPantyDropper(serverName: String) extends ViLeNetClusterActor {
 
-  val buildPath = (server: String) => s"akka.tcp://$VILE_NET@$server/user/$VILE_NET_SERVERS_PATH"
+  val buildPath = (server: String) => s"akka://$VILE_NET@$server/user/$VILE_NET_SERVERS_PATH"
 
   val random = new Random(System.currentTimeMillis())
 

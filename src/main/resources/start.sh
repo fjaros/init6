@@ -57,12 +57,12 @@ fi
 
 # build the java run string
 for i in "${!akka_nodes[@]}"; do
-    node_string="$node_string -Dakka.cluster.seed-nodes.$i=akka.tcp://ViLeNet@${akka_nodes[$i]}"
+    node_string="$node_string -Dakka.cluster.seed-nodes.$i=akka://ViLeNet@${akka_nodes[$i]}"
 done
 
 java_run=" \
-    -Dakka.remote.netty.tcp.hostname=$akka_host \
-    -Dakka.remote.netty.tcp.port=$akka_port \
+    -Dakka.remote.artery.canonical.hostname=$akka_host \
+    -Dakka.remote.artery.canonical.port=$akka_port \
     $node_string \
     -jar vilenet-0.1.jar \
     akka.conf \

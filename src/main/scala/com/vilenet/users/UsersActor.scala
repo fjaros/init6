@@ -52,7 +52,7 @@ class UsersActor extends ViLeNetClusterActor {
   var placeCounter = 1
 
   val remoteUsersActor = (address: Address) =>
-    system.actorSelection(s"akka.tcp://${address.hostPort}/user/$VILE_NET_USERS_PATH")
+    system.actorSelection(s"akka://${address.hostPort}/user/$VILE_NET_USERS_PATH")
 
   val users = RealKeyedCaseInsensitiveHashMap[ActorRef]()
   val reverseUsers = mutable.HashMap[ActorRef, String]()

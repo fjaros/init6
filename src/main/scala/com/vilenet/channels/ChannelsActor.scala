@@ -43,7 +43,7 @@ class ChannelsActor extends ViLeNetClusterActor {
   implicit val timeout = Timeout(100, TimeUnit.MILLISECONDS)
 
   val remoteChannelsActor = (address: Address) =>
-    system.actorSelection(s"akka.tcp://${address.hostPort}/user/$VILE_NET_CHANNELS_PATH")
+    system.actorSelection(s"akka://${address.hostPort}/user/$VILE_NET_CHANNELS_PATH")
 
   val remoteChannelsActors = mutable.HashMap[Address, ActorRef]()
 
