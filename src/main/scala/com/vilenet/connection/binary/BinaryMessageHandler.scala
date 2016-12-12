@@ -307,7 +307,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
             case SidEnterChat(packet) =>
               send(SidEnterChat(username, oldUsername, productId))
               send(BinaryChatEncoder(UserInfoArray(Config.motd)).get)
-              keepAlive(actor, sendPing)
+              keepAlive(actor, () => sendPing())
               goto(LoggedIn)
           }
         case _ => handleRest(BinaryPacket(packetId, data))

@@ -159,17 +159,18 @@ class ChannelsActor extends ViLeNetClusterActor {
           case ChannelInfo(name, size) if size > 0 => Some(name -> size)
           case _ => None
         }
-        .onSuccess {
-          case responses if responses.nonEmpty =>
+        .foreach(responses => {
+          if (responses.nonEmpty) {
             val sortedResponses = responses.sortBy(_._2)(Ordering[Int].reverse)
 
             replyActor ! UserInfo(CHANNEL_LIST(sortedResponses.size))
             sortedResponses.foreach {
               case (name, size) => replyActor ! UserInfo(CHANNEL_INFO(name, size))
             }
-
-          case _ => replyActor ! UserInfo(CHANNEL_LIST_EMPTY)
-        }
+          } else {
+            replyActor ! UserInfo(CHANNEL_LIST_EMPTY)
+          }
+        })
 
     case WhoCommand(user, channel) =>
       getChannel(channel).fold(sender() ! UserErrorArray(CHANNEL_NOT_EXIST))(actor => {

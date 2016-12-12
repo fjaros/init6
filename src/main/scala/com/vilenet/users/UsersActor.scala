@@ -125,22 +125,21 @@ class UsersActor extends ViLeNetClusterActor {
                     case ReceivedUptime(actor, uptime) =>
                       println(uptime + " - " + sender())
                       Some(actor -> uptime)
-                  }.onSuccess {
-                    case uptimeSeq =>
-                      val (toKill, toKeep) =
-                        if (uptimeSeq.head._2 > uptimeSeq.last._2) {
-                          (uptimeSeq.head._1, uptimeSeq.last._1)
-                        } else {
-                          (uptimeSeq.last._1, uptimeSeq.head._1)
-                        }
+                  }.foreach(uptimeSeq => {
+                    val (toKill, toKeep) =
+                      if (uptimeSeq.head._2 > uptimeSeq.last._2) {
+                        (uptimeSeq.head._1, uptimeSeq.last._1)
+                      } else {
+                        (uptimeSeq.last._1, uptimeSeq.head._1)
+                      }
 
-                      toKill ! KillSelf
-                      // This is a race condition
-                      rem(toKill)
+                    toKill ! KillSelf
+                    // This is a race condition
+                    rem(toKill)
 
-                      users += name -> toKeep
-                      reverseUsers += toKeep -> name
-                  }
+                    users += name -> toKeep
+                    reverseUsers += toKeep -> name
+                  })
                 }
             }
         }

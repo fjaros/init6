@@ -13,8 +13,8 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
-        <scala.version.major>2.11</scala.version.major>
-        <scala.version>${scala.version.major}.7</scala.version>
+        <scala.version.major>2.12</scala.version.major>
+        <scala.version>${scala.version.major}.1</scala.version>
         <akka.version>2.4.14</akka.version>
     </properties>
 
@@ -128,7 +128,7 @@
         <dependency>
             <groupId>org.scala-lang.modules</groupId>
             <artifactId>scala-xml_${scala.version.major}</artifactId>
-            <version>1.0.2</version>
+            <version>1.0.6</version>
             <exclusions>
                 <exclusion>
                     <groupId>org.scala-lang</groupId>
@@ -176,7 +176,7 @@
         <dependency>
             <groupId>com.github.romix.akka</groupId>
             <artifactId>akka-kryo-serialization_${scala.version.major}</artifactId>
-            <version>0.4.0</version>
+            <version>0.5.2</version>
         </dependency>
 
         <!-- Database -->
@@ -189,7 +189,7 @@
         <dependency>
             <groupId>org.scalikejdbc</groupId>
             <artifactId>scalikejdbc_${scala.version.major}</artifactId>
-            <version>2.2.9</version>
+            <version>2.5.0</version>
         </dependency>
 
         <!-- test dependencies -->
@@ -197,7 +197,7 @@
         <dependency>
             <groupId>org.scalatest</groupId>
             <artifactId>scalatest_${scala.version.major}</artifactId>
-            <version>3.0.0-M14</version>
+            <version>3.0.1</version>
             <scope>test</scope>
         </dependency>
 
