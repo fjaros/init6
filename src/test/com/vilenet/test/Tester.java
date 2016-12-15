@@ -15,7 +15,8 @@ public class Tester {
     //static final String hostName = "54.193.49.146";
     static final Random random = new Random(System.currentTimeMillis());
     static final int portNumber = 6112;
-    static final String hostName = "127.0.0.1";
+//    static final String hostName = "35.166.59.254";
+    static final String hostName = "158.69.231.163";
     //static final int portNumber = 7112;
 
     static AtomicInteger i = new AtomicInteger();
@@ -47,10 +48,10 @@ public class Tester {
                 out.write(3);
                 out.write(4);
                 send(name);
-                send("pw");
+                send("1234");
                 send("/j vile");
 //                System.out.println(i.addAndGet(1));
-                Thread.sleep(50 + random.nextInt(50));
+                Thread.sleep(100 + random.nextInt(300));
                 out.close();
                 in.close();
                 socket.close();
@@ -62,7 +63,8 @@ public class Tester {
 //                    }
 //                }
             } catch (Exception e) {
-
+                e.printStackTrace();
+                System.exit(0);
             }}
         }
 
@@ -75,10 +77,10 @@ public class Tester {
     }
 
     public static void main(String[] args) throws Exception {
-        int threads = 800;
+        int threads = 199;
         ExecutorService e = Executors.newFixedThreadPool(threads+1);
-        for (int i = 0; i != threads; i++) {
-            e.submit(new Bot(i, args[0] + i));
+        for (int i = 1; i <= threads; i++) {
+            e.submit(new Bot(i, args[0] + "1"));
         }
 
         Scanner stdIn = new Scanner(new BufferedReader(new InputStreamReader(System.in)));

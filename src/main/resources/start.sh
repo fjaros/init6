@@ -91,6 +91,7 @@ if [[ ! "$java_version" > 1.8.* ]]; then
 fi
 
 java_run=" \
+    -XX:OnOutOfMemoryError=\"kill -3 %p\" -XX:+HeapDumpOnOutOfMemoryError -XX:+DisableExplicitGC \
     -jar vilenet-0.1.jar \
     akka.conf \
     vilenet.conf"

@@ -1,10 +1,11 @@
 package com.vilenet.db
 
-import java.util.concurrent.{TimeUnit, Executors}
+import java.util.concurrent.{Executors, TimeUnit}
 
 import com.vilenet.Config
 import com.vilenet.utils.CaseInsensitiveHashMap
 
+import scala.collection.mutable
 import scala.util.Try
 
 /**
@@ -12,38 +13,27 @@ import scala.util.Try
   */
 private object UserCache {
 
-  private val EXISTING = 0
-  private val INSERTED = 1
-  private val UPDATED = 2
-
-  private val cache = CaseInsensitiveHashMap[(DbUser, Int)]()
+  private val cache = CaseInsensitiveHashMap[DbUser]()
+  private val inserted = mutable.HashSet[String]()
+  private val updated = mutable.HashSet[String]()
 
   private val executorService = Executors.newSingleThreadScheduledExecutor()
 
   private val dbUpdateThread = new Runnable {
     override def run() = {
       Try {
-        DAO.saveInserted(filterCache(INSERTED))
+        DAO.saveInserted(cache.filterKeys(inserted.contains).values.toSet)
+        inserted.clear()
       }
       Try {
-        DAO.saveUpdated(filterCache(UPDATED))
+        DAO.saveUpdated(cache.filterKeys(updated.contains).values.toSet)
+        updated.clear()
       }
-    }
-
-    def filterCache(status: Int) = {
-      cache
-        .values
-        .filter {
-          case (_, _status) => _status == status
-        }
-        .map {
-          case (dbUser, _) => dbUser
-        }
     }
   }
 
   def apply(dbUsers: List[DbUser]) = {
-    cache ++= dbUsers.map(dbUser => dbUser.username -> (dbUser, EXISTING))
+    cache ++= dbUsers.map(dbUser => dbUser.username -> dbUser)
 
     val updateInterval = Config.Database.batchUpdateInterval
     executorService.scheduleWithFixedDelay(dbUpdateThread, updateInterval, updateInterval, TimeUnit.SECONDS)
@@ -54,17 +44,19 @@ private object UserCache {
     dbUpdateThread.run()
   }
 
-  def get(username: String) = cache.get(username).map { case (dbUser, _) => dbUser }
+  def get(username: String) = cache.get(username)
 
   def insert(username: String, passwordHash: Array[Byte]) = {
     val newUser = username.toLowerCase
-    cache += newUser -> (DbUser(username = newUser, passwordHash = passwordHash), INSERTED)
+    cache += newUser -> DbUser(username = newUser, passwordHash = passwordHash)
+    inserted += username.toLowerCase
   }
 
   def update(username: String, dbUser: DbUser) = {
     get(username).foreach(originalDbUser => {
       if (originalDbUser != dbUser) {
-        cache += username -> (dbUser, UPDATED)
+        cache += username -> dbUser
+        updated += username.toLowerCase
       }
     })
   }

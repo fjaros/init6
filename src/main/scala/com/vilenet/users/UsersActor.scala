@@ -194,7 +194,7 @@ class UsersActor extends ViLeNetClusterActor {
       }
 
     case c @ Add(connection, user, protocol) =>
-      println("#ADD " + c)
+      //println("#ADD " + c)
       val newUser = getRealUser(user).copy(place = placeCounter)
       placeCounter += 1
       val userActor = context.actorOf(UserActor(connection, newUser, protocol))
@@ -205,7 +205,7 @@ class UsersActor extends ViLeNetClusterActor {
       sender() ! UsersUserAdded(userActor, newUser)
 
     case c @ Rem(username) =>
-      println("#REM " + c)
+      //println("#REM " + c)
       rem(sender(), username)
 
     case BroadcastCommand(message) =>
