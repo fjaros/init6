@@ -61,8 +61,6 @@ trait ChannelActor extends ViLeNetActor {
 
   def add(actor: ActorRef, user: User): User = {
     val newUser = user.copy(channel = name)
-    println("ChannelActor add " + newUser + " - " + actor + " - " + name)
-    //Thread.currentThread().getStackTrace.foreach(println)
 
     users += actor -> newUser
     sender() ! UserChannel(newUser, name, self)

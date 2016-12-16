@@ -21,7 +21,6 @@ sealed class PrivateChannelActor(
   remoteActor.foreach(remoteUsers += _)
 
   override def add(actor: ActorRef, user: User): User = {
-    println("1 User " + user)
     users.getOrElse(actor, super.add(actor, Flags.deOp(user)))
   }
 }

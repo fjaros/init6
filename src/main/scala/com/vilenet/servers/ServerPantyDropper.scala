@@ -35,7 +35,7 @@ class ServerPantyDropper(serverName: String) extends ViLeNetClusterActor {
 
   val random = new Random(System.currentTimeMillis())
 
-  system.scheduler.scheduleOnce(Timeout(45 + random.nextInt(150), TimeUnit.MINUTES).duration, self, AnnounceSplit)
+  //system.scheduler.scheduleOnce(Timeout(45 + random.nextInt(150), TimeUnit.MINUTES).duration, self, AnnounceSplit)
 
   override def receive: Receive = {
     case AnnounceSplit =>

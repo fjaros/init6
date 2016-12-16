@@ -39,6 +39,7 @@ class ConnectionHandler(bindAddress: InetSocketAddress) extends ViLeNetClusterAc
       Await.result(ipLimiterActor ? Connected(remote.getAddress.getAddress), timeout.duration) match {
         case Allowed =>
           sender() ! Register(context.actorOf(ProtocolHandler(remote, sender())), keepOpenOnPeerClosed = true)
+          sender() ! Tcp.SO.KeepAlive(on = true)
           listener ! ResumeAccepting(1)
         case _ =>
           sender() ! Close

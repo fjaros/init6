@@ -83,6 +83,7 @@ object Constants {
   val TELNET_INCORRECT_USERNAME = "Incorrect username."
 
   val ACCOUNT_ALREADY_EXISTS = (name: String) => s"Account $name already exists."
+  val ACCOUNT_CONTAINS_ILLEGAL = (name: String) => s"$name contains illegal characters."
   val ACCOUNT_CREATED = (name: String, passwordHash: Array[Byte]) => s"Created account $name with password hash ${getStringFromHash(passwordHash)}."
   val NO_ACCOUNT_INPUT = "What account do you want to make?"
   val NO_PASSWORD_INPUT = "You did not enter a password."

@@ -1,5 +1,6 @@
 package com.vilenet.coders.commands
 
+import com.vilenet.Config
 import com.vilenet.Constants._
 import com.vilenet.channels.UserInfo
 import com.vilenet.coders.binary.hash.BSHA1
@@ -15,10 +16,16 @@ object MakeAccountCommand {
 
     if (account.nonEmpty) {
       if (password.nonEmpty) {
-        DAO.getUser(account).fold[Command]({
-          val passwordHash = BSHA1(password)
-          AccountMade(account, passwordHash)
-        })(_ => UserInfo(ACCOUNT_ALREADY_EXISTS(account)))
+
+        // Check for illegal characters
+        if (account.forall(c => Config.Accounts.allowedCharacters.contains(c.toLower))) {
+          DAO.getUser(account).fold[Command]({
+            val passwordHash = BSHA1(password.toLowerCase)
+            AccountMade(account, passwordHash)
+          })(_ => UserInfo(ACCOUNT_ALREADY_EXISTS(account)))
+        } else {
+          UserInfo(ACCOUNT_CONTAINS_ILLEGAL(account))
+        }
       } else {
         UserInfo(NO_PASSWORD_INPUT)
       }

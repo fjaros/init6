@@ -43,10 +43,12 @@ object Config {
     val p = Config.p.getConfig("accounts")
 
     val allowedCharacters =
-      s"abcdefghijklmnopqrstuvwxyz0123456789${p.getString("allowed-illegal-characters")}".toSet
+      s"abcdefghijklmnopqrstuvwxyz0123456789[]()${p.getString("allowed-illegal-characters")}".toSet
 
     val minLength = p.getInt("min-length")
     val maxLength = p.getInt("max-length")
+
+    val enableMultipleLogins = p.getBoolean("enable-multiple")
   }
 
   object Database {

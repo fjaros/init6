@@ -2,8 +2,8 @@ package com.vilenet.users
 
 import java.util.concurrent.TimeUnit
 
-import akka.actor.{PoisonPill, Terminated, ActorRef, Props}
-import akka.io.Tcp.Received
+import akka.actor.{ActorRef, PoisonPill, Props, Terminated}
+import akka.io.Tcp.{Close, Received}
 import akka.pattern.ask
 import akka.util.Timeout
 import com.vilenet.Constants._
@@ -15,8 +15,8 @@ import com.vilenet.channels._
 import com.vilenet.coders._
 import com.vilenet.coders.binary.BinaryChatEncoder
 import com.vilenet.coders.telnet._
-import com.vilenet.db.{DAOAck, CreateAccount}
-import com.vilenet.servers.{ServerOnline, SendBirth, SplitMe}
+import com.vilenet.db.{CreateAccount, DAOAck}
+import com.vilenet.servers.{SendBirth, ServerOnline, SplitMe}
 import com.vilenet.utils.CaseInsensitiveHashSet
 
 import scala.concurrent.Await
@@ -204,7 +204,7 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
 
     case Terminated(actor) =>
       channelsActor ! UserLeftChat(user)
-      publish(TOPIC_USERS, Rem(user.name))
+      publish(TOPIC_USERS, Rem(self))
       self ! PoisonPill
 
     case KillSelf =>

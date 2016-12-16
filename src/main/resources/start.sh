@@ -13,11 +13,11 @@ log_file=vilenet.log
 # if set to true, will block and log to console.
 debug=false
 
-min_wait=120
-max_wait=300
+min_wait=180
+max_wait=360
 between_drops=10
 
-restart_if_killed=false
+restart_if_killed=true
 check_proc_interval=5
 
 # ---------------------
@@ -91,7 +91,8 @@ if [[ ! "$java_version" > 1.8.* ]]; then
 fi
 
 java_run=" \
-    -XX:OnOutOfMemoryError=\"kill -3 %p\" -XX:+HeapDumpOnOutOfMemoryError -XX:+DisableExplicitGC \
+    -XX:+HeapDumpOnOutOfMemoryError -XX:+DisableExplicitGC \
+    -Xms128m -Xmx4g \
     -jar vilenet-0.1.jar \
     akka.conf \
     vilenet.conf"

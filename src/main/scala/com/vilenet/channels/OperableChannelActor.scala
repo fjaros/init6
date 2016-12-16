@@ -31,7 +31,6 @@ trait OperableChannelActor extends RemoteOperableChannelActor {
     .orElse(super.receiveEvent)
 
   override def add(actor: ActorRef, user: User): User = {
-    println("Operable add " + user)
     val newUser =
       if (users.isEmpty) {
         Flags.op(user)

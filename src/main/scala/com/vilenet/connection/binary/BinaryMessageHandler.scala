@@ -38,6 +38,8 @@ case object ExpectingSidLogonResponse extends BinaryState
 case object ExpectingSidEnterChat extends BinaryState
 case object ExpectingLogonHandled extends BinaryState
 case object ExpectingLogon2Handled extends BinaryState
+case object ExpectingSidCreateAccountFromDAO extends BinaryState
+case object ExpectingSidCreateAccount2FromDAO extends BinaryState
 case object LoggedIn extends BinaryState
 
 case class BinaryPacket(packetId: Byte, packet: ByteString)
@@ -169,6 +171,13 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
   when(ExpectingSidLogonResponse) {
     case Event(BinaryPacket(packetId, data), _) =>
       packetId match {
+        case SID_CDKEY2 =>
+          data match {
+            case SidCdKey2(packet) =>
+              send(SidCdKey2())
+              stay()
+            case _ => stop()
+          }
         case SID_LOGONRESPONSE =>
           data match {
             case SidLogonResponse(packet) =>
@@ -181,6 +190,12 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
                 handleLogon2(packet.clientToken, packet.serverToken, packet.passwordHash, packet.username)
             case _ => stop()
           }
+        case SID_CREATEACCOUNT =>
+          data match {
+            case SidCreateAccount(packet) =>
+              createAccount(packet.passwordHash, packet.username)
+            case _ => stop()
+          }
         case SID_CREATEACCOUNT2 =>
           data match {
             case SidCreateAccount2(packet) =>
@@ -189,11 +204,20 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
           }
         case _ => handleRest(BinaryPacket(packetId, data))
       }
-    case Event(DAOAck(_, _), _) =>
-      send(SidCreateAccount2(SidCreateAccount2.RESULT_ACCOUNT_CREATED))
-      stay()
     case _ => stay()
     //case x => //println(x) ; stay()
+  }
+
+  when(ExpectingSidCreateAccountFromDAO) {
+    case Event(DAOAck(_, _), _) =>
+      send(SidCreateAccount(SidCreateAccount.RESULT_ACCOUNT_CREATED))
+      goto(ExpectingSidLogonResponse)
+  }
+
+  when(ExpectingSidCreateAccount2FromDAO) {
+    case Event(DAOAck(_, _), _) =>
+      send(SidCreateAccount2(SidCreateAccount2.RESULT_ACCOUNT_CREATED))
+      goto(ExpectingSidLogonResponse)
   }
 
   when(ExpectingLogonHandled) {
@@ -212,8 +236,30 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
       goto(ExpectingSidEnterChat) using userActor
   }
 
-  def createAccount2(passwordHash: Array[Byte], username: String): State = {
+  def createAccount(passwordHash: Array[Byte], username: String): State = {
+    if (username.length < Config.Accounts.minLength) {
+      send(SidCreateAccount(SidCreateAccount.RESULT_FAILED))
+      return goto(ExpectingSidLogonResponse)
+    }
 
+    username.foreach(c => {
+      if (!Config.Accounts.allowedCharacters.contains(c.toLower)) {
+        send(SidCreateAccount(SidCreateAccount.RESULT_FAILED))
+        return goto(ExpectingSidLogonResponse)
+      }
+    })
+
+    val maxLenUser = username.take(Config.Accounts.maxLength)
+    DAO.getUser(maxLenUser).fold({
+      publish(TOPIC_DAO, CreateAccount(username, passwordHash))
+    })(dbUser => {
+      send(SidCreateAccount(SidCreateAccount.RESULT_FAILED))
+    })
+
+    goto(ExpectingSidCreateAccountFromDAO)
+  }
+
+  def createAccount2(passwordHash: Array[Byte], username: String): State = {
     if (username.length < Config.Accounts.minLength) {
       send(SidCreateAccount2(SidCreateAccount2.RESULT_NAME_TOO_SHORT))
       return goto(ExpectingSidLogonResponse)
@@ -233,7 +279,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
       send(SidCreateAccount2(SidCreateAccount2.RESULT_ALREADY_EXISTS))
     })
 
-    goto(ExpectingSidLogonResponse)
+    goto(ExpectingSidCreateAccount2FromDAO)
   }
 
   def handleLogon(clientToken: Int, serverToken: Int, passwordHash: Array[Byte], username: String) = {
@@ -322,7 +368,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
           data match {
             case SidJoinChannel(packet) =>
               packet.joinFlag match {
-                case 0x01 => actor ! Received(ByteString(s"/j ViLe"))
+                case 0x00 | 0x01 => actor ! Received(ByteString(s"/j ViLe"))
                 case 0x02 | 0x05 => actor ! Received(ByteString(s"/j ${packet.channel}"))
                 case _ =>
               }

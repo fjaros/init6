@@ -2,14 +2,14 @@ package com.vilenet.users
 
 import java.util.concurrent.TimeUnit
 
-import akka.actor.{Address, Terminated, Props, ActorRef}
-import akka.cluster.ClusterEvent.{UnreachableMember, MemberUp}
+import akka.actor.{ActorRef, Address, PoisonPill, Props, Terminated}
+import akka.cluster.ClusterEvent.{MemberUp, UnreachableMember}
 import akka.pattern.ask
 import akka.util.Timeout
-import com.vilenet.channels.utils.{RemoteMultiMap, LocalUsersSet}
+import com.vilenet.channels.utils.{LocalUsersSet, RemoteMultiMap}
 import com.vilenet.coders.commands._
 import com.vilenet.servers._
-import com.vilenet.{ViLeNetClusterActor, Constants, ViLeNetComponent}
+import com.vilenet.{Config, Constants, ViLeNetClusterActor, ViLeNetComponent}
 import com.vilenet.channels._
 import com.vilenet.Constants._
 import com.vilenet.utils.RealKeyedCaseInsensitiveHashMap
@@ -23,7 +23,7 @@ import scala.util.{Failure, Success}
  * Created by filip on 9/28/15.
  */
 case class Add(connection: ActorRef, user: User, protocol: Protocol) extends Command
-case class Rem(username: String) extends Command
+case class Rem(userActor: ActorRef) extends Command
 case class RemActors(userActors: Set[ActorRef]) extends Command
 
 case class WhisperTo(user: User, username: String, message: String)  extends Command
@@ -187,14 +187,12 @@ class UsersActor extends ViLeNetClusterActor {
           }
           .foreach {
             case (key, (name, actor)) =>
-              reverseUsers.get(actor).foreach(username => {
-                self ! Rem(username)
-              })
+              self ! Rem(actor)
           }
       }
 
     case c @ Add(connection, user, protocol) =>
-      //println("#ADD " + c)
+      log.info("UsersActor#Add " + c)
       val newUser = getRealUser(user).copy(place = placeCounter)
       placeCounter += 1
       val userActor = context.actorOf(UserActor(connection, newUser, protocol))
@@ -205,8 +203,8 @@ class UsersActor extends ViLeNetClusterActor {
       sender() ! UsersUserAdded(userActor, newUser)
 
     case c @ Rem(username) =>
-      //println("#REM " + c)
-      rem(sender(), username)
+      log.info("UsersActor#Rem " + c)
+      rem(sender())
 
     case BroadcastCommand(message) =>
       publish(TOPIC_USERS, RemoteEvent(BroadcastCommand(message)))
@@ -218,14 +216,23 @@ class UsersActor extends ViLeNetClusterActor {
     localUsers -= userActor
     reverseUsers.get(userActor).foreach(username => {
       reverseUsers -= userActor
-      users -= username
+      removeActorFromUsers(userActor, username)
     })
   }
 
   def rem(userActor: ActorRef, username: String) = {
     localUsers -= userActor
     reverseUsers -= userActor
-    users -= username
+    removeActorFromUsers(userActor, username)
+  }
+
+  def removeActorFromUsers(userActor: ActorRef, username: String) = {
+    users.get(username).foreach {
+      case (_, _userActor) =>
+        if (userActor == _userActor) {
+          users -= username
+        }
+    }
   }
 
   def handleRemote: Receive = {
@@ -252,12 +259,20 @@ class UsersActor extends ViLeNetClusterActor {
   }
 
   def getRealUser(user: User): User = {
-    var number = 1
-    var username = user.name
-    while (users.contains(username)) {
-      number = number + 1
-      username = s"${user.name}#$number"
+    if (Config.Accounts.enableMultipleLogins) {
+      var number = 1
+      var username = user.name
+      while (users.contains(username)) {
+        number = number + 1
+        username = s"${user.name}#$number"
+      }
+      user.copy(name = username)
+    } else {
+      users.get(user.name).foreach {
+        case (_, actor) =>
+          actor ! KillSelf
+      }
+      user
     }
-    user.copy(name = username)
   }
 }
