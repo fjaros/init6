@@ -8,13 +8,12 @@
 # --------------------
 # CONFIG VARS DEFAULTS
 # --------------------
-log_file=vilenet.log
 
 # if set to true, will block and log to console.
 debug=false
 
-min_wait=180
-max_wait=360
+min_wait=300
+max_wait=420
 between_drops=10
 
 restart_if_killed=true
@@ -52,6 +51,10 @@ while [ $# -gt 1 ]; do
         ;;
         --check_proc_interval)
         check_proc_interval="$2"
+        shift
+        ;;
+        --pid)
+        pid="$2"
         shift
         ;;
         *)
@@ -99,14 +102,20 @@ java_run=" \
 
 
 while :; do
-    echo "Starting ViLeNet..."
-    if [ "$debug" = true ]; then
-        java $java_run
+    if [ -n "$pid" ]; then
+        echo "PID set to $pid"
     else
-        java $java_run > $log_file &
+        echo "Starting ViLeNet..."
+
+        log_file=$(echo "vilenet_$(date +'%s%N'|cut -b1-13).log")
+        if [ "$debug" = true ]; then
+            java $java_run
+        else
+            java $java_run > $log_file &
+        fi
+        pid=$!
     fi
 
-    pid=$!
     waited_time=0
     let "wait_time = (RANDOM % (max_wait - min_wait)) + min_wait"
 
