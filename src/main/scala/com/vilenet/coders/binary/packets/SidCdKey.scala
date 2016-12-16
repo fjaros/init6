@@ -6,11 +6,11 @@ import com.vilenet.coders.binary.BinaryPacket
 import scala.util.Try
 
 /**
-  * Created by filip on 12/15/16.
+  * Created by filip on 12/16/16.
   */
-object SidCdKey2 extends BinaryPacket {
+object SidCdKey extends BinaryPacket {
 
-  override val PACKET_ID = Packets.SID_CDKEY2
+  override val PACKET_ID = Packets.SID_CDKEY
 
   def apply(): ByteString = {
     build(
@@ -21,11 +21,11 @@ object SidCdKey2 extends BinaryPacket {
     )
   }
 
-  case class SidCdKey2()
+  case class SidCdKey()
 
-  def unapply(data: ByteString): Option[SidCdKey2] = {
+  def unapply(data: ByteString): Option[SidCdKey] = {
     Try {
-      SidCdKey2()
+      SidCdKey()
     }.toOption
   }
 }

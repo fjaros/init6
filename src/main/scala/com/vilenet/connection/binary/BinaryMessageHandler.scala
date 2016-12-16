@@ -171,6 +171,13 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
   when(ExpectingSidLogonResponse) {
     case Event(BinaryPacket(packetId, data), _) =>
       packetId match {
+        case SID_CDKEY =>
+          data match {
+            case SidCdKey(packet) =>
+              send(SidCdKey())
+              stay()
+            case _ => stop()
+          }
         case SID_CDKEY2 =>
           data match {
             case SidCdKey2(packet) =>

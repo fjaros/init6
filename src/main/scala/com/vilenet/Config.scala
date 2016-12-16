@@ -23,6 +23,7 @@ object Config {
 
 
   val c = load("vilenet.conf")
+  //val c = load("local.conf")
   val p = c.getConfig(Constants.VILE_NET)
 
   object Server {
