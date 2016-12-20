@@ -12,14 +12,22 @@ object SidAuthCheck extends BinaryPacket {
 
   override val PACKET_ID = Packets.SID_AUTH_CHECK
 
-  def apply(): ByteString = {
+  val RESULT_SUCCESS = 0x00
+  val RESULT_OLD_GAME_VERSION = 0x100
+  val RESULT_INVALID_VERSION = 0x101
+  val RESULT_VERSION_DOWNGRADED = 0x102
+
+  def apply(result: Int): ByteString = {
     build(
       ByteString.newBuilder
-        .putInt(0)
+        .putInt(result)
         .putByte(0)
         .result()
     )
   }
+
+  // Might expand in future to do real hashing...
+  case class SidAuthCheck(clientToken: Int)
 
   def unapply(data: ByteString): Option[SidAuthCheck] = {
     Try {
@@ -29,5 +37,3 @@ object SidAuthCheck extends BinaryPacket {
   }
 }
 
-// Might expand in future to do real hashing...
-case class SidAuthCheck(clientToken: Int)

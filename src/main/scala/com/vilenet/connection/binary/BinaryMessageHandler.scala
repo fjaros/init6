@@ -7,17 +7,17 @@ import akka.actor.{ActorRef, FSM, Props}
 import akka.io.Tcp.Received
 import akka.util.{ByteString, Timeout}
 import com.vilenet.Constants._
-import com.vilenet.channels.{UserLeftChat, User, UserInfoArray}
+import com.vilenet.channels.{User, UserInfoArray, UserLeftChat}
 import com.vilenet.coders.binary.BinaryChatEncoder
 import com.vilenet.coders.binary.hash.BSHA1
 import com.vilenet.coders.binary.packets._
 import com.vilenet.coders.binary.packets.Packets._
 import com.vilenet.coders.commands.PongCommand
 import com.vilenet.connection._
-import com.vilenet.db.{DAOAck, CreateAccount, DAO}
-import com.vilenet.users.{PingSent, Add, BinaryProtocol, UsersUserAdded}
+import com.vilenet.db.{CreateAccount, DAO, DAOAck, UpdateAccount}
+import com.vilenet.users.{Add, BinaryProtocol, PingSent, UsersUserAdded}
 import com.vilenet.utils.LimitedAction
-import com.vilenet.{ViLeNetClusterActor, Config}
+import com.vilenet.{Config, ViLeNetClusterActor}
 
 import scala.util.Random
 
@@ -35,6 +35,7 @@ case object ExpectingSidLogonResponse extends BinaryState
 case object ExpectingSidEnterChat extends BinaryState
 case object ExpectingLogonHandled extends BinaryState
 case object ExpectingLogon2Handled extends BinaryState
+case object ExpectingChangePasswordHandled extends BinaryState
 case object ExpectingSidCreateAccountFromDAO extends BinaryState
 case object ExpectingSidCreateAccount2FromDAO extends BinaryState
 case object LoggedIn extends BinaryState
@@ -49,6 +50,8 @@ object BinaryMessageHandler {
 class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRef) extends ViLeNetClusterActor with ViLeNetKeepAliveActor with FSM[BinaryState, ActorRef] {
 
   implicit val timeout = Timeout(1, TimeUnit.MINUTES)
+
+  val ALLOWED_PRODUCTS = Set("D2DV", "D2XP", "DRTL", "DSHR", "JSTR", "SEXP", "SSHR", "STAR", "W2BN")
 
   startWith(StartLoginState, ActorRef.noSender)
   context.watch(connection)
@@ -69,6 +72,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
 
 
   def handleRest(binaryPacket: BinaryPacket): State = {
+    log.debug(">> {} Received: {}", connection, f"${binaryPacket.packetId}%X")
     binaryPacket.packetId match {
       case SID_NULL =>
         binaryPacket.packet match {
@@ -89,6 +93,8 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
                 0
               }
             }
+          case x =>
+            log.error(">> {} Unexpected ping packet: {}", connection, x)
         }
       case SID_LEAVECHAT =>
         binaryPacket.packet match {
@@ -115,6 +121,10 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
     if (actor != ActorRef.noSender) {
       actor ! PingSent(pingTime, String.valueOf(pingCookie))
     }
+  }
+
+  def isAllowedProduct(productId: String) = {
+    ALLOWED_PRODUCTS.contains(productId.reverse)
   }
 
   when(StartLoginState) {
@@ -167,8 +177,13 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
           data match {
             case SidReportVersion(packet) =>
               productId = packet.productId
-              send(SidReportVersion(SidReportVersion.RESULT_SUCCESS))
-              goto(ExpectingSidLogonResponse)
+              if (isAllowedProduct(productId)) {
+                send(SidReportVersion(SidReportVersion.RESULT_SUCCESS))
+                goto(ExpectingSidLogonResponse)
+              } else {
+                send(SidReportVersion(SidReportVersion.RESULT_FAILED_VERSION_CHECK))
+                stop()
+              }
             case _ => stop()
           }
         case _ => handleRest(BinaryPacket(packetId, data))
@@ -217,6 +232,12 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
               createAccount2(packet.passwordHash, packet.username)
             case _ => stop()
           }
+        case SID_CHANGEPASSWORD =>
+          data match {
+            case SidChangePassword(packet) =>
+              changePassword(packet.clientToken, packet.serverToken, packet.oldPasswordHash, packet.newPasswordHash, packet.username)
+            case _ => stop()
+          }
         case _ => handleRest(BinaryPacket(packetId, data))
       }
     case _ => stay()
@@ -227,12 +248,18 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
     case Event(DAOAck(_, _), _) =>
       send(SidCreateAccount(SidCreateAccount.RESULT_ACCOUNT_CREATED))
       goto(ExpectingSidLogonResponse)
+    case x =>
+      log.debug(">> {} Unhandled in ExpectingSidCreateAccountFromDAO {}", connection, x)
+      stop()
   }
 
   when(ExpectingSidCreateAccount2FromDAO) {
     case Event(DAOAck(_, _), _) =>
       send(SidCreateAccount2(SidCreateAccount2.RESULT_ACCOUNT_CREATED))
       goto(ExpectingSidLogonResponse)
+    case x =>
+      log.debug(">> {} Unhandled in ExpectingSidCreateAccount2FromDAO {}", connection, x)
+      stop()
   }
 
   when(ExpectingLogonHandled) {
@@ -241,6 +268,9 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
       this.username = user.name
       send(SidLogonResponse(SidLogonResponse.RESULT_SUCCESS))
       goto(ExpectingSidEnterChat) using userActor
+    case x =>
+      log.debug(">> {} Unhandled in ExpectingLogonHandled {}", connection, x)
+      stop()
   }
 
   when(ExpectingLogon2Handled) {
@@ -249,6 +279,18 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
       this.username = user.name
       send(SidLogonResponse2(SidLogonResponse2.RESULT_SUCCESS))
       goto(ExpectingSidEnterChat) using userActor
+    case x =>
+      log.debug(">> {} Unhandled in ExpectingLogon2Handled {}", connection, x)
+      stop()
+  }
+
+  when(ExpectingChangePasswordHandled) {
+    case Event(DAOAck(_, _), _) =>
+      send(SidChangePassword(SidChangePassword.RESULT_SUCCESS))
+      goto(ExpectingSidLogonResponse)
+    case x =>
+      log.debug(">> {} Unhandled in ExpectingChangePasswordHandled {}", connection, x)
+      stop()
   }
 
   def createAccount(passwordHash: Array[Byte], username: String): State = {
@@ -345,15 +387,35 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
     })
   }
 
+  def changePassword(clientToken: Int, serverToken: Int, oldPasswordHash: Array[Byte], newPasswordHash: Array[Byte], username: String) = {
+    DAO.getUser(username).fold({
+      send(SidChangePassword(SidChangePassword.RESULT_FAILED))
+      goto(ExpectingSidLogonResponse)
+    })(dbUser => {
+      if (BSHA1(clientToken, serverToken, dbUser.passwordHash).sameElements(oldPasswordHash)) {
+        publish(TOPIC_DAO, UpdateAccount(username, newPasswordHash))
+        goto(ExpectingChangePasswordHandled)
+      } else {
+        send(SidChangePassword(SidChangePassword.RESULT_FAILED))
+        goto(ExpectingSidLogonResponse)
+      }
+    })
+  }
+
   when(ExpectingSidAuthCheck) {
     case Event(BinaryPacket(packetId, data), _) =>
       packetId match {
         case SID_AUTH_CHECK =>
           data match {
             case SidAuthCheck(packet) =>
-              clientToken = packet.clientToken
-              send(SidAuthCheck())
-              goto(ExpectingSidLogonResponse)
+              if (isAllowedProduct(productId)) {
+                clientToken = packet.clientToken
+                send(SidAuthCheck(SidAuthCheck.RESULT_SUCCESS))
+                goto(ExpectingSidLogonResponse)
+              } else {
+                send(SidAuthCheck(SidAuthCheck.RESULT_INVALID_VERSION))
+                stop()
+              }
             case _ => stop()
           }
         case _ => handleRest(BinaryPacket(packetId, data))
