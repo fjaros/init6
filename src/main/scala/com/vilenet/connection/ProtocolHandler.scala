@@ -76,7 +76,7 @@ class ProtocolHandler(clientAddress: InetSocketAddress, client: ActorRef) extend
       protocolData.messageHandler ! x
       stop()
     case x =>
-      //log.error(s"#x ? $x")
+      log.error("{} ProtocolHandler InitializedBuffering unhandled: {}", clientAddress.getAddress, x)
       stay()
   }
 
@@ -103,7 +103,7 @@ class ProtocolHandler(clientAddress: InetSocketAddress, client: ActorRef) extend
       protocolData.messageHandler ! x
       stop()
     case x =>
-      //log.error(s"#x ? $x")
+      log.error("{} ProtocolHandler InitializedBuffering unhandled: {}", clientAddress.getAddress, x)
       stay()
   }
 
@@ -116,12 +116,18 @@ class ProtocolHandler(clientAddress: InetSocketAddress, client: ActorRef) extend
           } else {
             client ! ResumeReading
           }
-        case _ =>
+        case x =>
+          log.error("{} ProtocolHandler onTransition unhandled state data: {}", clientAddress.getAddress, x)
       }
-    case _ => stop()
+    case Initialized -> InitializedBuffering =>
+    case InitializedBuffering -> Initialized =>
+    case x =>
+      log.error("{} ProtocolHandler onTransition unhandled transition: {}", clientAddress.getAddress, x)
   }
 
   onTermination {
-    case _ => ipLimiterActor ! Disconnected(clientAddress.getAddress.getAddress)
+    case x =>
+      log.debug("{} ProtocolHandled terminated", clientAddress.getAddress)
+      ipLimiterActor ! Disconnected(clientAddress.getAddress.getAddress)
   }
 }

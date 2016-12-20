@@ -11,20 +11,24 @@ import com.vilenet.db.DAO
   */
 object MakeAccountCommand {
 
-  def apply(command: String) = {
-    val (account, password) = CommandDecoder.spanBySpace(command)
+  def apply(command: String): Command = {
+    val (username, password) = CommandDecoder.spanBySpace(command)
 
-    if (account.nonEmpty) {
+    if (username.nonEmpty) {
       if (password.nonEmpty) {
+        if (username.length < Config.Accounts.minLength) {
+          return UserInfo(ACCOUNT_TOO_SHORT)
+        }
 
+        val maxLenUser = username.take(Config.Accounts.maxLength)
         // Check for illegal characters
-        if (account.forall(c => Config.Accounts.allowedCharacters.contains(c.toLower))) {
-          DAO.getUser(account).fold[Command]({
+        if (maxLenUser.forall(c => Config.Accounts.allowedCharacters.contains(c.toLower))) {
+          DAO.getUser(maxLenUser).fold[Command]({
             val passwordHash = BSHA1(password.toLowerCase)
-            AccountMade(account, passwordHash)
-          })(_ => UserInfo(ACCOUNT_ALREADY_EXISTS(account)))
+            AccountMade(maxLenUser, passwordHash)
+          })(_ => UserInfo(ACCOUNT_ALREADY_EXISTS(maxLenUser)))
         } else {
-          UserInfo(ACCOUNT_CONTAINS_ILLEGAL(account))
+          UserInfo(ACCOUNT_CONTAINS_ILLEGAL)
         }
       } else {
         UserInfo(NO_PASSWORD_INPUT)

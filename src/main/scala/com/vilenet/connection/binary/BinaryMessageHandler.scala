@@ -1,11 +1,9 @@
 package com.vilenet.connection.binary
 
 import java.net.InetSocketAddress
-import java.util.concurrent.{TimeUnit}
+import java.util.concurrent.TimeUnit
 
 import akka.actor.{ActorRef, FSM, Props}
-import akka.cluster.pubsub.DistributedPubSubMediator.Publish
-import akka.pattern.ask
 import akka.io.Tcp.Received
 import akka.util.{ByteString, Timeout}
 import com.vilenet.Constants._
@@ -19,9 +17,8 @@ import com.vilenet.connection._
 import com.vilenet.db.{DAOAck, CreateAccount, DAO}
 import com.vilenet.users.{PingSent, Add, BinaryProtocol, UsersUserAdded}
 import com.vilenet.utils.LimitedAction
-import com.vilenet.{ViLeNetClusterActor, Config, ViLeNetActor}
+import com.vilenet.{ViLeNetClusterActor, Config}
 
-import scala.concurrent.Await
 import scala.util.Random
 
 /**
@@ -99,12 +96,19 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
             stateData ! UserLeftChat
           case x => ////println(s"${x.getClass}")
         }
-      case _ =>
+      case packetId =>
+        log.error(">> {} Unexpected: {}", connection, f"$packetId%X")
     }
     stay()
   }
 
-  def send(data: ByteString) = connection ! WriteOut(data)
+  def send(data: ByteString) = {
+    if (log.isDebugEnabled) {
+      val packetId = data.asByteBuffer.get(1)
+      log.debug("<< {} {}", connection, f"$packetId%X")
+    }
+    connection ! WriteOut(data)
+  }
   def sendPing() = {
     send(SidPing(pingCookie))
     pingTime = System.currentTimeMillis
@@ -115,6 +119,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
 
   when(StartLoginState) {
     case Event(BinaryPacket(packetId, data), _) =>
+      log.debug(">> {} Received: {}", connection, f"$packetId%X")
       packetId match {
         case SID_CLIENTID =>
           send(SidLogonChallenge(serverToken))
@@ -141,6 +146,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
 
   when(ExpectingSidStartVersioning) {
     case Event(BinaryPacket(packetId, data), _) =>
+      log.debug(">> {} Received: {}", connection, f"$packetId%X")
       packetId match {
         case SID_STARTVERSIONING =>
           data match {
@@ -155,6 +161,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
 
   when(ExpectingSidReportVersion) {
     case Event(BinaryPacket(packetId, data), _) =>
+      log.debug(">> {} Received: {}", connection, f"$packetId%X")
       packetId match {
         case SID_REPORTVERSION =>
           data match {
@@ -170,6 +177,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
 
   when(ExpectingSidLogonResponse) {
     case Event(BinaryPacket(packetId, data), _) =>
+      log.debug(">> Received: {}", f"$packetId%X")
       packetId match {
         case SID_CDKEY =>
           data match {
@@ -258,7 +266,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
 
     val maxLenUser = username.take(Config.Accounts.maxLength)
     DAO.getUser(maxLenUser).fold({
-      publish(TOPIC_DAO, CreateAccount(username, passwordHash))
+      publish(TOPIC_DAO, CreateAccount(maxLenUser, passwordHash))
     })(dbUser => {
       send(SidCreateAccount(SidCreateAccount.RESULT_FAILED))
     })
@@ -281,7 +289,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
 
     val maxLenUser = username.take(Config.Accounts.maxLength)
     DAO.getUser(maxLenUser).fold({
-      publish(TOPIC_DAO, CreateAccount(username, passwordHash))
+      publish(TOPIC_DAO, CreateAccount(maxLenUser, passwordHash))
     })(dbUser => {
       send(SidCreateAccount2(SidCreateAccount2.RESULT_ALREADY_EXISTS))
     })
@@ -354,6 +362,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
 
   when(ExpectingSidEnterChat) {
     case Event(BinaryPacket(packetId, data), actor) =>
+      log.debug(">> {} Received: {}", connection, f"$packetId%X")
       packetId match {
         case SID_ENTERCHAT =>
           data match {
@@ -369,6 +378,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
 
   when(LoggedIn) {
     case Event(BinaryPacket(packetId, data), actor) =>
+      log.debug(">> {} Received: {}", connection, f"$packetId%X")
       keptAlive = 0
       packetId match {
         case SID_JOINCHANNEL =>
@@ -394,8 +404,8 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
   }
 
   onTermination {
-    case _ =>
-      //log.error("Connection stopped 4")
+    case x =>
+      log.debug(">> {} BinaryMessageHandler onTermination: {}", connection, x)
       context.stop(self)
   }
 }

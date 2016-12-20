@@ -92,6 +92,7 @@
                 <configuration>
                     <descriptor>src/main/assembly/ViLeNet-assembly.xml</descriptor>
                     <appendAssemblyId>false</appendAssemblyId>
+                    <tarLongFileMode>posix</tarLongFileMode>
                 </configuration>
                 <executions>
                     <execution>

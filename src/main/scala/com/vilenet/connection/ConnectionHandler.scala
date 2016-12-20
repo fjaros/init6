@@ -29,22 +29,24 @@ class ConnectionHandler(bindAddress: InetSocketAddress) extends ViLeNetClusterAc
 
   override def receive: Receive = {
     case Bound(local) =>
-      //log.error("Local address {} bound", local)
+      log.error("Local address {} bound", local)
       sender ! ResumeAccepting(1)
       context.become(accept(sender()))
   }
 
   def accept(listener: ActorRef): Receive = {
     case Tcp.Connected(remote, _) =>
-      Await.result(ipLimiterActor ? Connected(remote.getAddress.getAddress), timeout.duration) match {
+      val remoteInetAddress = remote.getAddress
+      log.debug("Address {} connected", remoteInetAddress)
+      Await.result(ipLimiterActor ? Connected(remoteInetAddress.getAddress), timeout.duration) match {
         case Allowed =>
+          log.debug("Address {} allowed", remoteInetAddress)
           sender() ! Register(context.actorOf(ProtocolHandler(remote, sender())), keepOpenOnPeerClosed = true)
           sender() ! Tcp.SO.KeepAlive(on = true)
           listener ! ResumeAccepting(1)
         case _ =>
+          log.debug("Address {} disallowed", remoteInetAddress)
           sender() ! Close
       }
-
-      //log.error("Remote address {} connected", remote)
   }
 }

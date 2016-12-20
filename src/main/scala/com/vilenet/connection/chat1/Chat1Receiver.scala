@@ -49,6 +49,7 @@ class Chat1Handler(clientAddress: InetSocketAddress, connection: ActorRef) exten
 
   when (LoggingInChat1State) {
     case Event(Received(data), userCredentials: UserCredentials) =>
+      log.debug(">> {} Chat1 LoggingInChat1State", connection)
       val splt = data.utf8String.split(" ", 2)
       val (command, value) = (splt.head, splt.last)
 
@@ -64,6 +65,7 @@ class Chat1Handler(clientAddress: InetSocketAddress, connection: ActorRef) exten
 
   when (LoggedInChat1State) {
     case Event(JustLoggedInChat1, loggedInUser: LoggedInUser) =>
+      log.debug(">> {} Chat1 LoggedInChat1State", connection)
       connection ! WriteOut(Chat1Encoder(UserInfo(TELNET_CONNECTED(clientAddress.toString))).get)
       connection ! WriteOut(Chat1Encoder(UserInfoArray(Config.motd)).get)
       keepAlive(loggedInUser.actor, () => {
@@ -115,5 +117,7 @@ class Chat1Handler(clientAddress: InetSocketAddress, connection: ActorRef) exten
   onTransition {
     case LoggingInChat1State -> LoggedInChat1State =>
       self ! JustLoggedInChat1
+    case x =>
+      log.error("{} Chat1 onTransition unexpected state: {}", connection, x)
   }
 }

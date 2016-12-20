@@ -107,11 +107,11 @@ while :; do
     else
         echo "Starting ViLeNet..."
 
-        log_file=$(echo "vilenet_$(date +'%s%N'|cut -b1-13).log")
+        log_file="vilenet_$(date +'%s%N'|cut -b1-13).log"
         if [ "$debug" = true ]; then
-            java "$java_run"
+            java $java_run
         else
-            java "$java_run" > "$log_file" &
+            java $java_run > "$log_file" &
         fi
         pid=$!
     fi
