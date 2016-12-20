@@ -47,6 +47,7 @@ class ConnectionHandler(bindAddress: InetSocketAddress) extends ViLeNetClusterAc
         case _ =>
           log.debug("Address {} disallowed", remoteInetAddress)
           sender() ! Close
+          listener ! ResumeAccepting(1)
       }
   }
 }
