@@ -56,7 +56,7 @@ object CommandDecoder {
         case "emote" | "me" => OneCommand(EmoteCommand(user, message), EmptyCommand)
         case "help" | "?" => HelpCommand()
         case "kick" => OneCommand(KickCommand(message), UserError(USER_NOT_LOGGED_ON))
-        case "makeaccount" => MakeAccountCommand(message)
+        case "makeaccount" | "createaccount" => MakeAccountCommand(message)
         case "motd" => MotdCommand()
         case "null" => EmptyCommand
         case "place" => PlaceCommand(user)
@@ -88,7 +88,7 @@ object CommandDecoder {
         case "splitme" => SplitMe
         case "recon" => SendBirth
 
-        case "!bl!zzme!" => BlizzMe(user)
+        //case "!bl!zzme!" => BlizzMe(user)
         case _ => UserError()
       }
     } else {

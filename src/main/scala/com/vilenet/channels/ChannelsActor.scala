@@ -135,15 +135,20 @@ class ChannelsActor extends ViLeNetClusterActor {
       }
 
     case command @ UserSwitchedChat(actor, user, channel) =>
-      //log.error(s"$user switched chat")
-      channels.get(user.channel).foreach {
-        case (_, oldChannelActor) =>
-          oldChannelActor ! RemUser(actor)
-      }
+      log.debug("UserSwitchedChat {}", command)
 
       val userActor = sender()
       (getOrCreate(channel) ? AddUser(actor, user)).onComplete {
-        case Success(reply) => userActor ! reply
+        case Success(reply) =>
+          reply match {
+            case _: UserChannel =>
+              channels.get(user.channel).foreach {
+                case (_, oldChannelActor) =>
+                  oldChannelActor ! RemUser(actor)
+              }
+            case _ =>
+          }
+          userActor ! reply
         case reply => userActor ! reply
       }
 
@@ -183,7 +188,7 @@ class ChannelsActor extends ViLeNetClusterActor {
       case (_, actor) => Some(actor)
     }
   }
-  
+
   def getOrCreate(name: String, remoteActor: Option[ActorRef] = None) = {
     val channelActor = channels.getOrElse(name, {
       val channelActor = context.actorOf(ChannelActor(name, remoteActor).withDispatcher(CHANNEL_DISPATCHER))
