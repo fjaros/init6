@@ -32,7 +32,7 @@ object Chat1Encoder extends Encoder {
       case UserTalked(user, message) =>
         s"USER TALK     ${user.name} $message"
       case UserBroadcast(user, message) =>
-        s"SERVER BROADCAST   ${user.name} $message "
+        s"SERVER BROADCAST   ${user.name} $message"
       case UserChannel(user, channel, _) =>
         s"CHANNEL JOIN    $channel "
       case UserFlags(user) =>
@@ -46,7 +46,7 @@ object Chat1Encoder extends Encoder {
           .map(message => encode(s"SERVER TOPIC    $message"))
           .reduceLeft(_ ++ _)
       case UserError(message) =>
-        s"SERVER ERROR   $message"
+        s"SERVER ERROR    $message"
       case UserErrorArray(messages) =>
         messages
           .map(message => encode(s"SERVER ERROR    $message"))

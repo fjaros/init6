@@ -14,7 +14,7 @@ import com.vilenet.coders.binary.packets._
 import com.vilenet.coders.binary.packets.Packets._
 import com.vilenet.coders.commands.PongCommand
 import com.vilenet.connection._
-import com.vilenet.db.{CreateAccount, DAO, DAOAck, UpdateAccount}
+import com.vilenet.db.{CreateAccount, DAO, DAOCreatedAck, UpdateAccount}
 import com.vilenet.users.{Add, BinaryProtocol, PingSent, UsersUserAdded}
 import com.vilenet.utils.LimitedAction
 import com.vilenet.{Config, ViLeNetClusterActor}
@@ -245,7 +245,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
   }
 
   when(ExpectingSidCreateAccountFromDAO) {
-    case Event(DAOAck(_, _), _) =>
+    case Event(DAOCreatedAck(_, _), _) =>
       send(SidCreateAccount(SidCreateAccount.RESULT_ACCOUNT_CREATED))
       goto(ExpectingSidLogonResponse)
     case x =>
@@ -254,7 +254,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
   }
 
   when(ExpectingSidCreateAccount2FromDAO) {
-    case Event(DAOAck(_, _), _) =>
+    case Event(DAOCreatedAck(_, _), _) =>
       send(SidCreateAccount2(SidCreateAccount2.RESULT_ACCOUNT_CREATED))
       goto(ExpectingSidLogonResponse)
     case x =>
@@ -285,7 +285,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
   }
 
   when(ExpectingChangePasswordHandled) {
-    case Event(DAOAck(_, _), _) =>
+    case Event(DAOCreatedAck(_, _), _) =>
       send(SidChangePassword(SidChangePassword.RESULT_SUCCESS))
       goto(ExpectingSidLogonResponse)
     case x =>

@@ -49,6 +49,7 @@ object CommandDecoder {
       (command.toLowerCase: @switch) match {
         case "away" => AwayCommand(message)
         case "ban" => OneCommand(BanCommand(message), UserError(USER_NOT_LOGGED_ON))
+        case "changepassword" | "chpass" => ChangePasswordCommand(message)
         case "channel" | "join" | "j" => OneCommand(JoinUserCommand(user, message), UserError(NO_CHANNEL_INPUT))
         case "channels" | "list" => ChannelsCommand
         case "designate" => OneCommand(DesignateCommand(user, message), UserError(INVALID_USER), UserError(ALREADY_OPERATOR))

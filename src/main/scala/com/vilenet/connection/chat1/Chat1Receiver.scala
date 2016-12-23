@@ -3,18 +3,18 @@ package com.vilenet.connection.chat1
 import java.net.InetSocketAddress
 import java.util.concurrent.TimeUnit
 
-import akka.actor.{FSM, Props, ActorRef}
+import akka.actor.{ActorRef, FSM, Props}
 import akka.io.Tcp.Received
 import akka.pattern.ask
 import akka.util.{ByteString, Timeout}
-import com.vilenet.Config
+import com.vilenet.{Config, ViLeNetClusterActor}
 import com.vilenet.Constants._
 import com.vilenet.channels._
 import com.vilenet.coders.binary.hash.BSHA1
 import com.vilenet.coders.chat1.Chat1Encoder
 import com.vilenet.connection._
-import com.vilenet.db.DAO
-import com.vilenet.users.{PingSent, Chat1Protocol, UsersUserAdded, Add}
+import com.vilenet.db.{CreateAccount, DAO, DAOCreatedAck}
+import com.vilenet.users.{Add, Chat1Protocol, PingSent, UsersUserAdded}
 
 import scala.annotation.switch
 import scala.concurrent.Await
@@ -34,6 +34,7 @@ class Chat1Receiver(clientAddress: InetSocketAddress, override val connection: A
 sealed trait Chat1State
 case object LoggingInChat1State extends Chat1State
 case object BlockedInChat1State extends Chat1State
+case object ExpectingCreateAccountResponse extends Chat1State
 case object LoggedInChat1State extends Chat1State
 case object JustLoggedInChat1
 
@@ -41,7 +42,7 @@ sealed trait Chat1Data
 case class UserCredentials(username: String = "", alias: String = "", password: String = "", home: String = "") extends Chat1Data
 case class LoggedInUser(actor: ActorRef, username: String) extends Chat1Data
 
-class Chat1Handler(clientAddress: InetSocketAddress, connection: ActorRef) extends ViLeNetKeepAliveActor with FSM[Chat1State, Chat1Data] {
+class Chat1Handler(clientAddress: InetSocketAddress, connection: ActorRef) extends ViLeNetClusterActor with ViLeNetKeepAliveActor with FSM[Chat1State, Chat1Data] {
 
   implicit val timeout = Timeout(1, TimeUnit.MINUTES)
 
@@ -90,8 +91,7 @@ class Chat1Handler(clientAddress: InetSocketAddress, connection: ActorRef) exten
         }
 
       DAO.getUser(userCredentials.username).fold({
-        connection ! WriteOut(Chat1Encoder(TELNET_INCORRECT_USERNAME))
-        goto (BlockedInChat1State)
+        createAccount(userCredentials)
       })(dbUser => {
         if (BSHA1(userCredentials.password).sameElements(dbUser.passwordHash)) {
           val u = User(userCredentials.username, dbUser.flags | Flags.UDP, 0, client = "TAHC")
@@ -112,6 +112,41 @@ class Chat1Handler(clientAddress: InetSocketAddress, connection: ActorRef) exten
     } else {
       stop()
     }
+  }
+
+  when (ExpectingCreateAccountResponse) {
+    case Event(DAOCreatedAck(_, _), userCredentials: UserCredentials) =>
+      login(userCredentials)
+    case x =>
+      log.debug(">> {} Unhandled in ExpectingCreateAccountResponse {}", connection, x)
+      stop()
+  }
+
+  def createAccount(userCredentials: UserCredentials): State = {
+    if (userCredentials.username.length < Config.Accounts.minLength) {
+      send(LoginFailed(ACCOUNT_TOO_SHORT))
+      return goto(LoggingInChat1State)
+    }
+
+    userCredentials.username.foreach(c => {
+      if (!Config.Accounts.allowedCharacters.contains(c.toLower)) {
+        send(LoginFailed(ACCOUNT_CONTAINS_ILLEGAL))
+        return goto(LoggingInChat1State)
+      }
+    })
+
+    val maxLenUser = userCredentials.username.take(Config.Accounts.maxLength)
+    DAO.getUser(maxLenUser).fold({
+      publish(TOPIC_DAO, CreateAccount(maxLenUser, BSHA1(userCredentials.password)))
+    })(dbUser => {
+      send(LoginFailed(ACCOUNT_ALREADY_EXISTS(maxLenUser)))
+    })
+
+    goto(ExpectingCreateAccountResponse) using userCredentials
+  }
+
+  def send(chatEvent: ChatEvent) = {
+    Chat1Encoder(chatEvent).foreach(connection ! WriteOut(_))
   }
 
   onTransition {

@@ -3,9 +3,9 @@ package com.vilenet.users
 import java.util.concurrent.TimeUnit
 
 import akka.actor.{ActorRef, PoisonPill, Props, Terminated}
-import akka.io.Tcp.{Close, Received}
+import akka.io.Tcp.Received
 import akka.pattern.ask
-import akka.util.Timeout
+import akka.util.{ByteString, Timeout}
 import com.vilenet.Constants._
 import com.vilenet.coders.chat1.Chat1Encoder
 import com.vilenet.coders.commands._
@@ -15,7 +15,7 @@ import com.vilenet.channels._
 import com.vilenet.coders._
 import com.vilenet.coders.binary.BinaryChatEncoder
 import com.vilenet.coders.telnet._
-import com.vilenet.db.{CreateAccount, DAOAck}
+import com.vilenet.db.{CreateAccount, DAOCreatedAck, DAOUpdatedAck, UpdateAccount}
 import com.vilenet.servers.{SendBirth, ServerOnline, SplitMe}
 import com.vilenet.utils.CaseInsensitiveHashSet
 
@@ -41,7 +41,7 @@ case object KillSelf extends Command
 
 class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends ViLeNetClusterActor {
 
-  var channelActor: ActorRef = _
+  var channelActor: ActorRef = ActorRef.noSender
   var squelchedUsers = CaseInsensitiveHashSet()
   val awayAvailablity = AwayAvailablity(user.name)
   val dndAvailablity = DndAvailablity(user.name)
@@ -136,9 +136,13 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
       self ! UserInfo(YOU_KICKED(kicking))
       channelsActor ! UserSwitchedChat(self, user, THE_VOID)
 
-    case DAOAck(username, passwordHash) =>
+    case DAOCreatedAck(username, passwordHash) =>
       self ! UserInfo(ACCOUNT_CREATED(username, passwordHash))
 
+    case DAOUpdatedAck(username, passwordHash) =>
+      self ! UserInfo(ACCOUNT_UPDATED(username, passwordHash))
+
+    // THIS SHIT NEEDS TO BE REFACTORED!
     case Received(data) =>
       CommandDecoder(user, data) match {
         case command: Command =>
@@ -168,7 +172,10 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
               }
             case ResignCommand => resign()
             case RejoinCommand => rejoin()
-            case command: ChannelCommand => channelActor ! command
+            case command: ChannelCommand =>
+              if (channelActor != ActorRef.noSender) {
+                channelActor ! command
+              }
             case ChannelsCommand => channelsActor ! ChannelsCommand
             case command: WhoCommand => channelsActor ! command
             case command: OperableCommand =>
@@ -186,6 +193,8 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
             case DndCommand(message) => dndAvailablity.enableAction(message)
             case AccountMade(username, passwordHash) =>
               publish(TOPIC_DAO, CreateAccount(username, passwordHash))
+            case ChangePasswordCommand(newPassword) =>
+              publish(TOPIC_DAO, UpdateAccount(user.name, newPassword))
             case SplitMe =>
               if (Flags.isAdmin(user)) publish(TOPIC_SPLIT, SplitMe)
             case SendBirth =>
@@ -195,7 +204,7 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
             case _ =>
           }
         case x =>
-          log.error(s"### UserMessageDecoder Unhandled: $x")
+          log.debug("{} UserMessageDecoder Unhandled {}", user.name, x)
       }
 
     case command: UserToChannelCommandAck =>
@@ -212,7 +221,7 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
       connection ! PoisonPill
 
     case x =>
-      //log.error(s"### UserActor Unhandled: $x")
+      log.debug("{} UserActor Unhandled {}", user.name, x)
   }
 
   private def handlePingResponse(cookie: String) = {
@@ -233,7 +242,8 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
   private def rejoin() = {
     val oldChannel = user.channel
     channelActor ! RemUser(self)
+    channelActor = ActorRef.noSender
     user = user.copy(channel = "")
-    channelsActor ! UserSwitchedChat(self, user, oldChannel)
+    self ! Received(ByteString(s"/j $oldChannel"))
   }
 }

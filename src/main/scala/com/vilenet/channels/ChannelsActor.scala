@@ -146,7 +146,8 @@ class ChannelsActor extends ViLeNetClusterActor {
                 case (_, oldChannelActor) =>
                   oldChannelActor ! RemUser(actor)
               }
-            case _ =>
+            case x =>
+              log.error("{} Invalid getOrCreate return {}", command, x)
           }
           userActor ! reply
         case reply => userActor ! reply

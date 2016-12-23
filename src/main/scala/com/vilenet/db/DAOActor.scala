@@ -15,7 +15,8 @@ object DAOActor extends ViLeNetComponent {
 case class GetAccount(username: String) extends Command
 case class CreateAccount(username: String, passwordHash: Array[Byte]) extends Command
 case class UpdateAccount(username: String, passwordHash: Array[Byte], flags: Int = -1) extends Command
-case class DAOAck(username: String, passwordHash: Array[Byte]) extends Command
+case class DAOCreatedAck(username: String, passwordHash: Array[Byte]) extends Command
+case class DAOUpdatedAck(username: String, passwordHash: Array[Byte]) extends Command
 
 class DAOActor extends ViLeNetClusterActor {
 
@@ -25,13 +26,13 @@ class DAOActor extends ViLeNetClusterActor {
     case CreateAccount(username, passwordHash) =>
       DAO.createUser(username, passwordHash)
       if (isLocal()) {
-        sender() ! DAOAck(username, passwordHash)
+        sender() ! DAOCreatedAck(username, passwordHash)
       }
 
     case UpdateAccount(username, passwordHash, flags) =>
       DAO.updateUser(username, passwordHash, flags)
       if (isLocal()) {
-        sender() ! DAOAck(username, passwordHash)
+        sender() ! DAOUpdatedAck(username, passwordHash)
       }
   }
 }

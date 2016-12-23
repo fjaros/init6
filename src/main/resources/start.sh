@@ -12,8 +12,8 @@
 # if set to true, will block and log to console.
 debug=false
 
-min_wait=300
-max_wait=420
+min_wait=120
+max_wait=180
 between_drops=10
 
 restart_if_killed=true
@@ -116,12 +116,16 @@ while :; do
         pid=$!
     fi
 
-    waited_time=0
-    let "wait_time = (RANDOM % (max_wait - min_wait)) + min_wait"
+    if [ "$min_wait" -eq "$max_wait" ]; then
+        wait_time="$min_wait"
+    else
+        let "wait_time = (RANDOM % (max_wait - min_wait)) + min_wait"
+    fi
 
     echo "Waiting $wait_time minutes before next drop"
     let "wait_time *= 60"
 
+    waited_time=0
     while [ "$waited_time" -lt "$wait_time" ]; do
         if [ -e "/proc/$pid" ]; then
             sleep "$check_proc_interval"

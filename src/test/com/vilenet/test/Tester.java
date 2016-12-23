@@ -15,7 +15,7 @@ public class Tester {
     //static final String hostName = "54.193.49.146";
     static final Random random = new Random(System.currentTimeMillis());
     static final int portNumber = 6112;
-//    static final String hostName = "35.166.59.254";
+//  static final String hostName = "35.166.59.254";
     static final String hostName = "158.69.231.163";
     //static final int portNumber = 7112;
 
