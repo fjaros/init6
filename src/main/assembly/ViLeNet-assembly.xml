@@ -18,18 +18,29 @@
             <includes>
                 <include>${project.artifactId}-${project.version}.jar</include>
             </includes>
-            <fileMode>0755</fileMode>
+            <fileMode>0644</fileMode>
         </fileSet>
         <fileSet>
             <outputDirectory/>
             <directory>src/main/resources</directory>
             <includes>
                 <include>*.conf</include>
-                <include>*.sh</include>
                 <include>*.xml</include>
+            </includes>
+            <fileMode>0644</fileMode>
+        </fileSet>
+        <fileSet>
+            <outputDirectory/>
+            <directory>src/main/resources</directory>
+            <includes>
+                <include>start.sh</include>
             </includes>
             <fileMode>0755</fileMode>
         </fileSet>
+        <fileSet>
+            <outputDirectory>lib</outputDirectory>
+            <directory>${project.build.directory}/lib</directory>
+            <fileMode>0644</fileMode>
+        </fileSet>
     </fileSets>
-
 </assembly>

@@ -97,7 +97,8 @@ java_run=" \
     -XX:+HeapDumpOnOutOfMemoryError -XX:+DisableExplicitGC \
     -Xms128m -Xmx4g \
     -Dconfig=vilenet.conf \
-    -jar vilenet-0.1.jar"
+    -cp lib/*:vilenet-0.1.jar \
+    com.vilenet.ViLeNet"
 
 while :; do
     if [ -n "$pid" ]; then
