@@ -39,6 +39,7 @@ case class UserSentEmote(user: String, message: String) extends ChatEvent
 case class Designate(user: String, message: String) extends ChatEvent
 case class UserSwitchedChat(actor: ActorRef, user: User, channel: String) extends ChatEvent
 case class UserLeftChat(user: User) extends ChatEvent
+case object UserFlooded extends ChatEvent
 
 case object LoginOK extends ChatEvent
 case class LoginFailed(reason: String) extends ChatEvent

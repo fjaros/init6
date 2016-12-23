@@ -46,6 +46,7 @@ object Constants {
   val UNAVAILABLE_DEFAULT_MSG = "Not available"
   val DND_ENGAGED = "Do Not Disturb mode engaged."
   val DND_UNAVAILABLE = (name: String, message: String) => s"$name is unavailable ($message)"
+  val FLOODED_OFF = "You have been disconnected for flooding!"
   val INVALID_COMMAND = "That is not a valid command. Type /help or /? for more info."
   val INVALID_USER = "Invalid user."
   val NO_CHANNEL_INPUT = "What channel do you want to join?"

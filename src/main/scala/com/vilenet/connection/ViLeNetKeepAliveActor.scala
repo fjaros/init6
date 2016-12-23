@@ -4,7 +4,7 @@ import java.util.concurrent.{Executors, TimeUnit}
 
 import akka.actor.ActorRef
 import com.vilenet.ViLeNetActor
-import com.vilenet.users.KillSelf
+import com.vilenet.users.KillConnection
 
 /**
   * Created by filip on 12/29/15.
@@ -31,7 +31,7 @@ trait ViLeNetKeepAliveActor extends ViLeNetActor {
           keptAlive += 1
           f()
         } else {
-          actor ! KillSelf
+          actor ! KillConnection
         }
       }
     }, delay, delay, unit)

@@ -7,7 +7,7 @@ import com.vilenet.channels.UserInfo
 /**
   * Created by filip on 1/14/16.
   */
-trait WhisperAvailability {
+private[users] trait WhisperAvailability {
 
   private var isEnabled = false
   private var message = UNAVAILABLE_DEFAULT_MSG

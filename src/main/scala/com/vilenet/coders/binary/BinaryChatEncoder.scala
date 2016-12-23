@@ -1,10 +1,10 @@
 package com.vilenet.coders.binary
 
 import akka.util.ByteString
-import com.vilenet.Constants.VILE_NET
+import com.vilenet.Constants._
 import com.vilenet.channels._
 import com.vilenet.coders.Encoder
-import com.vilenet.coders.binary.packets.SidChatEvent
+import com.vilenet.coders.binary.packets.{SidChatEvent, SidFloodDetected}
 
 import scala.annotation.switch
 
@@ -45,6 +45,8 @@ object BinaryChatEncoder extends Encoder {
         handleArrayEvent(0x13, messages)
       case UserEmote(user, message) =>
         SidChatEvent(0x17, user.flags, user.ping, user.name, message)
+      case UserFlooded =>
+        SidChatEvent(0x13, 0, 0, "", FLOODED_OFF) ++ SidFloodDetected()
       case _ =>
         None
     }

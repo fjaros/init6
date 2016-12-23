@@ -1,6 +1,7 @@
 package com.vilenet.coders.telnet
 
 import akka.util.ByteString
+import com.vilenet.Constants._
 import com.vilenet.channels._
 import com.vilenet.coders.Encoder
 
@@ -53,6 +54,8 @@ object TelnetEncoder extends Encoder {
         "2000 NULL"
       case UserName(name) =>
         s"2010 NAME $name"
+      case UserFlooded =>
+        s"1019 ERROR ${'"'}$FLOODED_OFF${'"'}"
       case _ =>
         None
     }

@@ -14,6 +14,7 @@ import com.vilenet.ViLeNetClusterActor
 import com.vilenet.channels._
 import com.vilenet.coders._
 import com.vilenet.coders.binary.BinaryChatEncoder
+import com.vilenet.coders.binary.packets.SidFloodDetected
 import com.vilenet.coders.telnet._
 import com.vilenet.db.{CreateAccount, DAOCreatedAck, DAOUpdatedAck, UpdateAccount}
 import com.vilenet.servers.{SendBirth, ServerOnline, SplitMe}
@@ -36,10 +37,11 @@ object UserActor {
 case class UserUpdated(user: User) extends Command
 case class PingSent(time: Long, cookie: String) extends Command
 case class UpdatePing(ping: Int) extends Command
-case object KillSelf extends Command
+case object KillConnection extends Command
 
 
-class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends ViLeNetClusterActor {
+class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
+  extends FloodPreventer with ViLeNetClusterActor {
 
   var channelActor: ActorRef = ActorRef.noSender
   var squelchedUsers = CaseInsensitiveHashSet()
@@ -51,8 +53,6 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
   val connectedTime = System.currentTimeMillis()
 
   context.watch(connection)
-
-  subscribe(TOPIC_USERS)
 
   def checkSquelched(user: User) = {
     if (squelchedUsers.contains(user.name)) {
@@ -67,11 +67,11 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
   }
 
   override def receive: Receive = {
-    // From Users Topic
-    case Add(userActor, newUser, protocol) =>
-      if (user.name.equalsIgnoreCase(newUser.name)) {
+    // From Users Actor
+    case UsersUserAdded(userActor, newUser) =>
+      if (self != userActor && user.name.equalsIgnoreCase(newUser.name)) {
         // This user is a stale connection!
-        context.stop(self)
+        self ! KillConnection
       }
 
     case GetUptime =>
@@ -153,80 +153,87 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
 
     // THIS SHIT NEEDS TO BE REFACTORED!
     case Received(data) =>
-      CommandDecoder(user, data) match {
-        case command: Command =>
-          //log.error(s"UserMessageDecoder $command")
-          command match {
-            case PongCommand(cookie) =>
-              handlePingResponse(cookie)
+      // Handle AntiFlood
+      if (floodState(data.length)) {
+        encodeAndSend(UserFlooded)
+        self ! KillConnection
+      } else {
+        CommandDecoder(user, data) match {
+          case command: Command =>
+            //log.error(s"UserMessageDecoder $command")
+            command match {
+              case PongCommand(cookie) =>
+                handlePingResponse(cookie)
 
-            /**
-             * The channel command and user command have two different flows.
-             *  A user has to go through a middle-man users actor because there is no guarantee the receiving user is online.
-             *  A command being sent to the user's channel can be done via actor selection, since we can guarantee the
-             *  channel exists.
-             */
-            case c@ JoinUserCommand(fromUser, channel) =>
-              implicit val timeout = Timeout(250, TimeUnit.MILLISECONDS)
-              if (!user.channel.equalsIgnoreCase(channel)) {
-                Await.result(channelsActor ? UserSwitchedChat(self, fromUser, channel), timeout.duration) match {
-                  case command @ UserChannel(newUser, channel, channelActor) =>
-                    this.channelActor = channelActor
-                    user = newUser
-                    encodeAndSend(command)
-                  case command: ChatEvent =>
-                    encodeAndSend(command)
-                  case _ =>
+              /**
+                * The channel command and user command have two different flows.
+                * A user has to go through a middle-man users actor because there is no guarantee the receiving user is online.
+                * A command being sent to the user's channel can be done via actor selection, since we can guarantee the
+                * channel exists.
+                */
+              case c@JoinUserCommand(fromUser, channel) =>
+                implicit val timeout = Timeout(250, TimeUnit.MILLISECONDS)
+                if (!user.channel.equalsIgnoreCase(channel)) {
+                  Await.result(channelsActor ? UserSwitchedChat(self, fromUser, channel), timeout.duration) match {
+                    case command@UserChannel(newUser, channel, channelActor) =>
+                      this.channelActor = channelActor
+                      user = newUser
+                      encodeAndSend(command)
+                    case command: ChatEvent =>
+                      encodeAndSend(command)
+                    case _ =>
+                  }
                 }
-              }
-            case ResignCommand => resign()
-            case RejoinCommand => rejoin()
-            case command: ChannelCommand =>
-              if (channelActor != ActorRef.noSender) {
-                channelActor ! command
-              }
-            case ChannelsCommand => channelsActor ! ChannelsCommand
-            case command: WhoCommand => channelsActor ! command
-            case command: OperableCommand =>
-              if (Flags.canBan(user)) {
+              case ResignCommand => resign()
+              case RejoinCommand => rejoin()
+              case command: ChannelCommand =>
+                if (channelActor != ActorRef.noSender) {
+                  channelActor ! command
+                }
+              case ChannelsCommand => channelsActor ! ChannelsCommand
+              case command: WhoCommand => channelsActor ! command
+              case command: OperableCommand =>
+                if (Flags.canBan(user)) {
+                  usersActor ! command
+                } else {
+                  encoder(UserError(NOT_OPERATOR)).foreach(connection ! WriteOut(_))
+                }
+              case command: UserToChannelCommand => usersActor ! command
+              case command: UserCommand => usersActor ! command
+              case command: ReturnableCommand => encoder(command).foreach(connection ! WriteOut(_))
+              case command@UsersCommand => usersActor ! command
+              case command: TopCommand => topCommandActor ! command
+              case AwayCommand(message) => awayAvailablity.enableAction(message)
+              case DndCommand(message) => dndAvailablity.enableAction(message)
+              case AccountMade(username, passwordHash) =>
+                publish(TOPIC_DAO, CreateAccount(username, passwordHash))
+              case ChangePasswordCommand(newPassword) =>
+                publish(TOPIC_DAO, UpdateAccount(user.name, newPassword))
+              case SplitMe =>
+                if (Flags.isAdmin(user)) publish(TOPIC_SPLIT, SplitMe)
+              case SendBirth =>
+                if (Flags.isAdmin(user)) publish(TOPIC_ONLINE, ServerOnline)
+              case command@BroadcastCommand(message) =>
                 usersActor ! command
-              } else {
-                encoder(UserError(NOT_OPERATOR)).foreach(connection ! WriteOut(_))
-              }
-            case command: UserToChannelCommand => usersActor ! command
-            case command: UserCommand => usersActor ! command
-            case command: ReturnableCommand => encoder(command).foreach(connection ! WriteOut(_))
-            case command @ UsersCommand => usersActor ! command
-            case command: TopCommand => topCommandActor ! command
-            case AwayCommand(message) => awayAvailablity.enableAction(message)
-            case DndCommand(message) => dndAvailablity.enableAction(message)
-            case AccountMade(username, passwordHash) =>
-              publish(TOPIC_DAO, CreateAccount(username, passwordHash))
-            case ChangePasswordCommand(newPassword) =>
-              publish(TOPIC_DAO, UpdateAccount(user.name, newPassword))
-            case SplitMe =>
-              if (Flags.isAdmin(user)) publish(TOPIC_SPLIT, SplitMe)
-            case SendBirth =>
-              if (Flags.isAdmin(user)) publish(TOPIC_ONLINE, ServerOnline)
-            case command @ BroadcastCommand(message) =>
-              usersActor ! command
-            case _ =>
-          }
-        case x =>
-          log.debug("{} UserMessageDecoder Unhandled {}", user.name, x)
+              case _ =>
+            }
+          case x =>
+            log.debug("{} UserMessageDecoder Unhandled {}", user.name, x)
+        }
       }
 
     case command: UserToChannelCommandAck =>
       //log.error(s"UTCCA $command")
-      channelActor ! command
+      if (channelActor != ActorRef.noSender) {
+        channelActor ! command
+      }
 
     case Terminated(actor) =>
       channelsActor ! UserLeftChat(user)
       publish(TOPIC_USERS, Rem(self))
       self ! PoisonPill
 
-    case KillSelf =>
-      channelsActor ! UserLeftChat(user)
+    case KillConnection =>
       connection ! PoisonPill
 
     case x =>

@@ -133,7 +133,7 @@ class UsersActor extends ViLeNetClusterActor {
                         (uptimeSeq.last._1, uptimeSeq.head._1)
                       }
 
-                    toKill ! KillSelf
+                    //toKill ! KillSelf
                     // This is a race condition
                     rem(toKill)
 
@@ -192,19 +192,22 @@ class UsersActor extends ViLeNetClusterActor {
       }
 
     case c @ Add(connection, user, protocol) =>
-      log.info("UsersActor#Add " + c)
+      log.debug("UsersActor#Add " + c)
       val newUser = getRealUser(user).copy(place = placeCounter)
       placeCounter += 1
       val userActor = context.actorOf(UserActor(connection, newUser, protocol))
+      users.get(newUser.name).foreach {
+        case (name, actor) =>
+          actor ! KillConnection
+      }
       users += newUser.name -> userActor
       reverseUsers += userActor -> newUser.name
       localUsers += userActor
       publish(TOPIC_USERS, RemoteEvent(Add(userActor, newUser, protocol)))
-      publish(TOPIC_USERS, Add(userActor, newUser, protocol))
       sender() ! UsersUserAdded(userActor, newUser)
 
     case c @ Rem(username) =>
-      log.info("UsersActor#Rem " + c)
+      log.debug("UsersActor#Rem " + c)
       rem(sender())
 
     case BroadcastCommand(message) =>
@@ -271,7 +274,7 @@ class UsersActor extends ViLeNetClusterActor {
     } else {
       users.get(user.name).foreach {
         case (_, actor) =>
-          actor ! KillSelf
+          actor ! KillConnection
       }
       user
     }

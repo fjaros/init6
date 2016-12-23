@@ -1,6 +1,7 @@
 package com.vilenet.coders.chat1
 
 import akka.util.ByteString
+import com.vilenet.Constants._
 import com.vilenet.channels._
 import com.vilenet.coders.Encoder
 
@@ -59,6 +60,8 @@ object Chat1Encoder extends Encoder {
         None
       case UserPing(cookie) =>
         s"PING $cookie"
+      case UserFlooded =>
+        s"SERVER ERROR    $FLOODED_OFF"
       case _ =>
         None
     }
