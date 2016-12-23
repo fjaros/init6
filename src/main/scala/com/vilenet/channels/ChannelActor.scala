@@ -1,11 +1,12 @@
 package com.vilenet.channels
 
-import akka.actor.{Terminated, Props, ActorRef}
+import akka.actor.{ActorRef, Props, Terminated}
 import com.vilenet.Constants._
 import com.vilenet.ViLeNetActor
 import com.vilenet.channels.utils.LocalUsersSet
-import com.vilenet.coders.commands.{ChannelInfo, Command, WhoCommandToChannel, ChannelsCommand}
-import com.vilenet.users.{UserUpdated, UpdatePing}
+import com.vilenet.coders.commands.{ChannelInfo, ChannelsCommand, Command, WhoCommandToChannel}
+import com.vilenet.users.{UpdatePing, UserUpdated}
+import com.vilenet.utils.CaseInsensitiveHashMap
 
 import scala.annotation.switch
 import scala.collection.mutable
@@ -55,7 +56,7 @@ trait ChannelActor extends ViLeNetActor {
   val users = mutable.LinkedHashMap[ActorRef, User]()
 
   // Final. Should not be overriden in subclasses. Use receiveEvent to avoid calling super to an abstract declaration
-  final override def receive: Receive = {
+  override final def receive: Receive = {
     case event => receiveEvent(event)
   }
 
@@ -69,7 +70,7 @@ trait ChannelActor extends ViLeNetActor {
 
   def rem(actor: ActorRef): Option[User] = {
     val userOpt = users.get(actor)
-    users.get(actor).foreach(_ => users -= actor)
+    userOpt.foreach(_ => users -= actor)
 
     userOpt
   }
@@ -84,7 +85,7 @@ trait ChannelActor extends ViLeNetActor {
       whoCommand(actor, user)
     case UpdatePing(ping) =>
       val userActor = sender()
-      users.get(userActor).fold(/* ??? */)(user => {
+      users.get(userActor).foreach(user => {
         val newUser = user.copy(ping = ping)
         users += userActor -> newUser
         userActor ! UserUpdated(newUser)

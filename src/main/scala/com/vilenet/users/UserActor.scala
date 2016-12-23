@@ -52,6 +52,8 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
 
   context.watch(connection)
 
+  subscribe(TOPIC_USERS)
+
   def checkSquelched(user: User) = {
     if (squelchedUsers.contains(user.name)) {
       Flags.squelch(user)
@@ -65,6 +67,13 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder) extends 
   }
 
   override def receive: Receive = {
+    // From Users Topic
+    case Add(userActor, newUser, protocol) =>
+      if (user.name.equalsIgnoreCase(newUser.name)) {
+        // This user is a stale connection!
+        context.stop(self)
+      }
+
     case GetUptime =>
       sender() ! ReceivedUptime(self, connectedTime)
 

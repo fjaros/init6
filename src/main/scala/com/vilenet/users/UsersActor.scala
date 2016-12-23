@@ -200,6 +200,7 @@ class UsersActor extends ViLeNetClusterActor {
       reverseUsers += userActor -> newUser.name
       localUsers += userActor
       publish(TOPIC_USERS, RemoteEvent(Add(userActor, newUser, protocol)))
+      publish(TOPIC_USERS, Add(userActor, newUser, protocol))
       sender() ! UsersUserAdded(userActor, newUser)
 
     case c @ Rem(username) =>
