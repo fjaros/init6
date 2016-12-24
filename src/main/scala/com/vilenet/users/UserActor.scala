@@ -10,7 +10,7 @@ import com.vilenet.Constants._
 import com.vilenet.coders.chat1.Chat1Encoder
 import com.vilenet.coders.commands._
 import com.vilenet.connection.WriteOut
-import com.vilenet.ViLeNetClusterActor
+import com.vilenet.{Config, ViLeNetClusterActor}
 import com.vilenet.channels._
 import com.vilenet.coders._
 import com.vilenet.coders.binary.BinaryChatEncoder
@@ -154,7 +154,7 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
     // THIS SHIT NEEDS TO BE REFACTORED!
     case Received(data) =>
       // Handle AntiFlood
-      if (floodState(data.length)) {
+      if (Config.AntiFlood.enabled && floodState(data.length)) {
         encodeAndSend(UserFlooded)
         self ! KillConnection
       } else {

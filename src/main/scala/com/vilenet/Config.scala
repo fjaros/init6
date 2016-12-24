@@ -43,7 +43,7 @@ object Config {
     val p = Config.p.getConfig("accounts")
 
     val allowedCharacters =
-      s"abcdefghijklmnopqrstuvwxyz0123456789[]()${p.getString("allowed-illegal-characters")}".toSet
+      s"abcdefghijklmnopqrstuvwxyz0123456789${p.getString("allowed-illegal-characters")}".toSet
 
     val minLength = p.getInt("min-length")
     val maxLength = p.getInt("max-length")
@@ -61,6 +61,18 @@ object Config {
     val password = p.getString("password")
 
     val batchUpdateInterval = p.getInt("batch-update-interval")
+  }
+
+  object AntiFlood {
+
+    val p = Config.p.getConfig("anti-flood")
+
+    val enabled = p.getBoolean("enabled")
+    val maxCredits = p.getInt("max-credits")
+    val packetMinCost = p.getInt("packet-min-cost")
+    val packetMaxCost = p.getInt("packet-max-cost")
+    val costPerByte = p.getInt("cost-per-byte")
+    val creditsReturnedPerSecond = p.getInt("credits-returned-per-second")
   }
 
   val motd = p.getStringList("motd")
