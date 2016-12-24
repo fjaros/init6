@@ -63,5 +63,12 @@ object Config {
     val batchUpdateInterval = p.getInt("batch-update-interval")
   }
 
-  val motd = p.getStringList("motd").asScala.toArray
+  val motd = p.getStringList("motd")
+    .asScala
+    .map(line => {
+      line
+        .replaceAll("\\$buildNumber", BuildInfo.BUILD_NUMBER)
+        .replaceAll("\\$buildHash", BuildInfo.BUILD_HASH)
+    })
+    .toArray
 }

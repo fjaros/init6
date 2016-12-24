@@ -12,6 +12,8 @@
 # if set to true, will block and log to console.
 debug=false
 
+config=vilenet.conf
+
 min_wait=120
 max_wait=180
 between_drops=10
@@ -31,6 +33,10 @@ while [ $# -gt 1 ]; do
         ;;
         --log_file)
         log_file="$2"
+        shift
+        ;;
+        --config)
+        config="$2"
         shift
         ;;
         --min_wait)
@@ -96,8 +102,8 @@ fi
 java_run=" \
     -XX:+HeapDumpOnOutOfMemoryError -XX:+DisableExplicitGC \
     -Xms128m -Xmx4g \
-    -Dconfig=vilenet.conf \
-    -cp lib/*:vilenet-0.1.jar \
+    -Dconfig=$config \
+    -cp lib/*:vilenet.jar \
     com.vilenet.ViLeNet"
 
 while :; do

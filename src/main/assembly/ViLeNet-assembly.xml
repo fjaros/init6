@@ -16,7 +16,7 @@
             <outputDirectory/>
             <directory>${project.build.directory}</directory>
             <includes>
-                <include>${project.artifactId}-${project.version}.jar</include>
+                <include>${project.artifactId}.jar</include>
             </includes>
             <fileMode>0644</fileMode>
         </fileSet>

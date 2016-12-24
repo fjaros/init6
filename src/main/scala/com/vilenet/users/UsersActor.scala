@@ -2,7 +2,7 @@ package com.vilenet.users
 
 import java.util.concurrent.TimeUnit
 
-import akka.actor.{ActorRef, Address, PoisonPill, Props, Terminated}
+import akka.actor.{ActorRef, Address, Props, Terminated}
 import akka.cluster.ClusterEvent.{MemberUp, UnreachableMember}
 import akka.pattern.ask
 import akka.util.Timeout
@@ -101,7 +101,7 @@ class UsersActor extends ViLeNetClusterActor {
         val address = sender().path.address
         remoteUsers
           .map(_._2)
-          .foreach(context.watch)
+                                          .foreach(context.watch)
         remoteUsersMap ++= address -> remoteUsers.map(_._2)
 
         // yeah .. but each server gets this...
@@ -162,7 +162,6 @@ class UsersActor extends ViLeNetClusterActor {
           }
 
     case UsersCommand =>
-      println(users)
       sender() ! UserInfo(USERS(localUsers.size, users.size))
 
     case Terminated(actor) =>
@@ -198,7 +197,7 @@ class UsersActor extends ViLeNetClusterActor {
       val userActor = context.actorOf(UserActor(connection, newUser, protocol))
       users.get(newUser.name).foreach {
         case (name, actor) =>
-          actor ! KillConnection
+          rem(actor)
       }
       users += newUser.name -> userActor
       reverseUsers += userActor -> newUser.name
@@ -217,6 +216,7 @@ class UsersActor extends ViLeNetClusterActor {
   }
 
   def rem(userActor: ActorRef) = {
+    userActor ! KillConnection
     localUsers -= userActor
     reverseUsers.get(userActor).foreach(username => {
       reverseUsers -= userActor

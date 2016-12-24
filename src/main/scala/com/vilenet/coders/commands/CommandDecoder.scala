@@ -2,10 +2,8 @@ package com.vilenet.coders.commands
 
 import akka.util.ByteString
 import com.vilenet.Constants._
-import com.vilenet.channels.{Flags, UserBroadcast, UserError, User}
+import com.vilenet.channels.{UserError, User}
 import com.vilenet.servers.{SendBirth, SplitMe}
-
-import scala.annotation.switch
 
 /**
   * Created by filip on 9/21/15.
@@ -46,7 +44,7 @@ object CommandDecoder {
   def apply(user: User, byteString: ByteString) = {
     if (byteString.head == '/') {
       val (command, message) = spanBySpace(byteString.tail)
-      (command.toLowerCase: @switch) match {
+      command.toLowerCase match {
         case "away" => AwayCommand(message)
         case "ban" => OneCommand(BanCommand(message), UserError(USER_NOT_LOGGED_ON))
         case "changepassword" | "chpass" => ChangePasswordCommand(message)
@@ -65,6 +63,7 @@ object CommandDecoder {
         case "rejoin" => RejoinCommand
         case "resign" => ResignCommand
         case "serveruptime" | "uptime" => UptimeCommand()
+        case "serverversion" | "version" => VersionCommand()
         case "squelch" | "ignore" => SquelchCommand(user, message.takeWhile(_ != ' '))
         case "top" =>
           if (message.nonEmpty) {
