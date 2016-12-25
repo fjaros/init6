@@ -14,7 +14,6 @@ import com.vilenet.{Config, ViLeNetClusterActor}
 import com.vilenet.channels._
 import com.vilenet.coders._
 import com.vilenet.coders.binary.BinaryChatEncoder
-import com.vilenet.coders.binary.packets.SidFloodDetected
 import com.vilenet.coders.telnet._
 import com.vilenet.db.{CreateAccount, DAOCreatedAck, DAOUpdatedAck, UpdateAccount}
 import com.vilenet.servers.{SendBirth, ServerOnline, SplitMe}

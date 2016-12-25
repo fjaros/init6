@@ -1,7 +1,5 @@
 package com.vilenet
 
-import scala.annotation.switch
-
 /**
  * Created by filip on 10/2/15.
  */
@@ -93,7 +91,7 @@ object Constants {
   val NO_PASSWORD_INPUT = "You did not enter a password."
 
   def encodeClient(client: String) = {
-    (client: @switch) match {
+    client match {
       case "CHAT" | "TAHC" => "a Chat Client"
       case "LTRD" => "Diablo"
       case "RHSD" => "Diablo Shareware"

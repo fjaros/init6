@@ -12,6 +12,9 @@
 # if set to true, will block and log to console.
 debug=false
 
+# update jar. if this file is in the folder, it will be used on next restart
+update_jar=vilenet.jar.update
+
 config=vilenet.conf
 
 min_wait=120
@@ -110,6 +113,10 @@ while :; do
     if [ -n "$pid" ]; then
         echo "PID set to $pid"
     else
+        if [ -e "$update_jar" ]; then
+            echo "Found $update_jar. Rewriting vilenet.jar..."
+            mv "$update_jar" vilenet.jar
+        fi
         echo "Starting ViLeNet..."
 
         log_file="vilenet_$(date +'%s%N'|cut -b1-13).log"

@@ -446,11 +446,16 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
         case SID_JOINCHANNEL =>
           data match {
             case SidJoinChannel(packet) =>
+              // seems this isn't really good for our use case.
+              // just always take the channel from packet.
+              /*
               packet.joinFlag match {
                 case 0x00 | 0x01 => actor ! Received(ByteString(s"/j ViLe"))
                 case 0x02 | 0x05 => actor ! Received(ByteString(s"/j ${packet.channel}"))
                 case _ =>
               }
+              */
+              actor ! Received(ByteString(s"/j ${packet.channel}"))
               stay()
             case _ => stop()
           }
