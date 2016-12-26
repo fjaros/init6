@@ -196,7 +196,7 @@ class UsersActor extends ViLeNetClusterActor {
       placeCounter += 1
       val userActor = context.actorOf(UserActor(connection, newUser, protocol))
       users.get(newUser.name).foreach {
-        case (name, actor) =>
+        case (_, actor) =>
           rem(actor)
       }
       users += newUser.name -> userActor
@@ -211,6 +211,12 @@ class UsersActor extends ViLeNetClusterActor {
 
     case BroadcastCommand(message) =>
       publish(TOPIC_USERS, RemoteEvent(BroadcastCommand(message)))
+
+    case DisconnectCommand(user) =>
+      users.get(user).foreach {
+        case (_, actor) =>
+          rem(actor)
+      }
 
     case _ =>
   }

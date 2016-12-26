@@ -212,7 +212,9 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
                 if (Flags.isAdmin(user)) publish(TOPIC_SPLIT, SplitMe)
               case SendBirth =>
                 if (Flags.isAdmin(user)) publish(TOPIC_ONLINE, ServerOnline)
-              case command@BroadcastCommand(message) =>
+              case command @ BroadcastCommand(message) =>
+                usersActor ! command
+              case command @ DisconnectCommand(user) =>
                 usersActor ! command
               case _ =>
             }

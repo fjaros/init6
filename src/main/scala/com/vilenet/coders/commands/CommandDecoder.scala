@@ -85,6 +85,7 @@ object CommandDecoder {
 
         // Admin commands
         case "broadcast" => BroadcastCommand(user, message)
+        case "disconnect" | "dc" => DisconnectCommand(user, message)
         case "splitme" => SplitMe
         case "recon" => SendBirth
 

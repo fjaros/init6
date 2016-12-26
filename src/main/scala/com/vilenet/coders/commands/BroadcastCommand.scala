@@ -1,6 +1,6 @@
 package com.vilenet.coders.commands
 
-import com.vilenet.channels.{UserError, UserBroadcast, Flags, User}
+import com.vilenet.channels.{UserError, Flags, User}
 
 /**
   * Created by filip on 12/19/15.
