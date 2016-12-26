@@ -16,7 +16,6 @@ import com.vilenet.connection._
 import com.vilenet.db.{CreateAccount, DAO, DAOCreatedAck}
 import com.vilenet.users.{Add, Chat1Protocol, PingSent, UsersUserAdded}
 
-import scala.annotation.switch
 import scala.concurrent.Await
 
 /**
@@ -54,7 +53,7 @@ class Chat1Handler(clientAddress: InetSocketAddress, connection: ActorRef) exten
       val splt = data.utf8String.split(" ", 2)
       val (command, value) = (splt.head, splt.last)
 
-      (command: @switch) match {
+      command match {
         case "ACCT" => stay using userCredentials.copy(username = value)
         case "AS" => stay using userCredentials.copy(alias = value)
         case "PASS" => stay using userCredentials.copy(password = value)
@@ -67,7 +66,7 @@ class Chat1Handler(clientAddress: InetSocketAddress, connection: ActorRef) exten
   when (LoggedInChat1State) {
     case Event(JustLoggedInChat1, loggedInUser: LoggedInUser) =>
       log.debug(">> {} Chat1 LoggedInChat1State", connection)
-      connection ! WriteOut(Chat1Encoder(UserInfo(TELNET_CONNECTED(clientAddress.toString))).get)
+      connection ! WriteOut(Chat1Encoder(UserInfo(TELNET_CONNECTED(clientAddress))).get)
       connection ! WriteOut(Chat1Encoder(UserInfoArray(Config.motd)).get)
       keepAlive(loggedInUser.actor, () => {
         connection ! WriteOut(Chat1Encoder(UserPing("ABCD")).get)

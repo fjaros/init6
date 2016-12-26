@@ -1,5 +1,7 @@
 package com.vilenet
 
+import java.net.InetSocketAddress
+
 /**
  * Created by filip on 10/2/15.
  */
@@ -77,7 +79,7 @@ object Constants {
 
   val THE_VOID = "The Void"
 
-  val TELNET_CONNECTED = (address: String) => s"ViLeNet Telnet Connection from [$address]"
+  val TELNET_CONNECTED = (address: InetSocketAddress) => s"ViLeNet Telnet Connection from [${address.getHostName}:${address.getPort}]"
   val TELNET_INCORRECT_PASSWORD = "Incorrect password."
   val TELNET_INCORRECT_USERNAME = "Incorrect username."
 

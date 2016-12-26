@@ -8,4 +8,5 @@ sed -e "s/<buildNumber>Unknown<\/buildNumber>/<buildNumber>$BUILD_NUMBER<\/build
 sed -e "s/BUILD_NUMBER = \"Unknown\"/BUILD_NUMBER = \"$BUILD_NUMBER\"/g" -i "" $BUILD_INFO_FILE
 sed -e "s/BUILD_HASH = \"Unknown\"/BUILD_HASH = \"$BUILD_HASH\"/g" -i "" $BUILD_INFO_FILE
 mvn clean package
-git checkout -- pom.xml $BUILD_INFO_FILE
+sed -e "s/<buildNumber>$BUILD_NUMBER<\/buildNumber>/<buildNumber>Unknown<\/buildNumber>/g" -i "" pom.xml
+git checkout -- $BUILD_INFO_FILE

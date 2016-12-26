@@ -6,8 +6,6 @@ import com.vilenet.channels._
 import com.vilenet.coders.Encoder
 import com.vilenet.coders.binary.packets.{SidChatEvent, SidFloodDetected}
 
-import scala.annotation.switch
-
 /**
  * Created by filip on 10/25/15.
  */
@@ -16,7 +14,7 @@ object BinaryChatEncoder extends Encoder {
   private implicit def longToInt(long: Long): Int = long.toInt
 
   override def apply(data: Any): Option[ByteString] = {
-    (data: @switch) match {
+    data match {
       case UserIn(user) =>
         SidChatEvent(0x01, user.flags, user.ping, user.name, user.client)
       case UserJoined(user) =>

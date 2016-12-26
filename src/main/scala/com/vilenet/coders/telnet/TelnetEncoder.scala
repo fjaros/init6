@@ -17,7 +17,7 @@ object TelnetEncoder extends Encoder {
   def apply(data: String): ByteString = data
 
   override def apply(data: Any): Option[ByteString] = {
-    (data: @switch) match {
+    data match {
       case UserIn(user) =>
         s"1001 USER ${user.name} ${encodeFlags(user.flags)} [${encodeClient(user.client)}]"
       case UserJoined(user) =>

@@ -111,7 +111,7 @@ class TelnetMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
 
   when (LoggedIn) {
     case Event(JustLoggedIn, buffer: AuthenticatedUser) =>
-      connection ! WriteOut(TelnetEncoder(TELNET_CONNECTED(clientAddress.toString)))
+      connection ! WriteOut(TelnetEncoder(TELNET_CONNECTED(clientAddress)))
       connection ! WriteOut(TelnetEncoder(UserName(buffer.user.name)).get)
       connection ! WriteOut(TelnetEncoder(UserInfoArray(Config.motd)).get)
       //keepAlive(buffer.actor, sendNull)

@@ -5,8 +5,6 @@ import com.vilenet.Constants._
 import com.vilenet.channels._
 import com.vilenet.coders.Encoder
 
-import scala.annotation.switch
-
 /**
   * Created by filip on 1/10/16.
   */
@@ -17,7 +15,7 @@ object Chat1Encoder extends Encoder {
   def apply(data: String): ByteString = data
 
   override def apply(data: Any): Option[ByteString] = {
-    (data: @switch) match {
+    data match {
       case LoginOK =>
         s"OK"
       case LoginFailed(reason) =>

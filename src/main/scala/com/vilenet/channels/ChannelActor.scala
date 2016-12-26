@@ -6,9 +6,7 @@ import com.vilenet.ViLeNetActor
 import com.vilenet.channels.utils.LocalUsersSet
 import com.vilenet.coders.commands.{ChannelInfo, ChannelsCommand, Command, WhoCommandToChannel}
 import com.vilenet.users.{UpdatePing, UserUpdated}
-import com.vilenet.utils.CaseInsensitiveHashMap
 
-import scala.annotation.switch
 import scala.collection.mutable
 
 /**
@@ -17,7 +15,7 @@ import scala.collection.mutable
 object ChannelActor {
   // Channel Factory
   def apply(name: String, remoteChannelActor: Option[ActorRef]) = Props({
-    (name.toLowerCase: @switch) match {
+    name.toLowerCase match {
       case "backstage" => AdminChannelActor("Backstage", remoteChannelActor)
       case "the void" => VoidedChannelActor("The Void")
       case "vile" => PublicChannelActor("ViLe", remoteChannelActor)
