@@ -2,7 +2,7 @@ package com.vilenet.channels
 
 import akka.actor.ActorRef
 import com.vilenet.Constants._
-import com.vilenet.coders.commands.{OperableCommand, DesignateCommand}
+import com.vilenet.coders.commands.{DesignateCommand, OperableCommand, TopicCommand}
 import com.vilenet.users.{UserToChannelCommandAck, UserUpdated}
 
 /**
@@ -12,21 +12,31 @@ trait OperableChannelActor extends RemoteOperableChannelActor {
 
   override def receiveEvent = ({
     case command: UserToChannelCommandAck =>
-    users.get(sender()).foreach(user => {
-      if (Flags.canBan(user)) {
-        command.command match {
-          case DesignateCommand(_, designatee) =>
-            designate(sender(), command.userActor)
-          case _ =>
+      users.get(sender()).foreach(user => {
+        if (Flags.canBan(user)) {
+          command.command match {
+            case DesignateCommand(_, designatee) =>
+              designate(sender(), command.userActor)
+            case _ =>
+          }
+        } else {
+          command.command match {
+            case command: OperableCommand => sender() ! UserError(NOT_OPERATOR)
+            case _ => super.receiveEvent(command)
+          }
         }
-      } else {
-        command.command match {
-          case command: OperableCommand => sender() ! UserError(NOT_OPERATOR)
-          case _ => super.receiveEvent(command)
+        super.receiveEvent(command)
+      })
+    case TopicCommand(_, message) =>
+      val userActor = sender()
+      users.get(userActor).foreach(user => {
+        if (Flags.canBan(user)) {
+          topic = message
+          userActor ! UserInfo(SET_TOPIC)
+        } else {
+          userActor ! UserError(NOT_OPERATOR)
         }
-      }
-      super.receiveEvent(command)
-    })
+      })
   }: Receive)
     .orElse(super.receiveEvent)
 

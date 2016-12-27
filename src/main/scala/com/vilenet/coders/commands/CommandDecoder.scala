@@ -75,6 +75,7 @@ object CommandDecoder {
           } else {
             TopCommand("all")
           }
+        case "topic" => TopicCommand(user, message)
         case "unban" => OneCommand(UnbanCommand(message.takeWhile(_ != ' ')), UserError(USER_NOT_LOGGED_ON))
         case "unsquelch" | "unignore" => UnsquelchCommand(user, message.takeWhile(_ != ' '))
         case "users" => UsersCommand

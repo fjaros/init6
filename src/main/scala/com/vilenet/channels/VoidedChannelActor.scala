@@ -18,7 +18,7 @@ sealed class VoidedChannelActor(channelName: String)
 
   override def receiveEvent = ({
     case ChannelCreated => // No-op
-    case ChannelsCommand => sender() ! ChannelInfo(name, 0)
+    case ChannelsCommand => sender() ! ChannelInfo(name, 0, topic)
     case EmoteCommand(_, message) => sender() ! UserEmote(users(sender()), message)
   }: Receive)
     .orElse(super.receiveEvent)

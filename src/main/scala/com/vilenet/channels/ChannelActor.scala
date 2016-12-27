@@ -4,7 +4,7 @@ import akka.actor.{ActorRef, Props, Terminated}
 import com.vilenet.Constants._
 import com.vilenet.ViLeNetActor
 import com.vilenet.channels.utils.LocalUsersSet
-import com.vilenet.coders.commands.{ChannelInfo, ChannelsCommand, Command, WhoCommandToChannel}
+import com.vilenet.coders.commands._
 import com.vilenet.users.{UpdatePing, UserUpdated}
 
 import scala.collection.mutable
@@ -38,6 +38,7 @@ case class User(
 
 case class AddUser(actor: ActorRef, user: User) extends Command
 case class RemUser(actor: ActorRef) extends Command
+case class UserAddedToChannel(user: User, channelName: String, channelActor: ActorRef, channelTopic: String)
 case object CheckSize extends Command
 case class ChannelSize(actor: ActorRef, name: String, size: Int) extends Command
 
@@ -53,6 +54,9 @@ trait ChannelActor extends ViLeNetActor {
   // Linked Map of actor -> user. Actor can be local or remote.
   val users = mutable.LinkedHashMap[ActorRef, User]()
 
+  // Settable topic by operator
+  var topic = ""
+
   // Final. Should not be overriden in subclasses. Use receiveEvent to avoid calling super to an abstract declaration
   override final def receive: Receive = {
     case event => receiveEvent(event)
@@ -62,7 +66,7 @@ trait ChannelActor extends ViLeNetActor {
     val newUser = user.copy(channel = name)
 
     users += actor -> newUser
-    sender() ! UserChannel(newUser, name, self)
+    sender() ! UserAddedToChannel(newUser, name, self, topic)
     newUser
   }
 
@@ -77,10 +81,8 @@ trait ChannelActor extends ViLeNetActor {
     case AddUser(actor, user) => add(actor, user)
     case RemUser(actor) => rem(actor)
     case CheckSize => sender() ! ChannelSize(self, name, users.size)
-    case ChannelsCommand => sender() ! ChannelInfo(name, users.size)
-    case c@ WhoCommandToChannel(actor, user) =>
-      println(c)
-      whoCommand(actor, user)
+    case ChannelsCommand => sender() ! ChannelInfo(name, users.size, topic)
+    case c@ WhoCommandToChannel(actor, user) => whoCommand(actor, user)
     case UpdatePing(ping) =>
       val userActor = sender()
       users.get(userActor).foreach(user => {

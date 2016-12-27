@@ -16,6 +16,8 @@ trait NonOperableChannelActor extends ChannelActor {
         case command: OperableCommand => sender() ! UserError(NOT_OPERATOR)
         case _ => super.receiveEvent(command)
       }
+    case command: OperableCommand =>
+      sender() ! UserError(NOT_OPERATOR)
   }: Receive)
     .orElse(super.receiveEvent)
 

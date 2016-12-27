@@ -34,7 +34,7 @@ object Constants {
   val CANNOT_BAN_OPERATOR = "You can't ban a channel operator."
   val CANNOT_KICK_OPERATOR = "You can't kick a channel operator."
   val CHANNEL_FULL = "Channel is full."
-  val CHANNEL_INFO = (name: String, size: Int) => s"$name with $size ${addS(size, "user")}."
+  val CHANNEL_INFO = (name: String, size: Int, topic: String) => s"$name with $size ${addS(size, "user")}, $topic"
   val CHANNEL_LIST = (size: Int) => s"Listing $size ${addS(size, "channel")}:"
   val CHANNEL_LIST_EMPTY = "There are no visible channels."
   val CHANNEL_NOT_EXIST = Array(
@@ -58,6 +58,8 @@ object Constants {
   val NOT_OPERATOR = "You are not a channel operator."
   val PLACED = (place: Int) => s"You placed $place on the server."
   val PUBLIC_CHANNEL = "This is a chat channel. No Ops will be given."
+
+  val SET_TOPIC = "Topic has been set."
 
   val USER_BANNED = (banning: String, banned: String, message: String) => s"$banned was banned by $banning${if (message.nonEmpty) s" ($message)" else ""}."
   val USER_DESIGNATED = (designated: String) => s"$designated is your new designated heir."

@@ -141,15 +141,21 @@ class ChannelsActor extends ViLeNetClusterActor {
       (getOrCreate(channel) ? AddUser(actor, user)).onComplete {
         case Success(reply) =>
           reply match {
-            case _: UserChannel =>
+            case reply: UserAddedToChannel =>
               channels.get(user.channel).foreach {
                 case (_, oldChannelActor) =>
                   oldChannelActor ! RemUser(actor)
               }
+              // temp actor
+              userActor ! UserChannel(reply.user, reply.channelName, reply.channelActor)
+              // real actor
+              if (reply.channelTopic.nonEmpty) {
+                actor ! UserInfo(reply.channelTopic)
+              }
             case x =>
               log.error("{} Invalid getOrCreate return {}", command, x)
+              userActor ! reply
           }
-          userActor ! reply
         case reply => userActor ! reply
       }
 
@@ -162,16 +168,16 @@ class ChannelsActor extends ViLeNetClusterActor {
           case (_, actor) => actor ? ChannelsCommand
         }
         .collectResults {
-          case ChannelInfo(name, size) if size > 0 => Some(name -> size)
+          case ChannelInfo(name, size, topic) if size > 0 => Some(name -> (size, topic))
           case _ => None
         }
         .foreach(responses => {
           if (responses.nonEmpty) {
-            val sortedResponses = responses.sortBy(_._2)(Ordering[Int].reverse)
+            val sortedResponses = responses.sortBy(_._2._1)(Ordering[Int].reverse)
 
             replyActor ! UserInfo(CHANNEL_LIST(sortedResponses.size))
             sortedResponses.foreach {
-              case (name, size) => replyActor ! UserInfo(CHANNEL_INFO(name, size))
+              case (name, (size, topic)) => replyActor ! UserInfo(CHANNEL_INFO(name, size, topic))
             }
           } else {
             replyActor ! UserInfo(CHANNEL_LIST_EMPTY)
