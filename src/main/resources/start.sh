@@ -17,9 +17,13 @@ update_jar=vilenet.jar.update
 
 config=vilenet.conf
 
+# in minutes
 min_wait=120
 max_wait=180
-between_drops=10
+
+# in seconds
+min_between_drops=20
+max_between_drops=30
 
 restart_if_killed=true
 check_proc_interval=5
@@ -50,8 +54,12 @@ while [ $# -gt 1 ]; do
         max_wait="$2"
         shift
         ;;
-        --between_drops)
-        between_drops="$2"
+        --min_between_drops)
+        min_between_drops="$2"
+        shift
+        ;;
+        --max_between_drops)
+        max_between_drops="$2"
         shift
         ;;
         --restart_if_killed)
@@ -94,6 +102,16 @@ function shutdown_hook() {
     exit
 }
 
+# Randomize wait time
+function random_range() {
+    local result=$1
+    local min="$2"
+    local max="$3"
+
+    let "_result = RANDOM % (max - min + 1) + min"
+    eval $result="$_result"
+}
+
 # check java version
 java_version=$(java -version 2>&1 | awk -F '"' '/version/ {print $2}')
 echo "Detected java version $java_version"
@@ -128,18 +146,14 @@ while :; do
         pid=$!
     fi
 
-    if [ "$min_wait" -eq "$max_wait" ]; then
-        wait_time="$min_wait"
-    else
-        let "wait_time = (RANDOM % (max_wait - min_wait)) + min_wait"
-    fi
+    random_range wait_time "$min_wait" "$max_wait"
 
     echo "Waiting $wait_time minutes before next drop"
     let "wait_time *= 60"
 
     waited_time=0
     while [ "$waited_time" -lt "$wait_time" ]; do
-        if [ -e "/proc/$pid" ]; then
+        if [ -e "/proc/$pid" ]; then # this does not work on mac
             sleep "$check_proc_interval"
             let "waited_time += check_proc_interval"
 
@@ -148,6 +162,8 @@ while :; do
                 kill "$pid"
                 wait "$pid"
                 pid=""
+
+                random_range between_drops "$min_between_drops" "$max_between_drops"
 
                 echo "Killed ViLeNet. Sleeping $between_drops seconds between drops."
                 sleep "$between_drops"

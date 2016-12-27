@@ -9,7 +9,8 @@ import com.vilenet.ViLeNetActor
 import com.vilenet.connection.chat1.Chat1Receiver
 
 object ProtocolHandler {
-  def apply(clientAddress: InetSocketAddress, client: ActorRef) = Props(new ProtocolHandler(clientAddress, client))
+  def apply(clientAddress: InetSocketAddress, client: ActorRef) =
+    Props(classOf[ProtocolHandler], clientAddress, client)
 }
 
 case object Ack extends Event

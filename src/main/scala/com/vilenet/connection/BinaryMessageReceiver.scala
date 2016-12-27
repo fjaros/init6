@@ -3,12 +3,11 @@ package com.vilenet.connection
 import java.net.InetSocketAddress
 import java.util.concurrent.TimeUnit
 
-import akka.actor.{PoisonPill, ActorRef, FSM, Props}
-import akka.io.Tcp
-import akka.io.Tcp.{PeerClosed, Received}
+import akka.actor.{ActorRef, FSM, Props}
+import akka.io.Tcp.Received
 import akka.util.ByteString
 import com.vilenet.connection.binary.{BinaryPacket, BinaryMessageHandler}
-import com.vilenet.{Constants, ViLeNetActor}
+import com.vilenet.ViLeNetActor
 
 import scala.annotation.tailrec
 import scala.concurrent.duration.Duration
@@ -24,10 +23,12 @@ case class ReceivingData(buffer: Array[Byte] = Array[Byte]()) extends ReceiverDa
  * Created by filip on 10/25/15.
  */
 object BinaryMessageReceiver {
-  def apply(clientAddress: InetSocketAddress, connection: ActorRef) = Props(new BinaryMessageReceiver(clientAddress, connection))
+  def apply(clientAddress: InetSocketAddress, connection: ActorRef) =
+    Props(classOf[BinaryMessageReceiver], clientAddress, connection)
 }
 
-class BinaryMessageReceiver(clientAddress: InetSocketAddress, connection: ActorRef) extends ViLeNetActor with FSM[PacketReceiverState, ReceiverData] {
+class BinaryMessageReceiver(clientAddress: InetSocketAddress, connection: ActorRef)
+  extends ViLeNetActor with FSM[PacketReceiverState, ReceiverData] {
 
   val HEADER_BYTE = 0xFF.toByte
   val HEADER_SIZE = 4

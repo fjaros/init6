@@ -25,12 +25,12 @@ import scala.concurrent.Await
  * Created by filip on 9/27/15.
  */
 object UserActor {
-  def apply(connection: ActorRef, user: User, protocol: Protocol) = Props(new UserActor(connection, user,
+  def apply(connection: ActorRef, user: User, protocol: Protocol) = Props(classOf[UserActor], connection, user,
     protocol match {
       case BinaryProtocol => BinaryChatEncoder
       case TelnetProtocol => TelnetEncoder
       case Chat1Protocol => Chat1Encoder
-  }))
+  })
 }
 
 case class UserUpdated(user: User) extends Command

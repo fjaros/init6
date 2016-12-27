@@ -22,7 +22,7 @@ case object SplitMe extends Command
 
 
 object ServerPantyDropper extends ViLeNetComponent {
-  def apply(serverName: String) = system.actorOf(Props(new ServerPantyDropper(serverName)), VILE_NET_SERVERS_PATH)
+  def apply(serverName: String) = system.actorOf(Props(classOf[ServerPantyDropper], serverName), VILE_NET_SERVERS_PATH)
 }
 
 case object AnnounceSplit extends Command

@@ -35,7 +35,8 @@ case object JustLoggedIn extends ChatEvent
  * Created by filip on 9/19/15.
  */
 object TelnetMessageReceiver {
-  def apply(clientAddress: InetSocketAddress, connection: ActorRef) = Props(new TelnetMessageReceiver(clientAddress, connection))
+  def apply(clientAddress: InetSocketAddress, connection: ActorRef) =
+    Props(classOf[TelnetMessageReceiver], clientAddress, connection)
 }
 
 class TelnetMessageReceiver(clientAddress: InetSocketAddress, connection: ActorRef) extends ViLeNetActor {
@@ -71,7 +72,8 @@ class TelnetMessageReceiver(clientAddress: InetSocketAddress, connection: ActorR
 }
 
 object TelnetMessageHandler {
-  def apply(clientAddress: InetSocketAddress, connection: ActorRef) = Props(new TelnetMessageHandler(clientAddress, connection))
+  def apply(clientAddress: InetSocketAddress, connection: ActorRef) =
+    Props(classOf[TelnetMessageHandler], clientAddress, connection)
 }
 
 class TelnetMessageHandler(clientAddress: InetSocketAddress, connection: ActorRef) extends ViLeNetKeepAliveActor with FSM[State, Data] {

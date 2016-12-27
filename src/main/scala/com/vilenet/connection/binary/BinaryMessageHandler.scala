@@ -44,7 +44,8 @@ case class BinaryPacket(packetId: Byte, packet: ByteString)
 
 
 object BinaryMessageHandler {
-  def apply(clientAddress: InetSocketAddress, connection: ActorRef) = Props(new BinaryMessageHandler(clientAddress, connection))
+  def apply(clientAddress: InetSocketAddress, connection: ActorRef) =
+    Props(classOf[BinaryMessageHandler], clientAddress, connection)
 }
 
 class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRef) extends ViLeNetClusterActor with ViLeNetKeepAliveActor with FSM[BinaryState, ActorRef] {
@@ -349,13 +350,6 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
         val u = User(oldUsername, dbUser.flags, ping, client = productId)
         usersActor ! Add(connection, u, BinaryProtocol)
         goto(ExpectingLogonHandled)
-//        Await.result(usersActor ? Add(connection, u, BinaryProtocol), timeout.duration) match {
-//          case UsersUserAdded(userActor, user) =>
-//            this.username = user.name
-//            send(SidLogonResponse(SidLogonResponse.RESULT_SUCCESS))
-//            goto(ExpectingSidEnterChat) using userActor
-//          case _ => stop()
-//        }
       } else {
         send(SidLogonResponse(SidLogonResponse.RESULT_INVALID_PASSWORD))
         goto(ExpectingSidLogonResponse)
@@ -373,13 +367,6 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
         val u = User(oldUsername, dbUser.flags, ping, client = productId)
         usersActor ! Add(connection, u, BinaryProtocol)
         goto(ExpectingLogon2Handled)
-//        Await.result(usersActor ? Add(connection, u, BinaryProtocol), timeout.duration) match {
-//          case UsersUserAdded(userActor, user) =>
-//            this.username = user.name
-//            send(SidLogonResponse2(SidLogonResponse2.RESULT_SUCCESS))
-//            goto(ExpectingSidEnterChat) using userActor
-//          case _ => stop()
-//        }
       } else {
         send(SidLogonResponse2(SidLogonResponse2.RESULT_INVALID_PASSWORD))
         goto(ExpectingSidLogonResponse)
