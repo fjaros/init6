@@ -150,7 +150,7 @@ class ChannelsActor extends ViLeNetClusterActor {
               userActor ! UserChannel(reply.user, reply.channelName, reply.channelActor)
               // real actor
               if (reply.channelTopic.nonEmpty) {
-                actor ! UserInfo(reply.channelTopic)
+                actor ! UserInfo(CHANNEL_TOPIC(reply.channelTopic))
               }
             case x =>
               log.error("{} Invalid getOrCreate return {}", command, x)

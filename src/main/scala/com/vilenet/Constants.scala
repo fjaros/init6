@@ -34,13 +34,14 @@ object Constants {
   val CANNOT_BAN_OPERATOR = "You can't ban a channel operator."
   val CANNOT_KICK_OPERATOR = "You can't kick a channel operator."
   val CHANNEL_FULL = "Channel is full."
-  val CHANNEL_INFO = (name: String, size: Int, topic: String) => s"$name with $size ${addS(size, "user")}, $topic"
+  val CHANNEL_INFO = (name: String, size: Int, topic: String) => s"$name with $size ${addS(size, "user")}${if (topic.nonEmpty) s", topic: $topic" else "."}"
   val CHANNEL_LIST = (size: Int) => s"Listing $size ${addS(size, "channel")}:"
   val CHANNEL_LIST_EMPTY = "There are no visible channels."
   val CHANNEL_NOT_EXIST = Array(
     "That channel does not exist.",
     "(If you are trying to search for a user, use the /whois command.)"
   )
+  val CHANNEL_TOPIC = (topic: String) => s"Topic: $topic"
   val CHANNEL_RESTRICTED = "That channel is restricted."
   val DND_CANCELLED = "Do Not Disturb mode cancelled."
   val UNAVAILABLE_DEFAULT_MSG = "Not available"
@@ -59,7 +60,7 @@ object Constants {
   val PLACED = (place: Int) => s"You placed $place on the server."
   val PUBLIC_CHANNEL = "This is a chat channel. No Ops will be given."
 
-  val SET_TOPIC = "Topic has been set."
+  val SET_TOPIC = (name: String, topic: String) => s"$name ${if (topic.nonEmpty) s"set the topic to: $topic" else "unset the topic."}"
 
   val USER_BANNED = (banning: String, banned: String, message: String) => s"$banned was banned by $banning${if (message.nonEmpty) s" ($message)" else ""}."
   val USER_DESIGNATED = (designated: String) => s"$designated is your new designated heir."

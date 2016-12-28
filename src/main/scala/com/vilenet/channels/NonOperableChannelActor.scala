@@ -17,7 +17,14 @@ trait NonOperableChannelActor extends ChannelActor {
         case _ => super.receiveEvent(command)
       }
     case command: OperableCommand =>
-      sender() ! UserError(NOT_OPERATOR)
+      val userActor = sender()
+      users.get(userActor).fold(userActor ! UserError(NOT_OPERATOR))(user => {
+        if (Flags.isAdmin(user)) {
+          super.receiveEvent(command)
+        } else {
+          userActor ! UserError(NOT_OPERATOR)
+        }
+      })
   }: Receive)
     .orElse(super.receiveEvent)
 

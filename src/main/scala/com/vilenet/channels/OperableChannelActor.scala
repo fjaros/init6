@@ -27,16 +27,6 @@ trait OperableChannelActor extends RemoteOperableChannelActor {
         }
         super.receiveEvent(command)
       })
-    case TopicCommand(_, message) =>
-      val userActor = sender()
-      users.get(userActor).foreach(user => {
-        if (Flags.canBan(user)) {
-          topic = message
-          userActor ! UserInfo(SET_TOPIC)
-        } else {
-          userActor ! UserError(NOT_OPERATOR)
-        }
-      })
   }: Receive)
     .orElse(super.receiveEvent)
 

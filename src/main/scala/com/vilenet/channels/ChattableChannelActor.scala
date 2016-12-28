@@ -2,7 +2,7 @@ package com.vilenet.channels
 
 import akka.actor.ActorRef
 import com.vilenet.Constants._
-import com.vilenet.coders.commands.{UnsquelchCommand, SquelchCommand, EmoteCommand, ChatCommand}
+import com.vilenet.coders.commands._
 import com.vilenet.users.UserToChannelCommandAck
 
 /**
@@ -29,6 +29,17 @@ trait ChattableChannelActor extends RemoteChattableChannelActor {
         case _ =>
       }
       super.receiveEvent(command)
+
+    case TopicCommand(_, message) =>
+      val userActor = sender()
+      users.get(userActor).foreach(user => {
+        if (Flags.canBan(user)) {
+          topic = message
+          localUsers ! UserInfo(SET_TOPIC(user.name, topic))
+        } else {
+          userActor ! UserError(NOT_OPERATOR)
+        }
+      })
   }: Receive)
     .orElse(super.receiveEvent)
 
