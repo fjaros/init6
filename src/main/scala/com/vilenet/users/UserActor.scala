@@ -15,7 +15,7 @@ import com.vilenet.channels._
 import com.vilenet.coders._
 import com.vilenet.coders.binary.BinaryChatEncoder
 import com.vilenet.coders.telnet._
-import com.vilenet.db.{CreateAccount, DAOCreatedAck, DAOUpdatedAck, UpdateAccount}
+import com.vilenet.db._
 import com.vilenet.servers.{SendBirth, ServerOnline, SplitMe}
 import com.vilenet.utils.CaseInsensitiveHashSet
 
@@ -147,8 +147,14 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
     case DAOCreatedAck(username, passwordHash) =>
       self ! UserInfo(ACCOUNT_CREATED(username, passwordHash))
 
-    case DAOUpdatedAck(username, passwordHash) =>
+    case DAOUpdatedPasswordAck(username, passwordHash) =>
       self ! UserInfo(ACCOUNT_UPDATED(username, passwordHash))
+
+    case DAOClosedAccountAck(username, reason) =>
+      self ! UserInfo(ACCOUNT_CLOSED(username, reason))
+
+    case DAOOpenedAccountAck(username) =>
+      self ! UserInfo(ACCOUNT_OPENED(username))
 
     // THIS SHIT NEEDS TO BE REFACTORED!
     case Received(data) =>
@@ -207,7 +213,7 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
               case AccountMade(username, passwordHash) =>
                 publish(TOPIC_DAO, CreateAccount(username, passwordHash))
               case ChangePasswordCommand(newPassword) =>
-                publish(TOPIC_DAO, UpdateAccount(user.name, newPassword))
+                publish(TOPIC_DAO, UpdateAccountPassword(user.name, newPassword))
               case SplitMe =>
                 if (Flags.isAdmin(user)) publish(TOPIC_SPLIT, SplitMe)
               case SendBirth =>
@@ -216,6 +222,10 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
                 usersActor ! command
               case command @ DisconnectCommand(user) =>
                 usersActor ! command
+              case command @ CloseAccountCommand(account, reason) =>
+                publish(TOPIC_DAO, CloseAccount(account, reason))
+              case command @ OpenAccountCommand(account) =>
+                publish(TOPIC_DAO, OpenAccount(account))
               case _ =>
             }
           case x =>

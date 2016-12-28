@@ -92,19 +92,24 @@ class Chat1Handler(clientAddress: InetSocketAddress, connection: ActorRef) exten
       DAO.getUser(userCredentials.username).fold({
         createAccount(userCredentials)
       })(dbUser => {
-        if (BSHA1(userCredentials.password).sameElements(dbUser.passwordHash)) {
-          val u = User(userCredentials.username, dbUser.flags | Flags.UDP, 0, client = "TAHC")
-          Await.result(usersActor ? Add(connection, u, Chat1Protocol), timeout.duration) match {
-            case UsersUserAdded(actor, user) =>
-              connection ! WriteOut(Chat1Encoder(LoginOK).get)
-              sendPing(actor)
-              actor ! Received(ByteString(s"/j ${userCredentials.home}"))
-              goto (LoggedInChat1State) using LoggedInUser(actor, userCredentials.username)
-            case _ => stop()
-          }
+        if (dbUser.closed) {
+          connection ! WriteOut(Chat1Encoder(LoginFailed(ACCOUNT_CLOSED(userCredentials.username, dbUser.closedReason))).get)
+          goto(BlockedInChat1State)
         } else {
-          connection ! WriteOut(Chat1Encoder(LoginFailed(TELNET_INCORRECT_PASSWORD)).get)
-          goto (BlockedInChat1State)
+          if (BSHA1(userCredentials.password).sameElements(dbUser.passwordHash)) {
+            val u = User(userCredentials.username, dbUser.flags | Flags.UDP, 0, client = "TAHC")
+            Await.result(usersActor ? Add(connection, u, Chat1Protocol), timeout.duration) match {
+              case UsersUserAdded(actor, user) =>
+                connection ! WriteOut(Chat1Encoder(LoginOK).get)
+                sendPing(actor)
+                actor ! Received(ByteString(s"/j ${userCredentials.home}"))
+                goto(LoggedInChat1State) using LoggedInUser(actor, userCredentials.username)
+              case _ => stop()
+            }
+          } else {
+            connection ! WriteOut(Chat1Encoder(LoginFailed(TELNET_INCORRECT_PASSWORD)).get)
+            goto(BlockedInChat1State)
+          }
         }
       })
     } else {

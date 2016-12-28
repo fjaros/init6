@@ -14,9 +14,13 @@ object DAOActor extends ViLeNetComponent {
 
 case class GetAccount(username: String) extends Command
 case class CreateAccount(username: String, passwordHash: Array[Byte]) extends Command
-case class UpdateAccount(username: String, passwordHash: Array[Byte], flags: Int = -1) extends Command
+case class UpdateAccountPassword(username: String, passwordHash: Array[Byte]) extends Command
+case class CloseAccount(username: String, reason: String = "") extends Command
+case class OpenAccount(username: String) extends Command
 case class DAOCreatedAck(username: String, passwordHash: Array[Byte]) extends Command
-case class DAOUpdatedAck(username: String, passwordHash: Array[Byte]) extends Command
+case class DAOUpdatedPasswordAck(username: String, passwordHash: Array[Byte]) extends Command
+case class DAOClosedAccountAck(username: String, reason: String) extends Command
+case class DAOOpenedAccountAck(username: String) extends Command
 
 class DAOActor extends ViLeNetClusterActor {
 
@@ -29,10 +33,22 @@ class DAOActor extends ViLeNetClusterActor {
         sender() ! DAOCreatedAck(username, passwordHash)
       }
 
-    case UpdateAccount(username, passwordHash, flags) =>
-      DAO.updateUser(username, passwordHash, flags)
+    case UpdateAccountPassword(username, passwordHash) =>
+      DAO.updateUser(username, passwordHash)
       if (isLocal()) {
-        sender() ! DAOUpdatedAck(username, passwordHash)
+        sender() ! DAOUpdatedPasswordAck(username, passwordHash)
+      }
+
+    case CloseAccount(username, reason) =>
+      DAO.updateUser(username, closed = Some(true), closedReason = Some(reason))
+      if (isLocal()) {
+        sender() ! DAOClosedAccountAck(username, reason)
+      }
+
+    case OpenAccount(username) =>
+      DAO.updateUser(username, closed = Some(false), closedReason = Some(""))
+      if (isLocal()) {
+        sender() ! DAOOpenedAccountAck(username)
       }
   }
 }

@@ -89,24 +89,29 @@ class TelnetMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
 
   when (ExpectingUsername) {
     case Event(Received(data), _) =>
-      goto (ExpectingPassword) using UnauthenticatedUser(data.utf8String)
+      goto(ExpectingPassword) using UnauthenticatedUser(data.utf8String)
   }
 
   when (ExpectingPassword) {
     case Event(Received(data), buffer: UnauthenticatedUser) =>
       DAO.getUser(buffer.user).fold({
         connection ! WriteOut(TelnetEncoder(TELNET_INCORRECT_USERNAME))
-        goto (Blocked)
+        goto(Blocked)
       })(dbUser => {
-        if (BSHA1(data.toArray).sameElements(dbUser.passwordHash)) {
-          val u = User(buffer.user, dbUser.flags | Flags.UDP, 0, client = "TAHC")
-          Await.result(usersActor ? Add(connection, u, TelnetProtocol), timeout.duration) match {
-            case UsersUserAdded(actor, user) => goto (LoggedIn) using AuthenticatedUser(user, actor)
-            case x => stop()
-          }
+        if (dbUser.closed) {
+          connection ! WriteOut(TelnetEncoder(ACCOUNT_CLOSED(buffer.user, dbUser.closedReason)))
+          goto(Blocked)
         } else {
-          connection ! WriteOut(TelnetEncoder(TELNET_INCORRECT_PASSWORD))
-          goto (Blocked)
+          if (BSHA1(data.toArray).sameElements(dbUser.passwordHash)) {
+            val u = User(buffer.user, dbUser.flags | Flags.UDP, 0, client = "TAHC")
+            Await.result(usersActor ? Add(connection, u, TelnetProtocol), timeout.duration) match {
+              case UsersUserAdded(actor, user) => goto(LoggedIn) using AuthenticatedUser(user, actor)
+              case x => stop()
+            }
+          } else {
+            connection ! WriteOut(TelnetEncoder(TELNET_INCORRECT_PASSWORD))
+            goto(Blocked)
+          }
         }
       })
   }

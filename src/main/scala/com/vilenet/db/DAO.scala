@@ -28,16 +28,31 @@ object DAO {
   object DbUser extends SQLSyntaxSupport[DbUser] {
     override val tableName = "users"
 
-    def apply(rs: WrappedResultSet) = new DbUser(rs.long(1), rs.string(2), rs.get[Array[Byte]](3), rs.get[Array[Byte]](4))
+    def apply(rs: WrappedResultSet) = new DbUser(
+      rs.long(1),
+      rs.string(2),
+      rs.get[Array[Byte]](3),
+      rs.get[Array[Byte]](4),
+      rs.boolean(5),
+      rs.string(6)
+    )
   }
 
   private[db] def createUser(username: String, passwordHash: Array[Byte]) = UserCache.insert(username, passwordHash)
 
-  private[db] def updateUser(username: String, passwordHash: Array[Byte] = Array[Byte](), flags: Int = -1) = {
+  private[db] def updateUser(
+    username: String,
+    passwordHash: Array[Byte] = Array[Byte](),
+    flags: Int = -1,
+    closed: Option[Boolean] = None,
+    closedReason: Option[String] = None
+  ) = {
     getUser(username).foreach(dbUser => {
       UserCache.update(username, dbUser.copy(
         passwordHash = if (passwordHash.nonEmpty) passwordHash else dbUser.passwordHash,
-        flags = if (flags != -1) flags else dbUser.flags
+        flags = if (flags != -1) flags else dbUser.flags,
+        closed = closed.getOrElse(dbUser.closed),
+        closedReason = closedReason.getOrElse(dbUser.closedReason)
       ))
     })
   }
@@ -74,7 +89,9 @@ object DAO {
             .set(
               DbUser.column.username -> sqls.?,
               DbUser.column.passwordHash -> sqls.?,
-              DbUser.column.flags -> sqls.?
+              DbUser.column.flags -> sqls.?,
+              DbUser.column.closed -> sqls.?,
+              DbUser.column.closedReason -> sqls.?
             )
               .where.eq(DbUser.column.column("id"), sqls.?) // applyDynamic does not support passing a vararg parameter?
         }.batch(
@@ -83,6 +100,8 @@ object DAO {
               dbUser.username,
               dbUser.passwordHash,
               dbUser.flags,
+              dbUser.closed,
+              dbUser.closedReason,
               dbUser.id
             )
           ).toSeq: _*)

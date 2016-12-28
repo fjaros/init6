@@ -8,6 +8,8 @@ CREATE TABLE IF NOT EXISTS users (
     username VARCHAR(16) NOT NULL,
     password_hash VARBINARY(20) NOT NULL,
     flags BIT(32) NOT NULL DEFAULT 0,
+    closed BOOLEAN DEFAULT FALSE,
+    closed_reason VARCHAR(255),
     PRIMARY KEY(id),
     UNIQUE KEY(username)
 );

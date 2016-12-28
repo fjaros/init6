@@ -14,7 +14,7 @@ import com.vilenet.coders.binary.packets._
 import com.vilenet.coders.binary.packets.Packets._
 import com.vilenet.coders.commands.PongCommand
 import com.vilenet.connection._
-import com.vilenet.db.{CreateAccount, DAO, DAOCreatedAck, UpdateAccount}
+import com.vilenet.db.{CreateAccount, DAO, DAOCreatedAck, UpdateAccountPassword}
 import com.vilenet.users.{Add, BinaryProtocol, PingSent, UsersUserAdded}
 import com.vilenet.utils.LimitedAction
 import com.vilenet.{Config, ViLeNetClusterActor}
@@ -346,13 +346,18 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
       send(SidLogonResponse(SidLogonResponse.RESULT_INVALID_PASSWORD))
       goto(ExpectingSidLogonResponse)
     })(dbUser => {
-      if (BSHA1(clientToken, serverToken, dbUser.passwordHash).sameElements(passwordHash)) {
-        val u = User(oldUsername, dbUser.flags, ping, client = productId)
-        usersActor ! Add(connection, u, BinaryProtocol)
-        goto(ExpectingLogonHandled)
-      } else {
+      if (dbUser.closed) {
         send(SidLogonResponse(SidLogonResponse.RESULT_INVALID_PASSWORD))
         goto(ExpectingSidLogonResponse)
+      } else {
+        if (BSHA1(clientToken, serverToken, dbUser.passwordHash).sameElements(passwordHash)) {
+          val u = User(oldUsername, dbUser.flags, ping, client = productId)
+          usersActor ! Add(connection, u, BinaryProtocol)
+          goto(ExpectingLogonHandled)
+        } else {
+          send(SidLogonResponse(SidLogonResponse.RESULT_INVALID_PASSWORD))
+          goto(ExpectingSidLogonResponse)
+        }
       }
     })
   }
@@ -363,13 +368,18 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
       send(SidLogonResponse2(SidLogonResponse2.RESULT_DOES_NOT_EXIST))
       goto(ExpectingSidLogonResponse)
     })(dbUser => {
-      if (BSHA1(clientToken, serverToken, dbUser.passwordHash).sameElements(passwordHash)) {
-        val u = User(oldUsername, dbUser.flags, ping, client = productId)
-        usersActor ! Add(connection, u, BinaryProtocol)
-        goto(ExpectingLogon2Handled)
-      } else {
-        send(SidLogonResponse2(SidLogonResponse2.RESULT_INVALID_PASSWORD))
+      if (dbUser.closed) {
+        send(SidLogonResponse2(SidLogonResponse2.RESULT_ACCOUNT_CLOSED, dbUser.closedReason))
         goto(ExpectingSidLogonResponse)
+      } else {
+        if (BSHA1(clientToken, serverToken, dbUser.passwordHash).sameElements(passwordHash)) {
+          val u = User(oldUsername, dbUser.flags, ping, client = productId)
+          usersActor ! Add(connection, u, BinaryProtocol)
+          goto(ExpectingLogon2Handled)
+        } else {
+          send(SidLogonResponse2(SidLogonResponse2.RESULT_INVALID_PASSWORD))
+          goto(ExpectingSidLogonResponse)
+        }
       }
     })
   }
@@ -380,7 +390,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
       goto(ExpectingSidLogonResponse)
     })(dbUser => {
       if (BSHA1(clientToken, serverToken, dbUser.passwordHash).sameElements(oldPasswordHash)) {
-        publish(TOPIC_DAO, UpdateAccount(username, newPasswordHash))
+        publish(TOPIC_DAO, UpdateAccountPassword(username, newPasswordHash))
         goto(ExpectingChangePasswordHandled)
       } else {
         send(SidChangePassword(SidChangePassword.RESULT_FAILED))
