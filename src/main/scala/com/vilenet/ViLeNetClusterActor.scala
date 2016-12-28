@@ -1,6 +1,5 @@
 package com.vilenet
 
-import akka.actor.Address
 import akka.cluster.ClusterEvent.{UnreachableMember, MemberEvent, InitialStateAsEvents}
 import akka.cluster.pubsub.DistributedPubSubMediator.{Publish, Subscribe, Unsubscribe}
 
@@ -18,8 +17,6 @@ private[vilenet] trait ViLeNetClusterActor extends ViLeNetActor {
     cluster.subscribe(self, initialStateMode = InitialStateAsEvents,
       classOf[MemberEvent], classOf[UnreachableMember])
   }
-
-  def isLocal(address: Address): Boolean = cluster.selfAddress == address
 
   def subscribe(topic: String) = mediator ! Subscribe(topic, self)
 

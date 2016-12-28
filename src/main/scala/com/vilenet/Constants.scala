@@ -82,7 +82,7 @@ object Constants {
 
   val THE_VOID = "The Void"
 
-  val TELNET_CONNECTED = (address: InetSocketAddress) => s"ViLeNet Telnet Connection from [${address.getHostName}:${address.getPort}]"
+  val TELNET_CONNECTED = (address: InetSocketAddress) => s"$VILE_NET Telnet Connection from [${address.getAddress.getHostAddress}:${address.getPort}]"
   val TELNET_INCORRECT_PASSWORD = "Incorrect password."
   val TELNET_INCORRECT_USERNAME = "Incorrect username."
 

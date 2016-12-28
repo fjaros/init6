@@ -22,7 +22,7 @@ private[vilenet] trait ViLeNetComponent {
   val topCommandActor = system.actorSelection(s"/user/$VILE_NET_TOP_COMMAND_ACTOR")
 }
 
-private[vilenet] object SystemContext {
+private object SystemContext {
 
   // Set akka config options from vilenet.conf
   sys.props += "akka.remote.artery.canonical.hostname" -> Config.Server.akka_host
