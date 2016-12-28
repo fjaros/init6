@@ -45,9 +45,13 @@ trait ChattableChannelActor extends RemoteChattableChannelActor {
 
 
   override def onChatMessage(user: User, message: String) = {
+    val userActor = sender()
+
+    userActor ! ITalked(user, message)
     localUsers
-      .filterNot(_ == sender())
+      .filterNot(_ == userActor)
       .foreach(_ ! UserTalked(user, message))
+
     super.onChatMessage(user, message)
   }
 

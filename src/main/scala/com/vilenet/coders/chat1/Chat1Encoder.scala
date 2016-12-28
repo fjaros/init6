@@ -28,8 +28,10 @@ object Chat1Encoder extends Encoder {
         s"USER LEAVE     ${user.name} "
       case UserWhisperedFrom(user, message) =>
         s"USER WHISPER FROM    ${user.name} $message"
+      case ITalked(user, message) =>
+        s"USER TALK TO    ${user.name} $message"
       case UserTalked(user, message) =>
-        s"USER TALK     ${user.name} $message"
+        s"USER TALK FROM    ${user.name} $message"
       case UserBroadcast(user, message) =>
         s"SERVER BROADCAST   ${user.name} $message"
       case UserChannel(user, channel, _) =>

@@ -2,7 +2,7 @@ package com.vilenet.channels
 
 import akka.actor.ActorRef
 import com.vilenet.Constants._
-import com.vilenet.coders.commands.{UserCommand, ReturnableCommand, Command}
+import com.vilenet.coders.commands.{ReturnableCommand, Command}
 
 /**
  * Created by filip on 9/20/15.
@@ -17,6 +17,8 @@ case class UserIn(user: User) extends ChatEvent
 case class UserJoined(user: User) extends ChatEvent
 case class UserLeft(user: User) extends ChatEvent
 case class UserWhisperedFrom(override val user: User, message: String) extends SquelchableTalkEvent
+// ITalked only applicable to ViLe protocol
+case class ITalked(user: User, message: String) extends ChatEvent
 case class UserTalked(override val user: User, message: String) extends SquelchableTalkEvent
 case class UserBroadcast(user: User, message: String) extends ChatEvent
 case class UserChannel(user: User, channelName: String, channelActor: ActorRef) extends ChatEvent

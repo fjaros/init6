@@ -17,6 +17,7 @@ import com.vilenet.db.{CreateAccount, DAO, DAOCreatedAck}
 import com.vilenet.users.{Add, Chat1Protocol, PingSent, UsersUserAdded}
 
 import scala.concurrent.Await
+import scala.util.Random
 
 /**
   * Created by filip on 1/10/16.
@@ -69,8 +70,7 @@ class Chat1Handler(clientAddress: InetSocketAddress, connection: ActorRef) exten
       connection ! WriteOut(Chat1Encoder(UserInfo(TELNET_CONNECTED(clientAddress))).get)
       connection ! WriteOut(Chat1Encoder(UserInfoArray(Config.motd)).get)
       keepAlive(loggedInUser.actor, () => {
-        connection ! WriteOut(Chat1Encoder(UserPing("ABCD")).get)
-        loggedInUser.actor ! PingSent(System.currentTimeMillis(), "ABCD")
+        sendPing(loggedInUser.actor)
       })
       stay()
     case Event(Received(data), loggedInUser: LoggedInUser) =>
@@ -97,8 +97,7 @@ class Chat1Handler(clientAddress: InetSocketAddress, connection: ActorRef) exten
           Await.result(usersActor ? Add(connection, u, Chat1Protocol), timeout.duration) match {
             case UsersUserAdded(actor, user) =>
               connection ! WriteOut(Chat1Encoder(LoginOK).get)
-              connection ! WriteOut(Chat1Encoder(UserPing("ABCD")).get)
-              actor ! PingSent(System.currentTimeMillis(), "ABCD")
+              sendPing(actor)
               actor ! Received(ByteString(s"/j ${userCredentials.home}"))
               goto (LoggedInChat1State) using LoggedInUser(actor, userCredentials.username)
             case _ => stop()
@@ -146,6 +145,13 @@ class Chat1Handler(clientAddress: InetSocketAddress, connection: ActorRef) exten
 
   def send(chatEvent: ChatEvent) = {
     Chat1Encoder(chatEvent).foreach(connection ! WriteOut(_))
+  }
+
+  def sendPing(userActor: ActorRef) = {
+    val pingCookie = (0 until 4).map(Random.alphanumeric).mkString
+
+    connection ! WriteOut(Chat1Encoder(UserPing(pingCookie)).get)
+    userActor ! PingSent(System.currentTimeMillis(), pingCookie)
   }
 
   onTransition {

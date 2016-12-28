@@ -34,7 +34,7 @@ object Constants {
   val CANNOT_BAN_OPERATOR = "You can't ban a channel operator."
   val CANNOT_KICK_OPERATOR = "You can't kick a channel operator."
   val CHANNEL_FULL = "Channel is full."
-  val CHANNEL_INFO = (name: String, size: Int, topic: String) => s"$name with $size ${addS(size, "user")}${if (topic.nonEmpty) s", topic: $topic" else "."}"
+  val CHANNEL_INFO = (name: String, size: Int, topic: String) => s"$name with $size ${addS(size, "user")}${if (topic.nonEmpty) s" - $topic" else "."}"
   val CHANNEL_LIST = (size: Int) => s"Listing $size ${addS(size, "channel")}:"
   val CHANNEL_LIST_EMPTY = "There are no visible channels."
   val CHANNEL_NOT_EXIST = Array(
