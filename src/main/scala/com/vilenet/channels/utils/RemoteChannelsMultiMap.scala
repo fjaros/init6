@@ -35,6 +35,11 @@ sealed class RemoteMultiMap[A, B] extends mutable.HashMap[A, mutable.Set[B]] wit
     loop(kv)
     this
   }
+
+  def -=(kv: (A, B)): this.type = {
+    get(kv._1).foreach(_ -= kv._2)
+    this
+  }
 }
 
 

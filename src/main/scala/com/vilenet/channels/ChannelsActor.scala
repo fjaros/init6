@@ -45,7 +45,7 @@ class ChannelsActor extends ViLeNetClusterActor {
   val remoteChannelsActor = (address: Address) =>
     system.actorSelection(s"akka://${address.hostPort}/user/$VILE_NET_CHANNELS_PATH")
 
-  val remoteChannelsActors = mutable.HashMap[Address, ActorRef]()
+  //val remoteChannelsActors = mutable.HashMap[Address, ActorRef]()
 
   val channels = RealKeyedCaseInsensitiveHashMap[ActorRef]()
 
@@ -60,7 +60,6 @@ class ChannelsActor extends ViLeNetClusterActor {
   private def sendGetChannels(address: Address): Unit = {
     remoteChannelsActor(address).resolveOne(Timeout(5, TimeUnit.SECONDS).duration).onComplete {
       case Success(actor) =>
-        remoteChannelsActors += address -> actor
         actor ! GetChannels
 
       case Failure(ex) =>
@@ -73,12 +72,12 @@ class ChannelsActor extends ViLeNetClusterActor {
 
   override def receive: Receive = {
     case MemberUp(member) =>
-      if (!isLocal(member.address)) {
+      if (isRemote(member.address)) {
         sendGetChannels(member.address)
       }
 
     case UnreachableMember(member) =>
-      remoteChannelsActors -= member.address
+      //remoteChannelsActors -= member.address
 
     case MrCleanChannelEraser =>
       val futureSeq = channels
@@ -100,8 +99,8 @@ class ChannelsActor extends ViLeNetClusterActor {
       }.getOrElse(log.error("Failed to clean channels due to timeout."))
 
     case SplitMe =>
-      if (!isLocal()) {
-        remoteChannelsActors -= sender().path.address
+      if (isRemote()) {
+        //remoteChannelsActors -= sender().path.address
       }
 
     case ServerOnline =>
@@ -109,9 +108,8 @@ class ChannelsActor extends ViLeNetClusterActor {
 
     case c@ GetChannels =>
       log.error(s"### $c $channels")
-      if (!isLocal()) {
+      if (isRemote()) {
         val remoteActor = sender()
-        remoteChannelsActors += remoteActor.path.address -> remoteActor
         remoteActor ! ChannelsAre(channels.values.toSeq)
       }
 

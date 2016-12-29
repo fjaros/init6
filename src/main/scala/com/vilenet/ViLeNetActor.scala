@@ -10,5 +10,6 @@ private[vilenet] trait ViLeNetActor extends Actor with ActorLogging with ViLeNet
   def isLocal(address: Address): Boolean = self.path.address == address
   def isLocal(actor: ActorRef): Boolean = isLocal(actor.path.address)
   def isLocal(): Boolean = isLocal(sender())
+  def isRemote(address: Address): Boolean = !isLocal(address)
   def isRemote(): Boolean = !isLocal
 }

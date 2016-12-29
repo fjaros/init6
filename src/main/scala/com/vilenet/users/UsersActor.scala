@@ -3,10 +3,8 @@ package com.vilenet.users
 import java.util.concurrent.TimeUnit
 
 import akka.actor.{ActorRef, Address, Props, Terminated}
-import akka.cluster.ClusterEvent
 import akka.cluster.ClusterEvent.{MemberUp, UnreachableMember}
 import akka.cluster.pubsub.DistributedPubSubMediator.{Subscribe, SubscribeAck}
-import akka.pattern.ask
 import akka.util.Timeout
 import com.vilenet.channels.utils.{LocalUsersSet, RemoteMultiMap}
 import com.vilenet.coders.commands._
@@ -15,10 +13,8 @@ import com.vilenet.{Config, Constants, ViLeNetClusterActor, ViLeNetComponent}
 import com.vilenet.channels._
 import com.vilenet.Constants._
 import com.vilenet.utils.RealKeyedCaseInsensitiveHashMap
-import com.vilenet.utils.FutureCollector._
 
 import scala.collection.mutable
-import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success}
 
@@ -37,12 +33,12 @@ object UsersActor extends ViLeNetComponent {
   def apply() = {
     // Await until all cluster subscriptions are complete
     val usersActor = system.actorOf(Props[UsersActor], VILE_NET_USERS_PATH)
-
-    implicit val timeout = Timeout(2, TimeUnit.SECONDS)
-    Await.result(usersActor ? SubscribeAll, timeout.duration) match {
-      case SubscribeAll =>
-        println("###1 reply")
-    }
+    usersActor
+//    implicit val timeout = Timeout(1, TimeUnit.SECONDS)
+//    Await.result(usersActor ? SubscribeAll, timeout.duration) match {
+//      case SubscribeAll =>
+//        println("###1 reply")
+//    }
   }
 }
 
@@ -89,15 +85,77 @@ class UsersActor extends ViLeNetClusterActor {
     }
   }
 
+  def localAdd(connectionActor: ActorRef, user: User, protocol: Protocol) = {
+    val newUser = getRealUser(user).copy(place = placeCounter)
+    placeCounter += 1
+
+    // Kill any existing actors for this user (can be remote)
+    rem(newUser.name)
+
+    // Create new user actor
+    val userActor = context.actorOf(UserActor(connectionActor, newUser, protocol))
+
+    // Add to structures
+    users += newUser.name -> userActor
+    reverseUsers += userActor -> newUser.name
+    localUsers += userActor
+
+    // publish to cluster
+    publish(TOPIC_USERS, RemoteEvent(Add(userActor, newUser, protocol)))
+
+    // reply to sender
+    sender() ! UsersUserAdded(userActor, newUser)
+  }
+
+  def remoteAdd(actor: ActorRef, username: String): Unit = {
+    // Kill any existing actors for this user (can be remote)
+    rem(username)
+
+    remoteUsersMap += actor.path.address -> actor
+    reverseUsers += actor -> username
+    users += username -> actor
+  }
+
+  // Remove by actor
+  def rem(actor: ActorRef): Unit = {
+    reverseUsers.get(actor).foreach(name => {
+      if (isLocal(actor)) {
+        localUsers -= actor
+      } else {
+        remoteUsersMap -= actor.path.address -> actor
+      }
+
+      reverseUsers -= actor
+      users -= name
+    })
+  }
+
+  // Remove by user
+  def rem(username: String): Unit = {
+    users.get(username)
+      .map {
+        case (_, actor) => actor
+      }
+      .foreach(rem)
+  }
+
+  def removeAllRemote(address: Address) = {
+    remoteUsersMap.get(address).foreach(actors => {
+      users --= actors.flatMap(reverseUsers.get)
+      reverseUsers --= actors
+      remoteUsersMap -= address
+    })
+  }
+
   override def receive: Receive = {
     case SubscribeAck(Subscribe(topic, group, actor)) =>
       clusterTopics -= topic
       if (clusterTopics.isEmpty) {
-        subscribeAllAckActor ! SubscribeAll
+//        subscribeAllAckActor ! SubscribeAll
       }
 
     case SubscribeAll =>
-      subscribeAllAckActor = sender()
+//      subscribeAllAckActor = sender()
 
     case event@ MemberUp(member) =>
       log.error(s"event $event from ${sender()}")
@@ -106,63 +164,23 @@ class UsersActor extends ViLeNetClusterActor {
       }
 
     case UnreachableMember(member) =>
-      remoteUsersMap.get(member.address).foreach(_.foreach(rem))
+      removeAllRemote(member.address)
 
     case ServerOnline =>
       publish(TOPIC_USERS, GetUsers)
 
     case GetUsers =>
-      sender() ! ReceivedUsers(users.values.toSeq)
+      sender() ! ReceivedUsers(
+        localUsers
+          .map(actor => reverseUsers(actor) -> actor)
+          .toSeq
+      )
 
     case ReceivedUsers(remoteUsers) =>
-      if (!isLocal()) {
-        val address = sender().path.address
-        remoteUsers
-          .map(_._2)
-          .foreach(context.watch)
-        remoteUsersMap ++= address -> remoteUsers.map(_._2)
-
-        // yeah .. but each server gets this...
-        /*
-        implicit val timeout = Timeout(10, TimeUnit.SECONDS)
+      if (isRemote()) {
         remoteUsers.foreach {
-          case (name, actor) =>
-            users.get(name).fold[Unit]({
-              users += name -> actor
-              reverseUsers += actor -> name
-            }) {
-              case (currentName, currentActor) =>
-                println(actor)
-                println(currentActor)
-                if (actor != currentActor) {
-                  println(actor)
-                  println(currentActor)
-                  val remoteActorUptime = actor ? GetUptime
-                  val localActorUptime = currentActor ? GetUptime
-
-                  Seq(remoteActorUptime, localActorUptime).collectResults {
-                    case ReceivedUptime(actor, uptime) =>
-                      println(uptime + " - " + sender())
-                      Some(actor -> uptime)
-                  }.foreach(uptimeSeq => {
-                    val (toKill, toKeep) =
-                      if (uptimeSeq.head._2 > uptimeSeq.last._2) {
-                        (uptimeSeq.head._1, uptimeSeq.last._1)
-                      } else {
-                        (uptimeSeq.last._1, uptimeSeq.head._1)
-                      }
-
-                    //toKill ! KillSelf
-                    // This is a race condition
-                    rem(toKill)
-
-                    users += name -> toKeep
-                    reverseUsers += toKeep -> name
-                  })
-                }
-            }
+          case (username, actor) => remoteAdd(actor, username)
         }
-        */
       }
 
     case command: UserToChannelCommand =>
@@ -182,13 +200,23 @@ class UsersActor extends ViLeNetClusterActor {
           }
 
     case UsersCommand =>
+//      println("=== LOCALUSERS " + localUsers.size)
+//      println(localUsers)
+//      println("=== REVERSEUSERS " + reverseUsers.size)
+//      println(reverseUsers)
+//      println("=== REMOTEUSERMAP " + remoteUsersMap.values.map(_.size).toSeq)
+//      println(remoteUsersMap)
+//      println("=== USERS " + users.size)
+//      println(users)
       sender() ! UserInfo(USERS(localUsers.size, users.size))
 
     case Terminated(actor) =>
-      rem(actor, reverseUsers.getOrElse(actor, ""))
+      rem(actor)
 
     case RemoteEvent(event) =>
-      handleRemote(event)
+      if (isRemote()) {
+        handleRemote(event)
+      }
 
     case event =>
       log.error(s"event $event from ${sender()}")
@@ -210,20 +238,8 @@ class UsersActor extends ViLeNetClusterActor {
           }
       }
 
-    case c @ Add(connection, user, protocol) =>
-      log.debug("UsersActor#Add " + c)
-      val newUser = getRealUser(user).copy(place = placeCounter)
-      placeCounter += 1
-      val userActor = context.actorOf(UserActor(connection, newUser, protocol))
-      users.get(newUser.name).foreach {
-        case (_, actor) =>
-          rem(actor)
-      }
-      users += newUser.name -> userActor
-      reverseUsers += userActor -> newUser.name
-      localUsers += userActor
-      publish(TOPIC_USERS, RemoteEvent(Add(userActor, newUser, protocol)))
-      sender() ! UsersUserAdded(userActor, newUser)
+    case Add(connection, user, protocol) =>
+      localAdd(connection, user, protocol)
 
     case Rem(userActor) =>
       rem(userActor)
@@ -232,58 +248,17 @@ class UsersActor extends ViLeNetClusterActor {
       publish(TOPIC_USERS, RemoteEvent(BroadcastCommand(message)))
 
     case DisconnectCommand(user) =>
-      users.get(user).foreach {
-        case (_, actor) =>
-          rem(actor)
-      }
+      rem(user)
 
     case _ =>
   }
 
-  def rem(userActor: ActorRef) = {
-    // Only kill local. Remote servers shall kill their own actors.
-    if (isLocal(userActor)) {
-      userActor ! KillConnection
-    }
-    localUsers -= userActor
-    reverseUsers.get(userActor).foreach(username => {
-      reverseUsers -= userActor
-      removeActorFromUsers(userActor, username)
-    })
-  }
-
-  def rem(userActor: ActorRef, username: String) = {
-    localUsers -= userActor
-    reverseUsers -= userActor
-    removeActorFromUsers(userActor, username)
-  }
-
-  def removeActorFromUsers(userActor: ActorRef, username: String) = {
-    users.get(username).foreach {
-      case (_, _userActor) =>
-        if (userActor == _userActor) {
-          users -= username
-        }
-    }
-  }
-
   def handleRemote: Receive = {
     case Add(userActor, user, _) =>
-      if (!isLocal()) {
-        users += user.name -> userActor
-        reverseUsers += userActor -> user.name
-      }
+      remoteAdd(userActor, user.name)
 
     case c @ RemActors(userActors) =>
-      if (!isLocal()) {
-        //println(c)
-        userActors.foreach(userActor => {
-          reverseUsers.get(userActor).foreach(username => {
-            users -= username
-            reverseUsers -= userActor
-          })
-        })
-      }
+      userActors.foreach(rem)
 
     case BroadcastCommand(message) =>
       //println(s"### Remote Broadcast $localUsers")
@@ -300,10 +275,6 @@ class UsersActor extends ViLeNetClusterActor {
       }
       user.copy(name = username)
     } else {
-      users.get(user.name).foreach {
-        case (_, actor) =>
-          actor ! KillConnection
-      }
       user
     }
   }
