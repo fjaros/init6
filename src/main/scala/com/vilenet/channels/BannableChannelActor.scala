@@ -39,7 +39,7 @@ trait BannableChannelActor extends ChannelActor {
 
   override def add(actor: ActorRef, user: User): User = {
     if (bannedUsers(user.name)) {
-      if (isLocal(sender())) {
+      if (isLocal()) {
         sender() ! UserError(YOU_BANNED)
       }
       user

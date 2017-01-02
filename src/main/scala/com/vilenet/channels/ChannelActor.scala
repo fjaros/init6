@@ -9,6 +9,7 @@ import com.vilenet.Constants._
 import com.vilenet.ViLeNetClusterActor
 import com.vilenet.channels.utils.{LocalUsersSet, RemoteMultiMap}
 import com.vilenet.coders.commands._
+import com.vilenet.servers.{ServerOnline, SplitMe}
 import com.vilenet.users.{GetUsers, UpdatePing, UserUpdated}
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -67,18 +68,23 @@ trait ChannelActor extends ViLeNetClusterActor {
 
   val remoteUsersMap = RemoteMultiMap[Address, ActorRef]()
   val usersKeepAlive = mutable.HashMap[ActorRef, Long]()
-  val remoteAddressReceived = mutable.HashSet[ActorRef]()
+  val remoteAddressReceived = mutable.HashSet[Address]()
+
+  var isSplit = false
 
   // Settable topic by operator
   var topic = ""
 
+  subscribe(TOPIC_SPLIT)
   val pubSubTopic = TOPIC_CHANNEL(name)
   if (subscribe(pubSubTopic)) {
     system.scheduler.schedule(
       Timeout(1000, TimeUnit.MILLISECONDS).duration,
       Timeout(1000, TimeUnit.MILLISECONDS).duration
     ) {
-      publish(pubSubTopic, ChannelPing)
+      if (!isSplit) {
+        publish(pubSubTopic, ChannelPing)
+      }
 
       val now = System.currentTimeMillis()
       usersKeepAlive.foreach {
@@ -146,6 +152,26 @@ trait ChannelActor extends ViLeNetClusterActor {
   }
 
   def receiveEvent: Receive = {
+    case SplitMe =>
+      if (isLocal()) {
+        isSplit = true
+        remoteUsersMap
+          .values
+          .flatten
+          .foreach(rem)
+      } else {
+        val remoteAddress = sender().path.address
+        remoteUsersMap
+          .get(remoteAddress)
+          .foreach(_.foreach(rem))
+        remoteAddressReceived -= remoteAddress
+      }
+
+    case ServerOnline =>
+      if (isLocal()) {
+        isSplit = false
+      }
+
     case InternalChannelUserUpdate(actor, user) =>
       if (users.contains(actor)) {
         users += actor -> user
@@ -157,10 +183,10 @@ trait ChannelActor extends ViLeNetClusterActor {
 
     case ChannelPing =>
       val remoteChannelActor = sender()
-      if (isRemote(remoteChannelActor) && !remoteAddressReceived.contains(remoteChannelActor)) {
+      if (!isSplit && isRemote(remoteChannelActor) && !remoteAddressReceived.contains(remoteChannelActor.path.address)) {
         // Received a ping but haven't seen this remote channel actor yet
         remoteChannelActor ! GetChannelUsers
-        remoteAddressReceived += remoteChannelActor
+        remoteAddressReceived += remoteChannelActor.path.address
       } else {
 //        if (isRemote(remoteChannelActor)) {
 //          println("## CHANPING")

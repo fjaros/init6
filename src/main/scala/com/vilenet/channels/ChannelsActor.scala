@@ -98,6 +98,7 @@ class ChannelsActor extends ViLeNetClusterActor {
 
     case SplitMe =>
       if (isRemote()) {
+
         //remoteChannelsActors -= sender().path.address
       }
 

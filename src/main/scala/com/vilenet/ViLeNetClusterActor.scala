@@ -4,7 +4,7 @@ import java.util.concurrent.TimeUnit
 
 import akka.actor.ActorRef
 import akka.cluster.ClusterEvent.{InitialStateAsEvents, MemberEvent, UnreachableMember}
-import akka.cluster.pubsub.DistributedPubSubMediator.{Publish, Subscribe, SubscribeAck, Unsubscribe}
+import akka.cluster.pubsub.DistributedPubSubMediator._
 import akka.pattern.ask
 import akka.util.Timeout
 

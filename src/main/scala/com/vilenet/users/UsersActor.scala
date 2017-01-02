@@ -152,7 +152,7 @@ class UsersActor extends ViLeNetClusterActor {
   }
 
   override def receive: Receive = {
-    case event@ MemberUp(member) =>
+    case MemberUp(member) =>
       ///log.error(s"event $event from ${sender()}")
       if (!isLocal(member.address)) {
         sendGetUsers(member.address)
@@ -165,11 +165,13 @@ class UsersActor extends ViLeNetClusterActor {
       publish(TOPIC_USERS, GetUsers)
 
     case GetUsers =>
-      sender() ! ReceivedUsers(
-        localUsers
-          .map(actor => reverseUsers(actor) -> actor)
-          .toSeq
-      )
+      if (isRemote(sender())) {
+        sender() ! ReceivedUsers(
+          localUsers
+            .map(actor => reverseUsers(actor) -> actor)
+            .toSeq
+        )
+      }
 
     case ReceivedUsers(remoteUsers) =>
       if (isRemote()) {
@@ -218,16 +220,17 @@ class UsersActor extends ViLeNetClusterActor {
   def handleLocal: Receive = {
     case SplitMe =>
       if (isLocal()) {
-        publish(TOPIC_USERS, RemoteEvent(RemActors(localUsers.toSet)))
         users
           .filterNot {
-            case (key, (name, actor)) =>
+            case (_, (_, actor)) =>
               localUsers.contains(actor)
           }
           .foreach {
-            case (key, (name, actor)) =>
-              self ! Rem(actor)
+            case (_, (_, actor)) =>
+              rem(actor)
           }
+      } else {
+        removeAllRemote(sender().path.address)
       }
 
     case Add(connection, user, protocol) =>
