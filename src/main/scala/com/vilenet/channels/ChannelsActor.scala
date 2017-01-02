@@ -134,23 +134,24 @@ class ChannelsActor extends ViLeNetClusterActor {
         case Success(reply) =>
           reply match {
             case reply: UserAddedToChannel =>
-              channels.get(user.channel).foreach {
+              channels.get(user.inChannel).foreach {
                 case (_, oldChannelActor) =>
                   oldChannelActor ! RemUser(actor)
               }
               // temp actor
               if (isLocal(userActor)) {
-                userActor ! UserChannel(reply.user, reply.channelName, reply.channelActor)
+                userActor ! ChannelJoinResponse(UserChannel(reply.user, reply.channelName, reply.channelActor))
                 // real actor
                 if (reply.channelTopic.nonEmpty) {
                   userActor ! UserInfo(CHANNEL_TOPIC(reply.channelTopic))
                 }
               }
+            case reply: ChatEvent =>
+              userActor ! ChannelJoinResponse(reply)
             case _ =>
-              userActor ! reply
           }
         case _ =>
-          userActor ! UserError(CHANNEL_FAILED_TO_JOIN(channel))
+          userActor ! ChannelJoinResponse(UserError(CHANNEL_FAILED_TO_JOIN(channel)))
       }
 
     case ChannelsCommand =>

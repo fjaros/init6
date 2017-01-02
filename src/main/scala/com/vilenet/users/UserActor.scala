@@ -88,11 +88,15 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
     case PongCommand(cookie) =>
       handlePingResponse(cookie)
 
-    case command @ UserChannel(newUser, channel, channelActor) =>
-      channelTopic = Some(TOPIC_CHANNEL(channel))
-      channelActor ! GetUsers
-      user = newUser
-      encodeAndSend(command)
+    case ChannelJoinResponse(event) =>
+      event match {
+        case UserChannel(newUser, channel, channelActor) =>
+          channelTopic = Some(TOPIC_CHANNEL(channel))
+          channelActor ! GetUsers
+          user = newUser.copy(joiningChannel = "")
+        case _ =>
+      }
+      encodeAndSend(event)
 
     case UserUpdated(newUser) =>
       user = newUser
@@ -113,7 +117,7 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
       encodeAndSend(UserFlags(checkSquelched(user)))
 
     case UserLeftChat =>
-      user = user.copy(channel = "")
+      user = user.copy(inChannel = "")
       channelTopic.foreach(publish(RemUser(self)))
       channelTopic = None
 
@@ -138,7 +142,7 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
         })
 
     case (actor: ActorRef, WhoisCommand(fromUser, username)) =>
-      actor ! UserInfo(s"${user.name} is using ${encodeClient(user.client)}${if (user.channel != "") s" in the channel ${user.channel}" else ""}.")
+      actor ! UserInfo(s"${user.name} is using ${encodeClient(user.client)}${if (user.inChannel != "") s" in the channel ${user.inChannel}" else ""}.")
 
     case BanCommand(kicking, message) =>
       self ! UserInfo(YOU_KICKED(kicking))
@@ -181,7 +185,11 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
                 * channel exists.
                 */
               case c@JoinUserCommand(fromUser, channel) =>
-                if (!user.channel.equalsIgnoreCase(channel)) {
+                if (
+                  !user.inChannel.equalsIgnoreCase(channel) &&
+                  !user.joiningChannel.equalsIgnoreCase(channel)
+                ) {
+                  user = user.copy(joiningChannel = channel)
                   publish(TOPIC_CHANNELS, UserSwitchedChat(self, fromUser, channel))
                 }
 
@@ -285,12 +293,12 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
   }
 
   private def rejoin() = {
-    val oldChannel = user.channel
+    val oldChannel = user.inChannel
     channelTopic.foreach(publish(RemUser(self)))
     channelTopic = None
 //    channelActor ! RemUser(self)
 //    channelActor = ActorRef.noSender
-    user = user.copy(channel = "")
+    user = user.copy(inChannel = "")
     self ! Received(ByteString(s"/j $oldChannel"))
   }
 }

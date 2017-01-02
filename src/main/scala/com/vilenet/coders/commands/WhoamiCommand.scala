@@ -9,6 +9,6 @@ import com.vilenet.channels.{UserInfo, User}
 object WhoamiCommand {
 
   def apply(user: User): Command = {
-    UserInfo(WHOAMI(user.name, encodeClient(user.client), user.channel))
+    UserInfo(WHOAMI(user.name, encodeClient(user.client), user.inChannel))
   }
 }

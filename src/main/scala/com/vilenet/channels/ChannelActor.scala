@@ -40,7 +40,8 @@ case class User(
                  place: Int = 0,
 
                  // Changeable
-                 channel: String = ""
+                 inChannel: String = "",
+                 joiningChannel: String = ""
                ) extends Command
 
 case class AddUser(actor: ActorRef, user: User) extends Command
@@ -52,7 +53,7 @@ case object ChannelPing extends Command
 case object ChannelToUserPing extends Command
 case object UserToChannelPing extends Command
 case class InternalChannelUserUpdate(actor: ActorRef, user: User) extends Command
-
+case class ChannelJoinResponse(message: ChatEvent) extends Command
 
 trait ChannelActor extends ViLeNetClusterActor {
 
@@ -106,7 +107,7 @@ trait ChannelActor extends ViLeNetClusterActor {
   }
 
   def add(actor: ActorRef, user: User): User = {
-    val newUser = user.copy(channel = name)
+    val newUser = user.copy(inChannel = name)
 
     if (isLocal(actor)) {
       localUsers += actor
