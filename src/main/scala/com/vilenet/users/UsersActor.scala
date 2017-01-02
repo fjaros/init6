@@ -131,10 +131,14 @@ class UsersActor extends ViLeNetClusterActor {
   }
 
   // Remove by user
+  // KillConnection so it doesn't get inherently replaced in users map
+  // Refactor later? Sends 2x rem(actor) event
   def rem(username: String): Unit = {
     users.get(username)
       .map {
-        case (_, actor) => actor
+        case (_, actor) =>
+          actor ! KillConnection
+          actor
       }
       .foreach(rem)
   }
@@ -148,17 +152,8 @@ class UsersActor extends ViLeNetClusterActor {
   }
 
   override def receive: Receive = {
-    case SubscribeAck(Subscribe(topic, group, actor)) =>
-      clusterTopics -= topic
-      if (clusterTopics.isEmpty) {
-//        subscribeAllAckActor ! SubscribeAll
-      }
-
-    case SubscribeAll =>
-//      subscribeAllAckActor = sender()
-
     case event@ MemberUp(member) =>
-      log.error(s"event $event from ${sender()}")
+      ///log.error(s"event $event from ${sender()}")
       if (!isLocal(member.address)) {
         sendGetUsers(member.address)
       }
@@ -210,16 +205,13 @@ class UsersActor extends ViLeNetClusterActor {
 //      println(users)
       sender() ! UserInfo(USERS(localUsers.size, users.size))
 
-    case Terminated(actor) =>
-      rem(actor)
-
     case RemoteEvent(event) =>
       if (isRemote()) {
         handleRemote(event)
       }
 
     case event =>
-      log.error(s"event $event from ${sender()}")
+      //log.error(s"event $event from ${sender()}")
       handleLocal(event)
   }
 
@@ -246,6 +238,7 @@ class UsersActor extends ViLeNetClusterActor {
 
     case BroadcastCommand(message) =>
       publish(TOPIC_USERS, RemoteEvent(BroadcastCommand(message)))
+      localUsers ! UserError(message)
 
     case DisconnectCommand(user) =>
       rem(user)

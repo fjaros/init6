@@ -13,7 +13,6 @@ import com.vilenet.servers._
 import com.vilenet.utils.FutureCollector.futureSeqToFutureCollector
 import com.vilenet.utils.RealKeyedCaseInsensitiveHashMap
 
-import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Await
 import scala.util.{Try, Failure, Success}
@@ -29,7 +28,8 @@ object ChannelsActor extends ViLeNetComponent {
 case object GetChannels extends Command
 case class ChannelsAre(channels: Seq[(String, ActorRef)]) extends Command
 case class ChannelCreated(actor: ActorRef, name: String) extends Command
-case class GetChannelUsers(remoteActor: ActorRef) extends Command
+case object GetChannelUsers extends Command
+case class ReceivedChannelUsers(users: Seq[(ActorRef, User)]) extends Command
 case class ReceivedChannel(channel: (String, ActorRef)) extends Command
 case class UserAdded(actor: ActorRef, channel: String) extends Command
 case object ChannelEmpty extends Command
@@ -40,12 +40,10 @@ case object MrCleanChannelEraser extends Command
 
 class ChannelsActor extends ViLeNetClusterActor {
 
-  implicit val timeout = Timeout(100, TimeUnit.MILLISECONDS)
+  implicit val timeout = Timeout(1000, TimeUnit.MILLISECONDS)
 
   val remoteChannelsActor = (address: Address) =>
     system.actorSelection(s"akka://${address.hostPort}/user/$VILE_NET_CHANNELS_PATH")
-
-  //val remoteChannelsActors = mutable.HashMap[Address, ActorRef]()
 
   val channels = RealKeyedCaseInsensitiveHashMap[ActorRef]()
 
@@ -117,20 +115,15 @@ class ChannelsActor extends ViLeNetClusterActor {
       log.error(s"### $c")
       remoteChannels
         .foreach {
-          case (name, actor) => getOrCreate(name, Some(actor))
+          case (name, actor) => getOrCreate(name)
         }
 
     case c@ ChannelCreated(actor, name) =>
-      //log.error(s"### $c")
-      if (!isLocal()) {
-        getOrCreate(name) ! ChannelCreated(actor, name)
+      if (isRemote()) {
+        getOrCreate(name)
       }
 
     case command @ UserLeftChat(user) =>
-      channels.get(user.channel).foreach {
-        case (_, oldChannelActor) =>
-          oldChannelActor ! RemUser(sender())
-      }
 
     case command @ UserSwitchedChat(actor, user, channel) =>
       log.debug("UserSwitchedChat {}", command)
@@ -145,16 +138,18 @@ class ChannelsActor extends ViLeNetClusterActor {
                   oldChannelActor ! RemUser(actor)
               }
               // temp actor
-              userActor ! UserChannel(reply.user, reply.channelName, reply.channelActor)
-              // real actor
-              if (reply.channelTopic.nonEmpty) {
-                actor ! UserInfo(CHANNEL_TOPIC(reply.channelTopic))
+              if (isLocal(userActor)) {
+                userActor ! UserChannel(reply.user, reply.channelName, reply.channelActor)
+                // real actor
+                if (reply.channelTopic.nonEmpty) {
+                  userActor ! UserInfo(CHANNEL_TOPIC(reply.channelTopic))
+                }
               }
-            case x =>
-              log.error("{} Invalid getOrCreate return {}", command, x)
+            case _ =>
               userActor ! reply
           }
-        case reply => userActor ! reply
+        case _ =>
+          userActor ! UserError(CHANNEL_FAILED_TO_JOIN(channel))
       }
 
     case ChannelsCommand =>
@@ -186,6 +181,9 @@ class ChannelsActor extends ViLeNetClusterActor {
       getChannel(channel).fold(sender() ! UserErrorArray(CHANNEL_NOT_EXIST))(actor => {
         actor ! WhoCommandToChannel(sender(), user)
       })
+
+    case c @ RemUser(actor) =>
+      channels.values.map(_._2).foreach(_ ! c)
   }
 
   def getChannel(name: String): Option[ActorRef] = {
@@ -194,18 +192,12 @@ class ChannelsActor extends ViLeNetClusterActor {
     }
   }
 
-  def getOrCreate(name: String, remoteActor: Option[ActorRef] = None) = {
+  def getOrCreate(name: String) = {
     val channelActor = channels.getOrElse(name, {
-      val channelActor = context.actorOf(ChannelActor(name, remoteActor).withDispatcher(CHANNEL_DISPATCHER))
+      val channelActor = context.actorOf(ChannelActor(name).withDispatcher(CHANNEL_DISPATCHER))
       channels += name -> channelActor
-      //log.error(s"### getOrCreate Publishing ${ChannelCreated(channelActor, name)}")
-      remoteChannelsActors.values.foreach(_ ! ChannelCreated(channelActor, name))
       name -> channelActor
     })._2
-
-    remoteActor.foreach(remoteActor => {
-      channelActor ! ChannelCreated(remoteActor, name)
-    })
 
     channelActor
   }

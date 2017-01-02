@@ -8,7 +8,7 @@ import com.vilenet.users.UserToChannelCommandAck
 /**
   * Created by filip on 11/15/15.
   */
-trait ChattableChannelActor extends RemoteChattableChannelActor {
+trait ChattableChannelActor extends ChannelActor {
 
   override def receiveEvent = ({
     case ChatCommand(user, message) =>
@@ -44,70 +44,30 @@ trait ChattableChannelActor extends RemoteChattableChannelActor {
     .orElse(super.receiveEvent)
 
 
-  override def onChatMessage(user: User, message: String) = {
+  def onChatMessage(user: User, message: String) = {
     val userActor = sender()
 
-    userActor ! ITalked(user, message)
+    if (isLocal(userActor)) {
+      userActor ! ITalked(user, message)
+    }
     localUsers
       .filterNot(_ == userActor)
       .foreach(_ ! UserTalked(user, message))
-
-    super.onChatMessage(user, message)
   }
 
-  override def onEmoteMessage(user: User, message: String) = {
+  def onEmoteMessage(user: User, message: String) = {
     localUsers ! UserEmote(user, message)
-    super.onEmoteMessage(user, message)
   }
 
   override def add(actor: ActorRef, user: User): User = {
-    val userJoined = UserJoined(user)
-    localUsers
-      .foreach(_ ! userJoined)
-
+    localUsers ! UserJoined(user)
     val newUser = super.add(actor, user)
-
-    localUsers += actor
-
-    users
-      .values
-      .foreach(actor ! UserIn(_))
-
     newUser
   }
 
   override def rem(actor: ActorRef): Option[User] = {
     val userOpt = super.rem(actor)
-    userOpt.foreach(user => {
-      localUsers -= actor
-      localUsers ! UserLeft(user)
-    })
-    userOpt
-  }
-
-  override def remoteAdd(actor: ActorRef, user: User): Unit = {
-    super.remoteAdd(actor, user)
-
-    remoteUsers.get(sender()).fold(/*log.error(s"Remote user added but no remote channel actor found ${sender()}"*/)(_ += actor)
-
-    val userJoined = UserJoined(user)
-    localUsers
-      .foreach(_ ! userJoined)
-  }
-
-  override def remoteRem(actor: ActorRef): Option[User] = {
-    val userOpt = super.remoteRem(actor)
-
-    //println(s"remoteRem Users $users")
-
-    userOpt.foreach(user => {
-      remoteUsers.get(sender()).fold(/*log.error(s"Remote user removed but no remote channel actor found ${sender()}"*/)(_ -= actor)
-      val userLeft = UserLeft(user)
-      localUsers
-        .foreach(_ ! userLeft)
-    })
-
+    userOpt.foreach(localUsers ! UserLeft(_))
     userOpt
   }
 }
-

@@ -7,18 +7,12 @@ import com.vilenet.Constants._
   * Created by filip on 11/25/15.
   */
 object AdminChannelActor {
-  def apply(name: String, remoteActor: Option[ActorRef]) = new AdminChannelActor(name, remoteActor)
+  def apply(name: String) = new AdminChannelActor(name)
 }
 
-sealed class AdminChannelActor(
-                                override val name: String,
-                                val remoteActor: Option[ActorRef]
-                              )
+sealed class AdminChannelActor(override val name: String)
   extends ChattableChannelActor
-  with NonOperableChannelActor
-  with RemoteChannelActor {
-
-  remoteActor.foreach(remoteUsers += _)
+  with NonOperableChannelActor {
 
   override def add(actor: ActorRef, user: User) = {
     if (Flags.isAdmin(user)) {

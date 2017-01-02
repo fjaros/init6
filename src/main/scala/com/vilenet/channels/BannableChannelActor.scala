@@ -2,13 +2,17 @@ package com.vilenet.channels
 
 import akka.actor.ActorRef
 import com.vilenet.Constants._
-import com.vilenet.coders.commands.{OperableCommand, UnbanCommand, BanCommand, KickCommand}
+import com.vilenet.coders.commands.{BanCommand, KickCommand, OperableCommand, UnbanCommand}
 import com.vilenet.users.UserToChannelCommandAck
+import com.vilenet.utils.CaseInsensitiveFiniteHashSet
 
 /**
   * Created by filip on 11/24/15.
   */
-trait BannableChannelActor extends RemoteBannableChannelActor {
+trait BannableChannelActor extends ChannelActor {
+
+  // Banned users
+  val bannedUsers = CaseInsensitiveFiniteHashSet(limit)
 
   override def receiveEvent = ({
     case command: UserToChannelCommandAck =>
@@ -35,11 +39,23 @@ trait BannableChannelActor extends RemoteBannableChannelActor {
 
   override def add(actor: ActorRef, user: User): User = {
     if (bannedUsers(user.name)) {
-      sender() ! UserError(YOU_BANNED)
+      if (isLocal(sender())) {
+        sender() ! UserError(YOU_BANNED)
+      }
       user
     } else {
       super.add(actor, user)
     }
+  }
+
+  override def rem(actor: ActorRef): Option[User] = {
+    val userOpt = super.rem(actor)
+
+    if (users.isEmpty) {
+      bannedUsers.clear()
+    }
+
+    userOpt
   }
 
   def kickAction(kickingActor: ActorRef, kickedActor: ActorRef, message: String) = {
@@ -47,44 +63,51 @@ trait BannableChannelActor extends RemoteBannableChannelActor {
       kickingActor ! UserError(INVALID_USER)
     )(kickedUser => {
       if (Flags.canBan(kickedUser)) {
-        kickingActor ! UserError(CANNOT_KICK_OPERATOR)
+        if (isLocal(kickingActor)) {
+          kickingActor ! UserError(CANNOT_KICK_OPERATOR)
+        }
       } else {
         val kicking = users(kickingActor).name
 
         localUsers ! UserInfo(USER_KICKED(kicking, kickedUser.name, message))
-        kickedActor ! KickCommand(kicking)
+        if (isLocal(kickedActor)) {
+          kickedActor ! KickCommand(kicking)
+        }
       }
     })
   }
 
-  override def banAction(banningActor: ActorRef, bannedActor: ActorRef, banned: String, message: String) = {
+  def banAction(banningActor: ActorRef, bannedActor: ActorRef, banned: String, message: String) = {
     val banning = users(banningActor).name
 
     users.get(bannedActor).fold({
       bannedUsers += banned
-      super.banAction(banningActor, bannedActor, banned, message)
       localUsers ! UserInfo(USER_BANNED(banning, banned, message))
     })(bannedUser => {
       if (Flags.canBan(bannedUser)) {
-        banningActor ! UserError(CANNOT_BAN_OPERATOR)
+        if (isLocal(banningActor)) {
+          banningActor ! UserError(CANNOT_BAN_OPERATOR)
+        }
       } else {
         bannedUsers += banned
-        super.banAction(banningActor, bannedActor, banned, message)
-        bannedActor ! BanCommand(banning)
+        if (isLocal(bannedActor)) {
+          bannedActor ! BanCommand(banning)
+        }
         localUsers ! UserInfo(USER_BANNED(banning, banned, message))
       }
     })
   }
 
-  override def unbanAction(unbanningActor: ActorRef, unbanned: String) = {
+  def unbanAction(unbanningActor: ActorRef, unbanned: String) = {
     val unbanning = users(unbanningActor).name
 
     if (bannedUsers(unbanned)) {
       bannedUsers -= unbanned
-      super.unbanAction(unbanningActor, unbanned)
       localUsers ! UserInfo(USER_UNBANNED(unbanning, unbanned))
     } else {
-      unbanningActor ! UserError(NOT_BANNED)
+      if (isLocal(unbanningActor)) {
+        unbanningActor ! UserError(NOT_BANNED)
+      }
     }
   }
 

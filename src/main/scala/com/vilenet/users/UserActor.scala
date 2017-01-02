@@ -3,6 +3,7 @@ package com.vilenet.users
 import java.util.concurrent.TimeUnit
 
 import akka.actor.{ActorRef, PoisonPill, Props, Terminated}
+import akka.cluster.pubsub.DistributedPubSubMediator
 import akka.io.Tcp.Received
 import akka.pattern.ask
 import akka.util.{ByteString, Timeout}
@@ -42,7 +43,8 @@ case object KillConnection extends Command
 class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
   extends FloodPreventer with ViLeNetClusterActor {
 
-  var channelActor: ActorRef = ActorRef.noSender
+  var isTerminated = false
+  var channelTopic: Option[String] = None
   var squelchedUsers = CaseInsensitiveHashSet()
   val awayAvailablity = AwayAvailablity(user.name)
   val dndAvailablity = DndAvailablity(user.name)
@@ -66,6 +68,9 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
   }
 
   override def receive: Receive = {
+    case ChannelToUserPing =>
+      sender() ! UserToChannelPing
+
     // From Users Actor
     case UsersUserAdded(userActor, newUser) =>
       if (self != userActor && user.name.equalsIgnoreCase(newUser.name)) {
@@ -84,7 +89,8 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
       handlePingResponse(cookie)
 
     case command @ UserChannel(newUser, channel, channelActor) =>
-      this.channelActor = channelActor
+      channelTopic = Some(TOPIC_CHANNEL(channel))
+      channelActor ! GetUsers
       user = newUser
       encodeAndSend(command)
 
@@ -108,10 +114,8 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
 
     case UserLeftChat =>
       user = user.copy(channel = "")
-      if (channelActor != ActorRef.noSender) {
-        channelActor ! RemUser(self)
-        channelActor = ActorRef.noSender
-      }
+      channelTopic.foreach(publish(RemUser(self)))
+      channelTopic = None
 
     case channelEvent: SquelchableTalkEvent =>
       if (!squelchedUsers.contains(channelEvent.user.name)) {
@@ -138,11 +142,11 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
 
     case BanCommand(kicking, message) =>
       self ! UserInfo(YOU_KICKED(kicking))
-      channelsActor ! UserSwitchedChat(self, user, THE_VOID)
+      publish(TOPIC_CHANNELS, UserSwitchedChat(self, user, THE_VOID))
 
     case KickCommand(kicking, message) =>
       self ! UserInfo(YOU_KICKED(kicking))
-      channelsActor ! UserSwitchedChat(self, user, THE_VOID)
+      publish(TOPIC_CHANNELS, UserSwitchedChat(self, user, THE_VOID))
 
     case DAOCreatedAck(username, passwordHash) =>
       self ! UserInfo(ACCOUNT_CREATED(username, passwordHash))
@@ -177,24 +181,31 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
                 * channel exists.
                 */
               case c@JoinUserCommand(fromUser, channel) =>
-                implicit val timeout = Timeout(250, TimeUnit.MILLISECONDS)
                 if (!user.channel.equalsIgnoreCase(channel)) {
+                  publish(TOPIC_CHANNELS, UserSwitchedChat(self, fromUser, channel))
+                }
+
+/*                if (!user.channel.equalsIgnoreCase(channel)) {
+                  implicit val timeout = Timeout(1000, TimeUnit.MILLISECONDS)
                   Await.result(channelsActor ? UserSwitchedChat(self, fromUser, channel), timeout.duration) match {
                     case command@UserChannel(newUser, channel, channelActor) =>
-                      this.channelActor = channelActor
+                      channelTopic = Some(TOPIC_CHANNEL(channel))
+                      subscribe(channelTopic.get)
+                      channelActor ! GetUsers
                       user = newUser
                       encodeAndSend(command)
                     case command: ChatEvent =>
                       encodeAndSend(command)
                     case _ =>
                   }
-                }
+                }*/
               case ResignCommand => resign()
               case RejoinCommand => rejoin()
               case command: ChannelCommand =>
-                if (channelActor != ActorRef.noSender) {
-                  channelActor ! command
-                }
+                channelTopic.foreach(publish(command))
+//                if (channelActor != ActorRef.noSender) {
+//                  channelActor ! command
+//                }
               case ChannelsCommand => channelsActor ! ChannelsCommand
               case command: WhoCommand => channelsActor ! command
               case command: OperableCommand =>
@@ -235,12 +246,13 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
 
     case command: UserToChannelCommandAck =>
       //log.error(s"UTCCA $command")
-      if (channelActor != ActorRef.noSender) {
-        channelActor ! command
-      }
+      channelTopic.foreach(publish(command))
+//      if (channelActor != ActorRef.noSender) {
+//        channelActor ! command
+//      }
 
     case Terminated(actor) =>
-      channelsActor ! UserLeftChat(user)
+      publish(TOPIC_CHANNELS, RemUser(self))
       publish(TOPIC_USERS, Rem(self))
       self ! PoisonPill
 
@@ -252,10 +264,10 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
   }
 
   private def handlePingResponse(cookie: String) = {
-    if (channelActor != ActorRef.noSender && pingCookie == cookie) {
+    if (channelTopic.isDefined /*channelActor != ActorRef.noSender*/ && pingCookie == cookie) {
       val updatedPing = Math.max(0, System.currentTimeMillis() - pingTime).toInt
       if (updatedPing <= 60000) {
-        channelActor ! UpdatePing(updatedPing)
+        channelTopic.foreach(publish(UpdatePing(updatedPing)))
       }
     }
   }
@@ -268,8 +280,10 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
 
   private def rejoin() = {
     val oldChannel = user.channel
-    channelActor ! RemUser(self)
-    channelActor = ActorRef.noSender
+    channelTopic.foreach(publish(RemUser(self)))
+    channelTopic = None
+//    channelActor ! RemUser(self)
+//    channelActor = ActorRef.noSender
     user = user.copy(channel = "")
     self ! Received(ByteString(s"/j $oldChannel"))
   }

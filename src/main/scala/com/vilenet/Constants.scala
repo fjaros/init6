@@ -11,7 +11,7 @@ object Constants {
 
   val TOPIC_DAO = "dao"
   val TOPIC_ONLINE = "online"
-  val TOPIC_CHANNEL = "channel"
+  val TOPIC_CHANNEL = (channel: String) => s"_${channel.toLowerCase}"
   val TOPIC_CHANNELS = "channels"
   val TOPIC_USERS = "users"
   val TOPIC_SPLIT = "split"
@@ -43,6 +43,7 @@ object Constants {
   )
   val CHANNEL_TOPIC = (topic: String) => s"Topic: $topic"
   val CHANNEL_RESTRICTED = "That channel is restricted."
+  val CHANNEL_FAILED_TO_JOIN = (channel: String) => s"Failed to join channel $channel"
   val DND_CANCELLED = "Do Not Disturb mode cancelled."
   val UNAVAILABLE_DEFAULT_MSG = "Not available"
   val DND_ENGAGED = "Do Not Disturb mode engaged."

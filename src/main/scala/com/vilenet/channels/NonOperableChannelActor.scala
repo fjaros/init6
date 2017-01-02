@@ -3,7 +3,7 @@ package com.vilenet.channels
 import akka.actor.ActorRef
 import com.vilenet.Constants._
 import com.vilenet.coders.commands.OperableCommand
-import com.vilenet.users.UserToChannelCommandAck
+import com.vilenet.users.{GetUsers, UserToChannelCommandAck}
 
 /**
   * Created by filip on 11/25/15.
@@ -25,12 +25,13 @@ trait NonOperableChannelActor extends ChannelActor {
           userActor ! UserError(NOT_OPERATOR)
         }
       })
+    case command @ GetUsers =>
+      super.receiveEvent(command)
+      sender() ! UserInfo(PUBLIC_CHANNEL)
   }: Receive)
     .orElse(super.receiveEvent)
 
   override def add(actor: ActorRef, user: User): User = {
-    val newUser = Flags.deOp(user)
-
-    super.add(actor, newUser)
+    super.add(actor, Flags.deOp(user))
   }
 }
