@@ -140,10 +140,12 @@ trait ChannelActor extends ViLeNetClusterActor {
   def remoteIn(remoteChannelActor: ActorRef, remoteUserActor: ActorRef, user: User) = {
     println("### remoteIn")
     println(remoteChannelActor + " - " + remoteUserActor + " - " + user)
-    users += remoteUserActor -> user
-    usersKeepAlive += remoteUserActor -> System.currentTimeMillis()
-    remoteUsersMap += remoteChannelActor.path.address -> remoteUserActor
-    localUsers ! UserIn(user)
+    if (!users.contains(remoteUserActor)) {
+      users += remoteUserActor -> user
+      usersKeepAlive += remoteUserActor -> System.currentTimeMillis()
+      remoteUsersMap += remoteChannelActor.path.address -> remoteUserActor
+      localUsers ! UserIn(user)
+    }
   }
 
   def remoteAdd(actor: ActorRef, remoteUser: (ActorRef, User)) = {
