@@ -153,7 +153,7 @@ while :; do
 
     waited_time=0
     while [ "$waited_time" -lt "$wait_time" ]; do
-        if [ -e "/proc/$pid" ]; then # this does not work on mac
+        if ps -p "$pid" > /dev/null; then
             sleep "$check_proc_interval"
             let "waited_time += check_proc_interval"
 
