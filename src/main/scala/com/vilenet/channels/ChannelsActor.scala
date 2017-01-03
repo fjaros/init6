@@ -2,8 +2,8 @@ package com.vilenet.channels
 
 import java.util.concurrent.TimeUnit
 
-import akka.actor.{PoisonPill, Address, ActorRef, Props}
-import akka.cluster.ClusterEvent.{UnreachableMember, MemberUp}
+import akka.actor.{ActorRef, Address, PoisonPill, Props}
+import akka.cluster.ClusterEvent.{MemberRemoved, MemberUp, UnreachableMember}
 import akka.pattern.ask
 import akka.util.Timeout
 import com.vilenet.Constants._
@@ -15,7 +15,7 @@ import com.vilenet.utils.RealKeyedCaseInsensitiveHashMap
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Await
-import scala.util.{Try, Failure, Success}
+import scala.util.{Failure, Success, Try}
 
 
 /**
@@ -74,7 +74,7 @@ class ChannelsActor extends ViLeNetClusterActor {
         sendGetChannels(member.address)
       }
 
-    case UnreachableMember(member) =>
+    case MemberRemoved(member, previousStatus) =>
       //remoteChannelsActors -= member.address
 
     case MrCleanChannelEraser =>

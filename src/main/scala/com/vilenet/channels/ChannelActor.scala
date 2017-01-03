@@ -3,7 +3,7 @@ package com.vilenet.channels
 import java.util.concurrent.TimeUnit
 
 import akka.actor.{ActorRef, Address, Props}
-import akka.cluster.ClusterEvent.UnreachableMember
+import akka.cluster.ClusterEvent.{MemberRemoved, UnreachableMember}
 import akka.util.Timeout
 import com.vilenet.Constants._
 import com.vilenet.ViLeNetClusterActor
@@ -123,7 +123,6 @@ trait ChannelActor extends ViLeNetClusterActor {
 
   def rem(actor: ActorRef): Option[User] = {
     println("REM " + actor)
-    //Try(throw new Exception("shit")).failed.get.printStackTrace()
     if (isLocal(actor)) {
       localUsers -= actor
     } else {
@@ -162,6 +161,8 @@ trait ChannelActor extends ViLeNetClusterActor {
           .values
           .flatten
           .foreach(rem)
+
+        unsubscribe(pubSubTopic)
       } else {
         val remoteAddress = sender().path.address
         remoteUsersMap
@@ -173,6 +174,7 @@ trait ChannelActor extends ViLeNetClusterActor {
     case ServerOnline =>
       if (isLocal()) {
         isSplit = false
+        subscribe(pubSubTopic)
       }
 
     case InternalChannelUserUpdate(actor, user) =>
@@ -197,7 +199,7 @@ trait ChannelActor extends ViLeNetClusterActor {
 //        }
       }
 
-    case UnreachableMember(member) =>
+    case MemberRemoved(member, previousStatus) =>
       //println(remoteUsersMap)
       remoteUsersMap.get(member.address).foreach(_.foreach(rem))
       remoteUsersMap -= member.address
@@ -225,7 +227,7 @@ trait ChannelActor extends ViLeNetClusterActor {
           sender() ! UserIn(user)
       }
 
-    case AddUser(actor, user) => add(actor, user)
+    case AddUser(actor, user) => if (!isSplit || isLocal()) add(actor, user)
     case RemUser(actor) => rem(actor)
     case CheckSize => sender() ! ChannelSize(self, name, users.size)
     case ChannelsCommand => sender() ! ChannelInfo(name, users.size, topic)

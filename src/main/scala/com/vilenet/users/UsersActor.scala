@@ -3,7 +3,7 @@ package com.vilenet.users
 import java.util.concurrent.TimeUnit
 
 import akka.actor.{ActorRef, Address, Props, Terminated}
-import akka.cluster.ClusterEvent.{MemberUp, UnreachableMember}
+import akka.cluster.ClusterEvent.{MemberRemoved, MemberUp, UnreachableMember}
 import akka.cluster.pubsub.DistributedPubSubMediator.{Subscribe, SubscribeAck}
 import akka.util.Timeout
 import com.vilenet.channels.utils.{LocalUsersSet, RemoteMultiMap}
@@ -158,7 +158,7 @@ class UsersActor extends ViLeNetClusterActor {
         sendGetUsers(member.address)
       }
 
-    case UnreachableMember(member) =>
+    case MemberRemoved(member, previousStatus) =>
       removeAllRemote(member.address)
 
     case ServerOnline =>

@@ -37,8 +37,14 @@ private[vilenet] trait ViLeNetClusterActor extends ViLeNetActor {
   }
   def subscribe(topic: String): Boolean = subscribe(topic, self)
 
-  def unsubscribe(topic: String, actor: ActorRef): Unit = mediator ! Unsubscribe(topic, actor)
-  def unsubscribe(topic: String): Unit = unsubscribe(topic, self)
+  def unsubscribe(topic: String, actor: ActorRef): Boolean = {
+    implicit val timeout = Timeout(1, TimeUnit.SECONDS)
+    Await.result(mediator ? Unsubscribe(topic, actor), timeout.duration) match {
+      case UnsubscribeAck(Unsubscribe(_topic, _, _)) => _topic == topic
+      case _ => false
+    }
+  }
+  def unsubscribe(topic: String): Boolean = unsubscribe(topic, self)
 
   def publish(topic: String, message: Any): Unit = mediator ! Publish(topic, message)
   def publish(message: Any)(topic: String): Unit = publish(topic, message)

@@ -235,13 +235,11 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
                 publish(TOPIC_DAO, UpdateAccountPassword(user.name, newPassword))
               case SplitMe =>
                 if (Flags.isAdmin(user)) {
-                  //publish(TOPIC_SPLIT, SplitMe)
-                  cluster.down(cluster.selfAddress)
+                  publish(TOPIC_SPLIT, SplitMe)
                 }
               case SendBirth =>
                 if (Flags.isAdmin(user)) {
-                  cluster.join(cluster.selfAddress)
-                  //publish(TOPIC_ONLINE, ServerOnline)
+                  publish(TOPIC_ONLINE, ServerOnline)
                 }
               case command @ BroadcastCommand(message) =>
                 usersActor ! command
