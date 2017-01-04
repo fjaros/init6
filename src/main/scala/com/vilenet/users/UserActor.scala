@@ -3,7 +3,6 @@ package com.vilenet.users
 import java.util.concurrent.TimeUnit
 
 import akka.actor.{ActorRef, PoisonPill, Props, Terminated}
-import akka.cluster.pubsub.DistributedPubSubMediator
 import akka.io.Tcp.Received
 import akka.pattern.ask
 import akka.util.{ByteString, Timeout}
@@ -11,7 +10,7 @@ import com.vilenet.Constants._
 import com.vilenet.coders.chat1.Chat1Encoder
 import com.vilenet.coders.commands._
 import com.vilenet.connection.WriteOut
-import com.vilenet.{Config, ViLeNetClusterActor}
+import com.vilenet.{Config, ViLeNetActor}
 import com.vilenet.channels._
 import com.vilenet.coders._
 import com.vilenet.coders.binary.BinaryChatEncoder
@@ -41,10 +40,10 @@ case object KillConnection extends Command
 
 
 class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
-  extends FloodPreventer with ViLeNetClusterActor {
+  extends FloodPreventer with ViLeNetActor {
 
   var isTerminated = false
-  var channelTopic: Option[String] = None
+  var channelActor = ActorRef.noSender
   var squelchedUsers = CaseInsensitiveHashSet()
   val awayAvailablity = AwayAvailablity(user.name)
   val dndAvailablity = DndAvailablity(user.name)
@@ -91,7 +90,7 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
     case ChannelJoinResponse(event) =>
       event match {
         case UserChannel(newUser, channel, channelActor) =>
-          channelTopic = Some(TOPIC_CHANNEL(channel))
+          this.channelActor = channelActor
           channelActor ! GetUsers
           user = newUser.copy(joiningChannel = "")
         case _ =>
@@ -118,8 +117,7 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
 
     case UserLeftChat =>
       user = user.copy(inChannel = "")
-      channelTopic.foreach(publish(RemUser(self)))
-      channelTopic = None
+      channelActor ! RemUser(self)
 
     case channelEvent: SquelchableTalkEvent =>
       if (!squelchedUsers.contains(channelEvent.user.name)) {
@@ -146,11 +144,11 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
 
     case BanCommand(kicking, message) =>
       self ! UserInfo(YOU_KICKED(kicking))
-      publish(TOPIC_CHANNELS, UserSwitchedChat(self, user, THE_VOID))
+      channelsActor ! UserSwitchedChat(self, user, THE_VOID)
 
     case KickCommand(kicking, message) =>
       self ! UserInfo(YOU_KICKED(kicking))
-      publish(TOPIC_CHANNELS, UserSwitchedChat(self, user, THE_VOID))
+      channelsActor ! UserSwitchedChat(self, user, THE_VOID)
 
     case DAOCreatedAck(username, passwordHash) =>
       self ! UserInfo(ACCOUNT_CREATED(username, passwordHash))
@@ -190,7 +188,7 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
                   !user.joiningChannel.equalsIgnoreCase(channel)
                 ) {
                   user = user.copy(joiningChannel = channel)
-                  publish(TOPIC_CHANNELS, UserSwitchedChat(self, fromUser, channel))
+                  channelsActor ! UserSwitchedChat(self, fromUser, channel)
                 }
 
 /*                if (!user.channel.equalsIgnoreCase(channel)) {
@@ -210,10 +208,9 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
               case ResignCommand => resign()
               case RejoinCommand => rejoin()
               case command: ChannelCommand =>
-                channelTopic.foreach(publish(command))
-//                if (channelActor != ActorRef.noSender) {
-//                  channelActor ! command
-//                }
+                if (channelActor != ActorRef.noSender) {
+                  channelActor ! command
+                }
               case ChannelsCommand => channelsActor ! ChannelsCommand
               case command: WhoCommand => channelsActor ! command
               case command: OperableCommand =>
@@ -230,25 +227,25 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
               case AwayCommand(message) => awayAvailablity.enableAction(message)
               case DndCommand(message) => dndAvailablity.enableAction(message)
               case AccountMade(username, passwordHash) =>
-                publish(TOPIC_DAO, CreateAccount(username, passwordHash))
+                daoActor ! CreateAccount(username, passwordHash)
               case ChangePasswordCommand(newPassword) =>
-                publish(TOPIC_DAO, UpdateAccountPassword(user.name, newPassword))
+                daoActor ! UpdateAccountPassword(user.name, newPassword)
               case SplitMe =>
                 if (Flags.isAdmin(user)) {
-                  publish(TOPIC_SPLIT, SplitMe)
+//                  publish(TOPIC_SPLIT, SplitMe)
                 }
               case SendBirth =>
                 if (Flags.isAdmin(user)) {
-                  publish(TOPIC_ONLINE, ServerOnline)
+//                  publish(TOPIC_ONLINE, ServerOnline)
                 }
               case command @ BroadcastCommand(message) =>
                 usersActor ! command
               case command @ DisconnectCommand(user) =>
                 usersActor ! command
               case command @ CloseAccountCommand(account, reason) =>
-                publish(TOPIC_DAO, CloseAccount(account, reason))
+                daoActor ! CloseAccount(account, reason)
               case command @ OpenAccountCommand(account) =>
-                publish(TOPIC_DAO, OpenAccount(account))
+                daoActor ! OpenAccount(account)
               case _ =>
             }
           case x =>
@@ -258,14 +255,13 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
 
     case command: UserToChannelCommandAck =>
       //log.error(s"UTCCA $command")
-      channelTopic.foreach(publish(command))
-//      if (channelActor != ActorRef.noSender) {
-//        channelActor ! command
-//      }
+      if (channelActor != ActorRef.noSender) {
+        channelActor ! command
+      }
 
     case Terminated(actor) =>
-      publish(TOPIC_CHANNELS, RemUser(self))
-      publish(TOPIC_USERS, Rem(self))
+      channelsActor ! RemUser(self)
+      usersActor ! Rem(self)
       self ! PoisonPill
 
     case KillConnection =>
@@ -276,10 +272,10 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
   }
 
   private def handlePingResponse(cookie: String) = {
-    if (channelTopic.isDefined /*channelActor != ActorRef.noSender*/ && pingCookie == cookie) {
+    if (channelActor != ActorRef.noSender && pingCookie == cookie) {
       val updatedPing = Math.max(0, System.currentTimeMillis() - pingTime).toInt
       if (updatedPing <= 60000) {
-        channelTopic.foreach(publish(UpdatePing(updatedPing)))
+        channelActor ! UpdatePing(updatedPing)
       }
     }
   }
@@ -292,10 +288,8 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
 
   private def rejoin() = {
     val oldChannel = user.inChannel
-    channelTopic.foreach(publish(RemUser(self)))
-    channelTopic = None
-//    channelActor ! RemUser(self)
-//    channelActor = ActorRef.noSender
+    channelActor ! RemUser(self)
+    channelActor = ActorRef.noSender
     user = user.copy(inChannel = "")
     self ! Received(ByteString(s"/j $oldChannel"))
   }

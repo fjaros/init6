@@ -7,7 +7,7 @@ import akka.actor.{ActorRef, FSM, Props}
 import akka.io.Tcp.Received
 import akka.pattern.ask
 import akka.util.{ByteString, Timeout}
-import com.vilenet.{Config, ViLeNetClusterActor}
+import com.vilenet.Config
 import com.vilenet.Constants._
 import com.vilenet.channels._
 import com.vilenet.coders.binary.hash.BSHA1
@@ -42,7 +42,7 @@ sealed trait Chat1Data
 case class UserCredentials(username: String = "", alias: String = "", password: String = "", home: String = "") extends Chat1Data
 case class LoggedInUser(actor: ActorRef, username: String) extends Chat1Data
 
-class Chat1Handler(clientAddress: InetSocketAddress, connection: ActorRef) extends ViLeNetClusterActor with ViLeNetKeepAliveActor with FSM[Chat1State, Chat1Data] {
+class Chat1Handler(clientAddress: InetSocketAddress, connection: ActorRef) extends ViLeNetKeepAliveActor with FSM[Chat1State, Chat1Data] {
 
   implicit val timeout = Timeout(1, TimeUnit.MINUTES)
 
@@ -140,7 +140,7 @@ class Chat1Handler(clientAddress: InetSocketAddress, connection: ActorRef) exten
 
     val maxLenUser = userCredentials.username.take(Config.Accounts.maxLength)
     DAO.getUser(maxLenUser).fold({
-      publish(TOPIC_DAO, CreateAccount(maxLenUser, BSHA1(userCredentials.password)))
+      daoActor ! CreateAccount(maxLenUser, BSHA1(userCredentials.password))
     })(dbUser => {
       send(LoginFailed(ACCOUNT_ALREADY_EXISTS(maxLenUser)))
     })

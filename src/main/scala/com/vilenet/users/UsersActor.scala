@@ -3,13 +3,11 @@ package com.vilenet.users
 import java.util.concurrent.TimeUnit
 
 import akka.actor.{ActorRef, Address, Props, Terminated}
-import akka.cluster.ClusterEvent.{MemberRemoved, MemberUp, UnreachableMember}
-import akka.cluster.pubsub.DistributedPubSubMediator.{Subscribe, SubscribeAck}
 import akka.util.Timeout
 import com.vilenet.channels.utils.{LocalUsersSet, RemoteMultiMap}
 import com.vilenet.coders.commands._
 import com.vilenet.servers._
-import com.vilenet.{Config, Constants, ViLeNetClusterActor, ViLeNetComponent}
+import com.vilenet._
 import com.vilenet.channels._
 import com.vilenet.Constants._
 import com.vilenet.utils.RealKeyedCaseInsensitiveHashMap
@@ -29,17 +27,7 @@ case class WhisperTo(user: User, username: String, message: String)  extends Com
 case object SubscribeAll
 
 object UsersActor extends ViLeNetComponent {
-
-  def apply() = {
-    // Await until all cluster subscriptions are complete
-    val usersActor = system.actorOf(Props[UsersActor], VILE_NET_USERS_PATH)
-    usersActor
-//    implicit val timeout = Timeout(1, TimeUnit.SECONDS)
-//    Await.result(usersActor ? SubscribeAll, timeout.duration) match {
-//      case SubscribeAll =>
-//        println("###1 reply")
-//    }
-  }
+  def apply() = system.actorOf(Props[UsersActor], VILE_NET_USERS_PATH)
 }
 
 trait Protocol extends Command
@@ -55,7 +43,9 @@ case class ReceivedUsers(users: Seq[(String, ActorRef)]) extends Command
 case class UserToChannelCommandAck(userActor: ActorRef, realUsername: String, command: UserToChannelCommand) extends Command
 case class UsersUserAdded(userActor: ActorRef, user: User) extends Command
 
-class UsersActor extends ViLeNetClusterActor {
+class UsersActor extends ViLeNetRemotingActor {
+
+  override val actorPath = VILE_NET_USERS_PATH
 
   TopCommandActor()
 
@@ -68,10 +58,6 @@ class UsersActor extends ViLeNetClusterActor {
   val reverseUsers = mutable.HashMap[ActorRef, String]()
   val localUsers = LocalUsersSet()
   val remoteUsersMap = RemoteMultiMap[Address, ActorRef]()
-
-  val clusterTopics = mutable.Set(TOPIC_ONLINE, TOPIC_USERS, TOPIC_SPLIT)
-  clusterTopics.foreach(subscribe)
-  var subscribeAllAckActor: ActorRef = _
 
   private def sendGetUsers(address: Address): Unit = {
     remoteUsersActor(address).resolveOne(Timeout(5, TimeUnit.SECONDS).duration).onComplete {
@@ -99,9 +85,6 @@ class UsersActor extends ViLeNetClusterActor {
     users += newUser.name -> userActor
     reverseUsers += userActor -> newUser.name
     localUsers += userActor
-
-    // publish to cluster
-    publish(TOPIC_USERS, RemoteEvent(Add(userActor, newUser, protocol)))
 
     // reply to sender
     sender() ! UsersUserAdded(userActor, newUser)
@@ -151,18 +134,17 @@ class UsersActor extends ViLeNetClusterActor {
     })
   }
 
+  override protected def onServerAlive(address: Address) = {
+    sendGetUsers(address)
+  }
+
+  override protected def onServerDead(address: Address) = {
+    removeAllRemote(address)
+  }
+
   override def receive: Receive = {
-    case MemberUp(member) =>
-      ///log.error(s"event $event from ${sender()}")
-      if (!isLocal(member.address)) {
-        sendGetUsers(member.address)
-      }
-
-    case MemberRemoved(member, previousStatus) =>
-      removeAllRemote(member.address)
-
     case ServerOnline =>
-      publish(TOPIC_USERS, GetUsers)
+//      publish(TOPIC_USERS, GetUsers)
 
     case GetUsers =>
       if (isRemote(sender())) {
@@ -207,14 +189,13 @@ class UsersActor extends ViLeNetClusterActor {
 //      println(users)
       sender() ! UserInfo(USERS(localUsers.size, users.size))
 
-    case RemoteEvent(event) =>
-      if (isRemote()) {
-        handleRemote(event)
-      }
-
     case event =>
       //log.error(s"event $event from ${sender()}")
-      handleLocal(event)
+      if (isLocal()) {
+        handleLocal(event)
+      } else {
+        handleRemote(event)
+      }
   }
 
   def handleLocal: Receive = {
@@ -240,7 +221,6 @@ class UsersActor extends ViLeNetClusterActor {
       rem(userActor)
 
     case BroadcastCommand(message) =>
-      publish(TOPIC_USERS, RemoteEvent(BroadcastCommand(message)))
       localUsers ! UserError(message)
 
     case DisconnectCommand(user) =>

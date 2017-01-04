@@ -19,6 +19,7 @@ object Constants {
   val VILE_NET = "ViLeNet"
   val VILE_NET_DAO_PATH = "DAO"
   val VILE_NET_SERVERS_PATH = "Servers"
+  val VILE_NET_SERVER_REGISTRY_PATH = "ServerRegistry"
   val VILE_NET_CHANNELS_PATH = "Channels"
   val VILE_NET_USERS_PATH = "Users"
   val VILE_NET_IP_LIMITER_PATH = "IpLimiter"

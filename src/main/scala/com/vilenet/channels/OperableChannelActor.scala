@@ -39,7 +39,7 @@ trait OperableChannelActor extends ChannelActor {
     val newUser =
       if (users.isEmpty) {
         val oppedUser = Flags.op(user)
-        publish(pubSubTopic, InternalChannelUserUpdate(actor, oppedUser))
+        //publish(pubSubTopic, InternalChannelUserUpdate(actor, oppedUser))
         oppedUser
       } else {
         user

@@ -2,8 +2,8 @@ package com.vilenet.users
 
 import akka.actor.Props
 import com.vilenet.Constants._
-import com.vilenet.{ViLeNetComponent, ViLeNetClusterActor}
-import com.vilenet.channels.{UserInfo, User}
+import com.vilenet.{ViLeNetActor, ViLeNetComponent}
+import com.vilenet.channels.{User, UserInfo}
 import com.vilenet.coders.commands.TopCommand
 import com.vilenet.servers.RemoteEvent
 import com.vilenet.utils.FiniteArrayBuffer
@@ -15,7 +15,7 @@ object TopCommandActor extends ViLeNetComponent {
   def apply() = system.actorOf(Props[TopCommandActor], VILE_NET_TOP_COMMAND_ACTOR)
 }
 
-class TopCommandActor extends ViLeNetClusterActor {
+class TopCommandActor extends ViLeNetActor {
 
   val topMap = Map(
     "binary" -> FiniteArrayBuffer[User](),
@@ -23,7 +23,7 @@ class TopCommandActor extends ViLeNetClusterActor {
     "all" -> FiniteArrayBuffer[User]()
   )
 
-  subscribe(TOPIC_USERS)
+  //subscribe(TOPIC_USERS)
 
   override def receive: Receive = {
     case RemoteEvent(Add(actor, user, protocol)) =>

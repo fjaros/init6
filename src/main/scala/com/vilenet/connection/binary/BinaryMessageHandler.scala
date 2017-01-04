@@ -17,7 +17,7 @@ import com.vilenet.connection._
 import com.vilenet.db.{CreateAccount, DAO, DAOCreatedAck, UpdateAccountPassword}
 import com.vilenet.users.{Add, BinaryProtocol, PingSent, UsersUserAdded}
 import com.vilenet.utils.LimitedAction
-import com.vilenet.{Config, ViLeNetClusterActor}
+import com.vilenet.Config
 
 import scala.util.Random
 
@@ -48,7 +48,7 @@ object BinaryMessageHandler {
     Props(classOf[BinaryMessageHandler], clientAddress, connection)
 }
 
-class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRef) extends ViLeNetClusterActor with ViLeNetKeepAliveActor with FSM[BinaryState, ActorRef] {
+class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRef) extends ViLeNetKeepAliveActor with FSM[BinaryState, ActorRef] {
 
   implicit val timeout = Timeout(1, TimeUnit.MINUTES)
 
@@ -309,7 +309,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
 
     val maxLenUser = username.take(Config.Accounts.maxLength)
     DAO.getUser(maxLenUser).fold({
-      publish(TOPIC_DAO, CreateAccount(maxLenUser, passwordHash))
+      daoActor ! CreateAccount(maxLenUser, passwordHash)
     })(dbUser => {
       send(SidCreateAccount(SidCreateAccount.RESULT_FAILED))
     })
@@ -332,7 +332,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
 
     val maxLenUser = username.take(Config.Accounts.maxLength)
     DAO.getUser(maxLenUser).fold({
-      publish(TOPIC_DAO, CreateAccount(maxLenUser, passwordHash))
+      daoActor ! CreateAccount(maxLenUser, passwordHash)
     })(dbUser => {
       send(SidCreateAccount2(SidCreateAccount2.RESULT_ALREADY_EXISTS))
     })
@@ -390,7 +390,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
       goto(ExpectingSidLogonResponse)
     })(dbUser => {
       if (BSHA1(clientToken, serverToken, dbUser.passwordHash).sameElements(oldPasswordHash)) {
-        publish(TOPIC_DAO, UpdateAccountPassword(username, newPasswordHash))
+        daoActor ! UpdateAccountPassword(username, newPasswordHash)
         goto(ExpectingChangePasswordHandled)
       } else {
         send(SidChangePassword(SidChangePassword.RESULT_FAILED))

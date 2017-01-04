@@ -3,13 +3,12 @@ package com.vilenet.channels
 import java.util.concurrent.TimeUnit
 
 import akka.actor.{ActorRef, Address, Props}
-import akka.cluster.ClusterEvent.{MemberRemoved, UnreachableMember}
 import akka.util.Timeout
 import com.vilenet.Constants._
-import com.vilenet.ViLeNetClusterActor
+import com.vilenet.{ViLeNetActor, ViLeNetRemotingActor}
 import com.vilenet.channels.utils.{LocalUsersSet, RemoteMultiMap}
 import com.vilenet.coders.commands._
-import com.vilenet.servers.{ServerOnline, SplitMe}
+import com.vilenet.servers.{Remotable, ServerOnline, SplitMe}
 import com.vilenet.users.{GetUsers, UpdatePing, UserUpdated}
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -44,8 +43,8 @@ case class User(
                  joiningChannel: String = ""
                ) extends Command
 
-case class AddUser(actor: ActorRef, user: User) extends Command
-case class RemUser(actor: ActorRef) extends Command
+case class AddUser(actor: ActorRef, user: User) extends Command with Remotable
+case class RemUser(actor: ActorRef) extends Command with Remotable
 case class UserAddedToChannel(user: User, channelName: String, channelActor: ActorRef, channelTopic: String)
 case object CheckSize extends Command
 case class ChannelSize(actor: ActorRef, name: String, size: Int) extends Command
@@ -55,9 +54,11 @@ case object UserToChannelPing extends Command
 case class InternalChannelUserUpdate(actor: ActorRef, user: User) extends Command
 case class ChannelJoinResponse(message: ChatEvent) extends Command
 
-trait ChannelActor extends ViLeNetClusterActor {
+trait ChannelActor extends ViLeNetRemotingActor {
 
   val name: String
+
+  override val actorPath = s"$VILE_NET_CHANNELS_PATH/${name.toLowerCase}"
 
   val limit = 200
 
@@ -75,31 +76,31 @@ trait ChannelActor extends ViLeNetClusterActor {
 
   // Settable topic by operator
   var topic = ""
-
-  subscribe(TOPIC_SPLIT)
-  val pubSubTopic = TOPIC_CHANNEL(name)
-  if (subscribe(pubSubTopic)) {
-    system.scheduler.schedule(
-      Timeout(1000, TimeUnit.MILLISECONDS).duration,
-      Timeout(1000, TimeUnit.MILLISECONDS).duration
-    ) {
-      if (!isSplit) {
-        publish(pubSubTopic, ChannelPing)
-      }
-
-      val now = System.currentTimeMillis()
-      usersKeepAlive.foreach {
-        case (actor, time) =>
-          if (now - time >= 4000) {
-            rem(actor)
-          } else {
-            actor ! ChannelToUserPing
-          }
-      }
-    }
-  } else {
-    log.error("Failed to subscribe to {}", pubSubTopic)
-  }
+//
+//  subscribe(TOPIC_SPLIT)
+//  val pubSubTopic = TOPIC_CHANNEL(name)
+//  if (subscribe(pubSubTopic)) {
+//    system.scheduler.schedule(
+//      Timeout(1000, TimeUnit.MILLISECONDS).duration,
+//      Timeout(1000, TimeUnit.MILLISECONDS).duration
+//    ) {
+//      if (!isSplit) {
+//        publish(pubSubTopic, ChannelPing)
+//      }
+//
+//      val now = System.currentTimeMillis()
+//      usersKeepAlive.foreach {
+//        case (actor, time) =>
+//          if (now - time >= 4000) {
+//            rem(actor)
+//          } else {
+//            actor ! ChannelToUserPing
+//          }
+//      }
+//    }
+//  } else {
+//    log.error("Failed to subscribe to {}", pubSubTopic)
+//  }
 
   // Final. Should not be overriden in subclasses. Use receiveEvent to avoid calling super to an abstract declaration
   override final def receive: Receive = {
@@ -117,7 +118,9 @@ trait ChannelActor extends ViLeNetClusterActor {
     users += actor -> newUser
     usersKeepAlive += actor -> System.currentTimeMillis()
 
-    sender() ! UserAddedToChannel(newUser, name, self, topic)
+    if (isLocal()) {
+      sender() ! UserAddedToChannel(newUser, name, self, topic)
+    }
     newUser
   }
 
@@ -153,28 +156,38 @@ trait ChannelActor extends ViLeNetClusterActor {
     remoteUsersMap += actor.path.address -> remoteUser._1
   }
 
-  def receiveEvent: Receive = {
-    case SplitMe =>
-      if (isLocal()) {
-        isSplit = true
-        remoteUsersMap
-          .values
-          .flatten
-          .foreach(rem)
+  override protected def onServerAlive(address: Address) = {
+    println("onServerAlive Getting Channel Users")
+    system.actorSelection(s"akka://${address.hostPort}/user/$actorPath") ! GetChannelUsers
+  }
 
-        unsubscribe(pubSubTopic)
-      } else {
-        val remoteAddress = sender().path.address
-        remoteUsersMap
-          .get(remoteAddress)
-          .foreach(_.foreach(rem))
-        remoteAddressReceived -= remoteAddress
-      }
+  override protected def onServerDead(address: Address) = {
+    remoteUsersMap.get(address).foreach(_.foreach(rem))
+    remoteUsersMap -= address
+  }
+
+  def receiveEvent: Receive = {
+//    case SplitMe =>
+//      if (isLocal()) {
+//        isSplit = true
+//        remoteUsersMap
+//          .values
+//          .flatten
+//          .foreach(rem)
+//
+//        unsubscribe(pubSubTopic)
+//      } else {
+//        val remoteAddress = sender().path.address
+//        remoteUsersMap
+//          .get(remoteAddress)
+//          .foreach(_.foreach(rem))
+//        remoteAddressReceived -= remoteAddress
+//      }
 
     case ServerOnline =>
       if (isLocal()) {
         isSplit = false
-        subscribe(pubSubTopic)
+        //subscribe(pubSubTopic)
       }
 
     case InternalChannelUserUpdate(actor, user) =>
@@ -199,11 +212,6 @@ trait ChannelActor extends ViLeNetClusterActor {
 //        }
       }
 
-    case MemberRemoved(member, previousStatus) =>
-      //println(remoteUsersMap)
-      remoteUsersMap.get(member.address).foreach(_.foreach(rem))
-      remoteUsersMap -= member.address
-
     case GetChannelUsers =>
       println("RECEIVED GetChannelUsers from " + sender())
       println(users)
@@ -227,7 +235,7 @@ trait ChannelActor extends ViLeNetClusterActor {
           sender() ! UserIn(user)
       }
 
-    case AddUser(actor, user) => if (!isSplit || isLocal()) add(actor, user)
+    case c@ AddUser(actor, user) => add(actor, user)
     case RemUser(actor) => rem(actor)
     case CheckSize => sender() ! ChannelSize(self, name, users.size)
     case ChannelsCommand => sender() ! ChannelInfo(name, users.size, topic)

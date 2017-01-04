@@ -3,12 +3,11 @@ package com.vilenet.channels
 import java.util.concurrent.TimeUnit
 
 import akka.actor.{ActorRef, Address, PoisonPill, Props}
-import akka.cluster.ClusterEvent.{MemberRemoved, MemberUp, UnreachableMember}
 import akka.pattern.ask
 import akka.util.Timeout
 import com.vilenet.Constants._
+import com.vilenet.{ViLeNetComponent, ViLeNetRemotingActor}
 import com.vilenet.coders.commands._
-import com.vilenet.{ViLeNetClusterActor, ViLeNetComponent}
 import com.vilenet.servers._
 import com.vilenet.utils.FutureCollector.futureSeqToFutureCollector
 import com.vilenet.utils.RealKeyedCaseInsensitiveHashMap
@@ -38,18 +37,15 @@ case class ChannelDeleted(name: String) extends Command
 case object MrCleanChannelEraser extends Command
 
 
-class ChannelsActor extends ViLeNetClusterActor {
+class ChannelsActor extends ViLeNetRemotingActor {
 
+  override val actorPath = VILE_NET_CHANNELS_PATH
   implicit val timeout = Timeout(1000, TimeUnit.MILLISECONDS)
 
   val remoteChannelsActor = (address: Address) =>
     system.actorSelection(s"akka://${address.hostPort}/user/$VILE_NET_CHANNELS_PATH")
 
   val channels = RealKeyedCaseInsensitiveHashMap[ActorRef]()
-
-  subscribe(TOPIC_ONLINE)
-  subscribe(TOPIC_CHANNELS)
-  subscribe(TOPIC_SPLIT)
 
   system.scheduler.schedule(
     Timeout(15, TimeUnit.SECONDS).duration, Timeout(15, TimeUnit.SECONDS).duration, self, MrCleanChannelEraser
@@ -68,15 +64,11 @@ class ChannelsActor extends ViLeNetClusterActor {
   }
 
 
+  override protected def onServerAlive(address: Address) = {
+    sendGetChannels(address)
+  }
+
   override def receive: Receive = {
-    case MemberUp(member) =>
-      if (isRemote(member.address)) {
-        sendGetChannels(member.address)
-      }
-
-    case MemberRemoved(member, previousStatus) =>
-      //remoteChannelsActors -= member.address
-
     case MrCleanChannelEraser =>
       val futureSeq = channels
         .values
@@ -103,7 +95,7 @@ class ChannelsActor extends ViLeNetClusterActor {
       }
 
     case ServerOnline =>
-      publish(TOPIC_CHANNELS, GetChannels)
+      //publish(TOPIC_CHANNELS, GetChannels)
 
     case c@ GetChannels =>
       log.error(s"### $c $channels")
@@ -196,7 +188,7 @@ class ChannelsActor extends ViLeNetClusterActor {
 
   def getOrCreate(name: String) = {
     val channelActor = channels.getOrElse(name, {
-      val channelActor = context.actorOf(ChannelActor(name).withDispatcher(CHANNEL_DISPATCHER))
+      val channelActor = context.actorOf(ChannelActor(name).withDispatcher(CHANNEL_DISPATCHER), name)
       channels += name -> channelActor
       name -> channelActor
     })._2

@@ -7,7 +7,7 @@ import akka.util.Timeout
 import com.vilenet.channels.ChannelsActor
 import com.vilenet.connection.{ConnectionHandler, IpLimitActor}
 import com.vilenet.db.{DAO, DAOActor}
-import com.vilenet.servers.ServerPantyDropper
+import com.vilenet.servers.{ServerPantyDropper, ServerRegistry}
 import com.vilenet.users.UsersActor
 
 import scala.concurrent.Await
@@ -18,6 +18,7 @@ import scala.concurrent.Await
 object ViLeNet extends App with ViLeNetComponent {
 
   DAO
+  ServerRegistry()
   DAOActor()
   ServerPantyDropper(Config.Server.name)
   IpLimitActor(200)
