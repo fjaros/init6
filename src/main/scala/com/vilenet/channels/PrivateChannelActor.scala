@@ -16,6 +16,6 @@ sealed class PrivateChannelActor(override val name: String)
   with FullableChannelActor {
 
   override def add(actor: ActorRef, user: User): User = {
-    users.getOrElse(actor, super.add(actor, Flags.deOp(user)))
+    super.add(actor, Flags.deOp(user))
   }
 }

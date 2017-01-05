@@ -40,7 +40,7 @@ case object GetUptime extends Command
 case class ReceivedUptime(actor: ActorRef, uptime: Long) extends Command
 case class ReceivedUser(user: (String, ActorRef)) extends Command
 case class ReceivedUsers(users: Seq[(String, ActorRef)]) extends Command
-case class UserToChannelCommandAck(userActor: ActorRef, realUsername: String, command: UserToChannelCommand) extends Command
+case class UserToChannelCommandAck(userActor: ActorRef, realUsername: String, command: UserToChannelCommand) extends Command with Remotable
 case class UsersUserAdded(userActor: ActorRef, user: User) extends Command
 
 class UsersActor extends ViLeNetRemotingActor {
@@ -143,6 +143,9 @@ class UsersActor extends ViLeNetRemotingActor {
   }
 
   override def receive: Receive = {
+    case RemoteActorUp =>
+      sender() ! GetUsers
+
     case ServerOnline =>
 //      publish(TOPIC_USERS, GetUsers)
 
@@ -239,6 +242,8 @@ class UsersActor extends ViLeNetRemotingActor {
     case BroadcastCommand(message) =>
       //println(s"### Remote Broadcast $localUsers")
       localUsers ! UserError(message)
+
+    case _ =>
   }
 
   def getRealUser(user: User): User = {

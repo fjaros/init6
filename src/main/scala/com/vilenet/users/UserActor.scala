@@ -87,13 +87,15 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
     case PongCommand(cookie) =>
       handlePingResponse(cookie)
 
-    case ChannelJoinResponse(event) =>
+    case c@ ChannelJoinResponse(event) =>
+      println(c + " - " + sender())
       event match {
         case UserChannel(newUser, channel, channelActor) =>
           this.channelActor = channelActor
           channelActor ! GetUsers
           user = newUser.copy(joiningChannel = "")
         case _ =>
+          user = user.copy(joiningChannel = "")
       }
       encodeAndSend(event)
 
@@ -142,7 +144,8 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
     case (actor: ActorRef, WhoisCommand(fromUser, username)) =>
       actor ! UserInfo(s"${user.name} is using ${encodeClient(user.client)}${if (user.inChannel != "") s" in the channel ${user.inChannel}" else ""}.")
 
-    case BanCommand(kicking, message) =>
+    case c@ BanCommand(kicking, message) =>
+      println(c)
       self ! UserInfo(YOU_KICKED(kicking))
       channelsActor ! UserSwitchedChat(self, user, THE_VOID)
 
@@ -256,6 +259,7 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
     case command: UserToChannelCommandAck =>
       //log.error(s"UTCCA $command")
       if (channelActor != ActorRef.noSender) {
+        println("Sending to channel UTCCA " + command)
         channelActor ! command
       }
 
@@ -287,10 +291,7 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
   }
 
   private def rejoin() = {
-    val oldChannel = user.inChannel
-    channelActor ! RemUser(self)
-    channelActor = ActorRef.noSender
-    user = user.copy(inChannel = "")
-    self ! Received(ByteString(s"/j $oldChannel"))
+    user = user.copy(joiningChannel = user.inChannel)
+    channelsActor ! UserSwitchedChat(self, user, user.inChannel)
   }
 }

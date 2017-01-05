@@ -9,15 +9,18 @@ import com.vilenet.servers._
 
 import scala.collection.mutable
 import scala.concurrent.Await
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.util.{Failure, Success}
 
 /**
   * Created by filip on 1/3/17.
   */
+case object RemoteActorUp
+
 private[vilenet] trait ViLeNetRemotingActor extends ViLeNetActor {
 
   val actorPath: String
   val remoteActors = new mutable.HashSet[ActorSelection] {
-    def !(message: Any) = foreach(_ ! message)
     def +=(address: Address): this.type = +=(system.actorSelection(s"akka://${address.hostPort}/user/$actorPath"))
     def ++=(addresses: TraversableOnce[Address]) = addresses.foreach(+=)
     def -=(address: Address): this.type = -=(system.actorSelection(s"akka://${address.hostPort}/user/$actorPath"))
@@ -32,6 +35,7 @@ private[vilenet] trait ViLeNetRemotingActor extends ViLeNetActor {
         println("Addresses for " + getClass + " - " + addresses)
         remoteActors ++= addresses
         addresses.foreach(onServerAlive)
+        remoteActors.foreach(_.tell(RemoteActorUp, self))
 
       case reply =>
         log.error("Failed to subscribe to registry. This actor is FUCKED: {}", reply)
@@ -44,11 +48,12 @@ private[vilenet] trait ViLeNetRemotingActor extends ViLeNetActor {
     if (isLocal()) {
       msg match {
         case _: Remotable =>
-          remoteActors ! msg
+          val originalSender = sender()
+          remoteActors.foreach(_.tell(msg, originalSender))
 
         case ServerAlive(address) =>
           remoteActors += address
-          onServerAlive(address)
+          resolveRemote(address, actorPath, onServerAlive(address))
 
         case ServerDead(address) =>
           remoteActors -= address
@@ -56,6 +61,28 @@ private[vilenet] trait ViLeNetRemotingActor extends ViLeNetActor {
 
         case _ =>
       }
+    }
+  }
+
+  protected def resolveRemote(address: Address, actorPath: String, onSuccess: => Unit): Unit = {
+    val resolvedPath = s"akka://${address.hostPort}/user/$actorPath"
+
+    val failedRunnable = new Runnable {
+      override def run() = resolveRemote(address, actorPath, onSuccess)
+    }
+
+    resolveRemote(resolvedPath, onSuccess, failedRunnable)
+  }
+
+  // Internal recursive for resolving in case of failure
+  private def resolveRemote(resolvedPath: String, successFunc: => Unit, failedRunnable: Runnable) = {
+    system.actorSelection(resolvedPath)
+      .resolveOne(Timeout(5, TimeUnit.SECONDS).duration).onComplete {
+      case Success(_) =>
+        successFunc
+
+      case Failure(ex) =>
+        system.scheduler.scheduleOnce(Timeout(500, TimeUnit.MILLISECONDS).duration, failedRunnable)
     }
   }
 

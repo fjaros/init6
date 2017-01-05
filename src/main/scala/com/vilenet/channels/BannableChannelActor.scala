@@ -38,6 +38,7 @@ trait BannableChannelActor extends ChannelActor {
     .orElse(super.receiveEvent)
 
   override def add(actor: ActorRef, user: User): User = {
+    println("Add from " + sender())
     if (bannedUsers(user.name)) {
       if (isLocal()) {
         sender() ! UserError(YOU_BANNED)
@@ -78,6 +79,7 @@ trait BannableChannelActor extends ChannelActor {
   }
 
   def banAction(banningActor: ActorRef, bannedActor: ActorRef, banned: String, message: String) = {
+    println("banAction " + banningActor + " - " + bannedActor + " - " + banned + " - " + sender())
     val banning = users(banningActor).name
 
     users.get(bannedActor).fold({

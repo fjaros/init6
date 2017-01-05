@@ -5,8 +5,9 @@ import java.util.concurrent.TimeUnit
 import akka.actor.{ActorRef, Address, Props}
 import akka.util.Timeout
 import com.vilenet.Constants._
-import com.vilenet.{ViLeNetActor, ViLeNetRemotingActor}
+import com.vilenet.{RemoteActorUp, ViLeNetActor, ViLeNetRemotingActor}
 import com.vilenet.channels.utils.{LocalUsersSet, RemoteMultiMap}
+import com.vilenet.coders.Base64
 import com.vilenet.coders.commands._
 import com.vilenet.servers.{Remotable, ServerOnline, SplitMe}
 import com.vilenet.users.{GetUsers, UpdatePing, UserUpdated}
@@ -43,8 +44,10 @@ case class User(
                  joiningChannel: String = ""
                ) extends Command
 
-case class AddUser(actor: ActorRef, user: User) extends Command with Remotable
+case class AddUser(actor: ActorRef, user: User) extends Command
 case class RemUser(actor: ActorRef) extends Command with Remotable
+case object IsEmpty
+case object NonEmpty
 case class UserAddedToChannel(user: User, channelName: String, channelActor: ActorRef, channelTopic: String)
 case object CheckSize extends Command
 case class ChannelSize(actor: ActorRef, name: String, size: Int) extends Command
@@ -58,7 +61,7 @@ trait ChannelActor extends ViLeNetRemotingActor {
 
   val name: String
 
-  override val actorPath = s"$VILE_NET_CHANNELS_PATH/${name.toLowerCase}"
+  override val actorPath = s"$VILE_NET_CHANNELS_PATH/${Base64(name.toLowerCase)}"
 
   val limit = 200
 
@@ -108,6 +111,9 @@ trait ChannelActor extends ViLeNetRemotingActor {
   }
 
   def add(actor: ActorRef, user: User): User = {
+    // just in case
+    rem(actor)
+
     val newUser = user.copy(inChannel = name)
 
     if (isLocal(actor)) {
@@ -119,13 +125,13 @@ trait ChannelActor extends ViLeNetRemotingActor {
     usersKeepAlive += actor -> System.currentTimeMillis()
 
     if (isLocal()) {
+      println("sender " + sender())
       sender() ! UserAddedToChannel(newUser, name, self, topic)
     }
     newUser
   }
 
   def rem(actor: ActorRef): Option[User] = {
-    println("REM " + actor)
     if (isLocal(actor)) {
       localUsers -= actor
     } else {
@@ -156,6 +162,7 @@ trait ChannelActor extends ViLeNetRemotingActor {
     remoteUsersMap += actor.path.address -> remoteUser._1
   }
 
+  // No. On Start advertise to remotes that you are alive.
   override protected def onServerAlive(address: Address) = {
     println("onServerAlive Getting Channel Users")
     system.actorSelection(s"akka://${address.hostPort}/user/$actorPath") ! GetChannelUsers
@@ -167,6 +174,9 @@ trait ChannelActor extends ViLeNetRemotingActor {
   }
 
   def receiveEvent: Receive = {
+    case RemoteActorUp =>
+      sender() ! GetChannelUsers
+
 //    case SplitMe =>
 //      if (isLocal()) {
 //        isSplit = true
@@ -213,15 +223,14 @@ trait ChannelActor extends ViLeNetRemotingActor {
       }
 
     case GetChannelUsers =>
-      println("RECEIVED GetChannelUsers from " + sender())
-      println(users)
+      println("RECEIVED GetChannelUsers from " + sender() + "\n" + "users: " + users)
       if (isRemote()) {
+        println("SENDING ReceivedChannelUsers\n" + users.filterKeys(localUsers.contains).toSeq)
         sender() ! ReceivedChannelUsers(users.filterKeys(localUsers.contains).toSeq)
       }
 
     case ReceivedChannelUsers(remoteUsers) =>
-      println("RECEIVED ReceivedChannelUsers from " + sender())
-      println(remoteUsers)
+      println("RECEIVED ReceivedChannelUsers from " + sender() + "\nremoteUsers: " + remoteUsers)
       remoteUsers.foreach {
         case (actor, user) =>
           remoteIn(sender(), actor, user)

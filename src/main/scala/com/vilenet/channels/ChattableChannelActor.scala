@@ -37,7 +37,9 @@ trait ChattableChannelActor extends ChannelActor {
           topic = message
           localUsers ! UserInfo(SET_TOPIC(user.name, topic))
         } else {
-          userActor ! UserError(NOT_OPERATOR)
+          if (isLocal()) {
+            userActor ! UserError(NOT_OPERATOR)
+          }
         }
       })
   }: Receive)
@@ -60,8 +62,12 @@ trait ChattableChannelActor extends ChannelActor {
   }
 
   override def add(actor: ActorRef, user: User): User = {
-    localUsers ! UserJoined(user)
     val newUser = super.add(actor, user)
+
+    localUsers
+      .filterNot(_ == actor)
+      .foreach(_ ! UserJoined(newUser))
+
     newUser
   }
 

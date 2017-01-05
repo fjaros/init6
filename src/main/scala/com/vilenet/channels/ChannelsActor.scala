@@ -6,6 +6,7 @@ import akka.actor.{ActorRef, Address, PoisonPill, Props}
 import akka.pattern.ask
 import akka.util.Timeout
 import com.vilenet.Constants._
+import com.vilenet.coders.Base64
 import com.vilenet.{ViLeNetComponent, ViLeNetRemotingActor}
 import com.vilenet.coders.commands._
 import com.vilenet.servers._
@@ -35,7 +36,7 @@ case object ChannelEmpty extends Command
 case object ChannelNotEmpty extends Command
 case class ChannelDeleted(name: String) extends Command
 case object MrCleanChannelEraser extends Command
-
+case class KillChannel(actor: ActorRef, channel: String) extends Command with Remotable
 
 class ChannelsActor extends ViLeNetRemotingActor {
 
@@ -47,9 +48,9 @@ class ChannelsActor extends ViLeNetRemotingActor {
 
   val channels = RealKeyedCaseInsensitiveHashMap[ActorRef]()
 
-  system.scheduler.schedule(
-    Timeout(15, TimeUnit.SECONDS).duration, Timeout(15, TimeUnit.SECONDS).duration, self, MrCleanChannelEraser
-  )
+//  system.scheduler.schedule(
+//    Timeout(1, TimeUnit.SECONDS).duration, Timeout(1, TimeUnit.SECONDS).duration, self, MrCleanChannelEraser
+//  )
 
   private def sendGetChannels(address: Address): Unit = {
     remoteChannelsActor(address).resolveOne(Timeout(5, TimeUnit.SECONDS).duration).onComplete {
@@ -81,12 +82,15 @@ class ChannelsActor extends ViLeNetRemotingActor {
         Await.result(futureSeq.collectResults {
           case ChannelSize(actor, name, size) =>
             if (size == 0) {
-              actor ! PoisonPill
-              channels -= name
+              self ! KillChannel(actor, name)
             }
             None
         }, Timeout(1, TimeUnit.SECONDS).duration)
       }.getOrElse(log.error("Failed to clean channels due to timeout."))
+
+    case KillChannel(actor, name) =>
+      actor ? PoisonPill
+      channels -= name
 
     case SplitMe =>
       if (isRemote()) {
@@ -119,32 +123,38 @@ class ChannelsActor extends ViLeNetRemotingActor {
     case command @ UserLeftChat(user) =>
 
     case command @ UserSwitchedChat(actor, user, channel) =>
-      log.debug("UserSwitchedChat {}", command)
 
       val userActor = sender()
-      (getOrCreate(channel) ? AddUser(actor, user)).onComplete {
-        case Success(reply) =>
-          reply match {
-            case reply: UserAddedToChannel =>
+      Try {
+        Await.result(getOrCreate(channel) ? AddUser(actor, user), timeout.duration) match {
+          case reply: UserAddedToChannel =>
+            if (!user.inChannel.equalsIgnoreCase(channel)) {
               channels.get(user.inChannel).foreach {
                 case (_, oldChannelActor) =>
-                  oldChannelActor ! RemUser(actor)
+                  oldChannelActor.tell(RemUser(actor), self)
               }
-              // temp actor
-              if (isLocal(userActor)) {
-                userActor ! ChannelJoinResponse(UserChannel(reply.user, reply.channelName, reply.channelActor))
-                // real actor
-                if (reply.channelTopic.nonEmpty) {
-                  userActor ! UserInfo(CHANNEL_TOPIC(reply.channelTopic))
-                }
+            }
+            // temp actor
+            if (isLocal(userActor)) {
+              userActor ! ChannelJoinResponse(UserChannel(reply.user, reply.channelName, reply.channelActor))
+              // real actor
+              if (reply.channelTopic.nonEmpty) {
+                userActor ! UserInfo(CHANNEL_TOPIC(reply.channelTopic))
               }
-            case reply: ChatEvent =>
+            }
+          case reply: ChatEvent =>
+            if (isLocal(userActor)) {
               userActor ! ChannelJoinResponse(reply)
-            case _ =>
+            }
+          case msg =>
+            println(msg)
+        }
+      }.getOrElse({
+          log.error("ChannelsActor createOrGet timed out for {}", command)
+          if (isLocal(userActor)) {
+            userActor ! ChannelJoinResponse(UserError(CHANNEL_FAILED_TO_JOIN(channel)))
           }
-        case _ =>
-          userActor ! ChannelJoinResponse(UserError(CHANNEL_FAILED_TO_JOIN(channel)))
-      }
+      })
 
     case ChannelsCommand =>
       val replyActor = sender()
@@ -188,7 +198,7 @@ class ChannelsActor extends ViLeNetRemotingActor {
 
   def getOrCreate(name: String) = {
     val channelActor = channels.getOrElse(name, {
-      val channelActor = context.actorOf(ChannelActor(name).withDispatcher(CHANNEL_DISPATCHER), name)
+      val channelActor = context.actorOf(ChannelActor(name).withDispatcher(CHANNEL_DISPATCHER), Base64(name.toLowerCase))
       channels += name -> channelActor
       name -> channelActor
     })._2
