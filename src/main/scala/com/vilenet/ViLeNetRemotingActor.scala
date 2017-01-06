@@ -35,7 +35,6 @@ private[vilenet] trait ViLeNetRemotingActor extends ViLeNetActor {
         println("Addresses for " + getClass + " - " + addresses)
         remoteActors ++= addresses
         addresses.foreach(onServerAlive)
-        remoteActors.foreach(_.tell(RemoteActorUp, self))
 
       case reply =>
         log.error("Failed to subscribe to registry. This actor is FUCKED: {}", reply)

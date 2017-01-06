@@ -29,7 +29,10 @@ trait BannableChannelActor extends ChannelActor {
           }
         } else {
           command.command match {
-            case command: OperableCommand => sender() ! UserError(NOT_OPERATOR)
+            case _: OperableCommand =>
+              if (isLocal()) {
+                sender() ! UserError(NOT_OPERATOR)
+              }
             case _ => super.receiveEvent(command)
           }
         }
