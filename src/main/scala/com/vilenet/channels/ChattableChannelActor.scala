@@ -72,6 +72,9 @@ trait ChattableChannelActor extends ChannelActor {
   }
 
   override def rem(actor: ActorRef): Option[User] = {
+    if (name.equalsIgnoreCase("vile")) {
+      println("##SPECIAL REM " + actor + " - " + sender())
+    }
     val userOpt = super.rem(actor)
     userOpt.foreach(localUsers ! UserLeft(_))
     userOpt

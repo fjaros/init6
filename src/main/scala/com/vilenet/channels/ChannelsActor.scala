@@ -27,7 +27,6 @@ object ChannelsActor extends ViLeNetComponent {
 
 case object GetChannels extends Command
 case class ChannelsAre(channels: Seq[(String, ActorRef)]) extends Command
-case class ChannelCreated(actor: ActorRef, name: String) extends Command
 case object GetChannelUsers extends Command
 case class ReceivedChannelUsers(users: Seq[(ActorRef, User)]) extends Command
 case class ReceivedChannel(channel: (String, ActorRef)) extends Command
@@ -43,9 +42,6 @@ class ChannelsActor extends ViLeNetRemotingActor {
   override val actorPath = VILE_NET_CHANNELS_PATH
   implicit val timeout = Timeout(1000, TimeUnit.MILLISECONDS)
 
-  val remoteChannelsActor = (address: Address) =>
-    system.actorSelection(s"akka://${address.hostPort}/user/$VILE_NET_CHANNELS_PATH")
-
   val channels = RealKeyedCaseInsensitiveHashMap[ActorRef]()
 
 //  system.scheduler.schedule(
@@ -53,7 +49,7 @@ class ChannelsActor extends ViLeNetRemotingActor {
 //  )
 
   private def sendGetChannels(address: Address): Unit = {
-    remoteChannelsActor(address).resolveOne(Timeout(5, TimeUnit.SECONDS).duration).onComplete {
+    remoteActorSelection(address).resolveOne(Timeout(5, TimeUnit.SECONDS).duration).onComplete {
       case Success(actor) =>
         actor ! GetChannels
 
@@ -105,6 +101,7 @@ class ChannelsActor extends ViLeNetRemotingActor {
       log.error(s"### $c $channels")
       if (isRemote()) {
         val remoteActor = sender()
+        remoteActors += remoteActorSelection(remoteActor.path.address)
         remoteActor ! ChannelsAre(channels.values.toSeq)
       }
 
@@ -114,11 +111,6 @@ class ChannelsActor extends ViLeNetRemotingActor {
         .foreach {
           case (name, actor) => getOrCreate(name)
         }
-
-    case c@ ChannelCreated(actor, name) =>
-      if (isRemote()) {
-        getOrCreate(name)
-      }
 
     case command @ UserLeftChat(user) =>
 
@@ -187,6 +179,7 @@ class ChannelsActor extends ViLeNetRemotingActor {
       })
 
     case c @ RemUser(actor) =>
+      println("##RemUser " + c + " - " + sender() + " - " + remoteActors)
       channels.values.map(_._2).foreach(_ ! c)
   }
 

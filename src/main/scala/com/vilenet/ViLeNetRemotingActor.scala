@@ -20,11 +20,8 @@ case object RemoteActorUp
 private[vilenet] trait ViLeNetRemotingActor extends ViLeNetActor {
 
   val actorPath: String
-  val remoteActors = new mutable.HashSet[ActorSelection] {
-    def +=(address: Address): this.type = +=(system.actorSelection(s"akka://${address.hostPort}/user/$actorPath"))
-    def ++=(addresses: TraversableOnce[Address]) = addresses.foreach(+=)
-    def -=(address: Address): this.type = -=(system.actorSelection(s"akka://${address.hostPort}/user/$actorPath"))
-  }
+  val remoteActorSelection = (address: Address) => system.actorSelection(s"akka://${address.hostPort}/user/$actorPath")
+  val remoteActors = mutable.HashSet.empty[ActorSelection]
 
   override def preStart() = {
     super.preStart()
@@ -33,7 +30,7 @@ private[vilenet] trait ViLeNetRemotingActor extends ViLeNetActor {
     Await.result(serverRegistry ? Subscribe(self), timeout.duration) match {
       case SubscribeAck(addresses) =>
         println("Addresses for " + getClass + " - " + addresses)
-        remoteActors ++= addresses
+        remoteActors ++= addresses.map(remoteActorSelection)
         addresses.foreach(onServerAlive)
 
       case reply =>
@@ -48,14 +45,15 @@ private[vilenet] trait ViLeNetRemotingActor extends ViLeNetActor {
       msg match {
         case _: Remotable =>
           val originalSender = sender()
+          //println("#SEND " + remoteActors + " - " + originalSender + " - " + msg)
           remoteActors.foreach(_.tell(msg, originalSender))
 
         case ServerAlive(address) =>
-          remoteActors += address
+          remoteActors += remoteActorSelection(address)
           resolveRemote(address, actorPath, onServerAlive(address))
 
         case ServerDead(address) =>
-          remoteActors -= address
+          remoteActors -= remoteActorSelection(address)
           onServerDead(address)
 
         case _ =>

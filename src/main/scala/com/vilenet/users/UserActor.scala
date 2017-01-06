@@ -88,7 +88,6 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
       handlePingResponse(cookie)
 
     case c@ ChannelJoinResponse(event) =>
-      println(c + " - " + sender())
       event match {
         case UserChannel(newUser, channel, channelActor) =>
           this.channelActor = channelActor
@@ -186,12 +185,23 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
                 * channel exists.
                 */
               case c@JoinUserCommand(fromUser, channel) =>
-                if (
-                  !user.inChannel.equalsIgnoreCase(channel) &&
-                  !user.joiningChannel.equalsIgnoreCase(channel)
-                ) {
+                if (!user.inChannel.equalsIgnoreCase(channel)) {
                   user = user.copy(joiningChannel = channel)
-                  channelsActor ! UserSwitchedChat(self, fromUser, channel)
+                  implicit val timeout = Timeout(5, TimeUnit.SECONDS)
+                  println(user.name + " - " + self + " - SENDING JOIN")
+                  Await.result(channelsActor ? UserSwitchedChat(self, fromUser, channel), timeout.duration) match {
+                    case ChannelJoinResponse(event) =>
+                      println(user.name + " - " + self + " - RECEIVED JOIN")
+                      event match {
+                        case UserChannel(newUser, channel, channelActor) =>
+                          this.channelActor = channelActor
+                          channelActor ! GetUsers
+                          user = newUser.copy(joiningChannel = "")
+                        case _ =>
+                          user = user.copy(joiningChannel = "")
+                      }
+                      encodeAndSend(event)
+                  }
                 }
 
 /*                if (!user.channel.equalsIgnoreCase(channel)) {

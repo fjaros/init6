@@ -25,7 +25,7 @@ import scala.util.{Failure, Success}
   * Created by filip on 1/2/17.
   */
 object ServerRegistry extends ViLeNetComponent {
-  def apply() = system.actorOf(Props[ServerRegistry], VILE_NET_SERVER_REGISTRY_PATH)
+  def apply() = system.actorOf(Props[ServerRegistry].withDispatcher("server-registry-dispatcher"), VILE_NET_SERVER_REGISTRY_PATH)
 }
 
 // These are local only
@@ -55,7 +55,7 @@ class ServerRegistry extends ViLeNetActor {
   override def preStart() = {
     system.scheduler.schedule(
       Duration(2, TimeUnit.SECONDS),
-      Duration(2, TimeUnit.SECONDS)
+      Duration(10, TimeUnit.SECONDS)
     )({
       // Prune keepAlives. Anything >= 4 seconds shall be deemed dead
       val now = System.currentTimeMillis()
@@ -69,19 +69,21 @@ class ServerRegistry extends ViLeNetActor {
           }
       }
 
+
+      // TIMING OUT?
       remoteServerPaths
-        .map(system.actorSelection(_).resolveOne(Duration(2, TimeUnit.SECONDS)))
+        .map(system.actorSelection(_).resolveOne(Duration(10, TimeUnit.SECONDS)))
         .foreach(_.onComplete {
           case Success(actor) =>
             if (!keepAlives.contains(actor)) {
-              println(subscribers)
               val serverAlive = ServerAlive(actor.path.address)
               subscribers.foreach(_ ! serverAlive)
             }
             keepAlives += actor -> System.currentTimeMillis()
 
           case Failure(ex) =>
-
+            println("FAILED TO RESOLVE ACTOR")
+            ex.printStackTrace()
         })
     })
   }

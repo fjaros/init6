@@ -51,7 +51,6 @@ case object NonEmpty
 case class UserAddedToChannel(user: User, channelName: String, channelActor: ActorRef, channelTopic: String)
 case object CheckSize extends Command
 case class ChannelSize(actor: ActorRef, name: String, size: Int) extends Command
-case object ChannelPing extends Command
 case object ChannelToUserPing extends Command
 case object UserToChannelPing extends Command
 case class InternalChannelUserUpdate(actor: ActorRef, user: User) extends Command
@@ -112,6 +111,7 @@ trait ChannelActor extends ViLeNetRemotingActor {
 
   def add(actor: ActorRef, user: User): User = {
     // just in case
+    println("#ADD " + actor + " - " + user + " - " + sender())
     rem(actor)
 
     val newUser = user.copy(inChannel = name)
@@ -125,7 +125,7 @@ trait ChannelActor extends ViLeNetRemotingActor {
     usersKeepAlive += actor -> System.currentTimeMillis()
 
     if (isLocal()) {
-      println("sender " + sender())
+      //println("sender " + sender())
       sender() ! UserAddedToChannel(newUser, name, self, topic)
     }
     newUser
@@ -138,6 +138,7 @@ trait ChannelActor extends ViLeNetRemotingActor {
       remoteUsersMap -= actor.path.address -> actor
     }
     val userOpt = users.get(actor)
+    println("#REM " + actor + " - " + userOpt + " - " + sender())
     userOpt.foreach(_ => {
       users -= actor
       usersKeepAlive -= actor
@@ -147,19 +148,13 @@ trait ChannelActor extends ViLeNetRemotingActor {
   }
 
   def remoteIn(remoteChannelActor: ActorRef, remoteUserActor: ActorRef, user: User) = {
-    println("### remoteIn")
-    println(remoteChannelActor + " - " + remoteUserActor + " - " + user)
+    println("#REMOTEIN " + remoteChannelActor + " - " + remoteUserActor + " - " + user + " - " + users.contains(remoteUserActor))
     if (!users.contains(remoteUserActor)) {
       users += remoteUserActor -> user
       usersKeepAlive += remoteUserActor -> System.currentTimeMillis()
       remoteUsersMap += remoteChannelActor.path.address -> remoteUserActor
       localUsers ! UserIn(user)
     }
-  }
-
-  def remoteAdd(actor: ActorRef, remoteUser: (ActorRef, User)) = {
-    users += remoteUser
-    remoteUsersMap += actor.path.address -> remoteUser._1
   }
 
   // No. On Start advertise to remotes that you are alive.
@@ -174,9 +169,6 @@ trait ChannelActor extends ViLeNetRemotingActor {
   }
 
   def receiveEvent: Receive = {
-    case RemoteActorUp =>
-      sender() ! GetChannelUsers
-
 //    case SplitMe =>
 //      if (isLocal()) {
 //        isSplit = true
@@ -209,22 +201,10 @@ trait ChannelActor extends ViLeNetRemotingActor {
     case UserToChannelPing =>
       usersKeepAlive += sender() -> System.currentTimeMillis()
 
-    case ChannelPing =>
-      val remoteChannelActor = sender()
-      if (!isSplit && isRemote(remoteChannelActor) && !remoteAddressReceived.contains(remoteChannelActor.path.address)) {
-        // Received a ping but haven't seen this remote channel actor yet
-        remoteChannelActor ! GetChannelUsers
-        remoteAddressReceived += remoteChannelActor.path.address
-      } else {
-//        if (isRemote(remoteChannelActor)) {
-//          println("## CHANPING")
-//          println(remoteUsersMap)
-//        }
-      }
-
     case GetChannelUsers =>
       println("RECEIVED GetChannelUsers from " + sender() + "\n" + "users: " + users)
       if (isRemote()) {
+        remoteActors += remoteActorSelection(sender().path.address)
         println("SENDING ReceivedChannelUsers\n" + users.filterKeys(localUsers.contains).toSeq)
         sender() ! ReceivedChannelUsers(users.filterKeys(localUsers.contains).toSeq)
       }
@@ -267,6 +247,8 @@ trait ChannelActor extends ViLeNetRemotingActor {
 
   def whoCommand(actor: ActorRef, user: User) = {
     if (users.nonEmpty) {
+      println("#WHO")
+      println(users)
       val usernames = users
         .values
         .map(user => {

@@ -41,7 +41,6 @@ trait BannableChannelActor extends ChannelActor {
     .orElse(super.receiveEvent)
 
   override def add(actor: ActorRef, user: User): User = {
-    println("Add from " + sender())
     if (bannedUsers(user.name)) {
       if (isLocal()) {
         sender() ! UserError(YOU_BANNED)
