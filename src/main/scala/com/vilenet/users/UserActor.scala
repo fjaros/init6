@@ -187,38 +187,8 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
                 */
               case c@JoinUserCommand(fromUser, channel) =>
                 if (!user.inChannel.equalsIgnoreCase(channel)) {
-                  user = user.copy(joiningChannel = channel)
-                  implicit val timeout = Timeout(5, TimeUnit.SECONDS)
-                  //println(user.name + " - " + self + " - SENDING JOIN")
-                  Await.result(channelsActor ? UserSwitchedChat(self, fromUser, channel), timeout.duration) match {
-                    case ChannelJoinResponse(event) =>
-                      //println(user.name + " - " + self + " - RECEIVED JOIN")
-                      event match {
-                        case UserChannel(newUser, channel, channelActor) =>
-                          this.channelActor = channelActor
-                          channelActor ! GetUsers
-                          user = newUser.copy(joiningChannel = "")
-                        case _ =>
-                          user = user.copy(joiningChannel = "")
-                      }
-                      encodeAndSend(event)
-                  }
+                  joinChannel(channel)
                 }
-
-/*                if (!user.channel.equalsIgnoreCase(channel)) {
-                  implicit val timeout = Timeout(1000, TimeUnit.MILLISECONDS)
-                  Await.result(channelsActor ? UserSwitchedChat(self, fromUser, channel), timeout.duration) match {
-                    case command@UserChannel(newUser, channel, channelActor) =>
-                      channelTopic = Some(TOPIC_CHANNEL(channel))
-                      subscribe(channelTopic.get)
-                      channelActor ! GetUsers
-                      user = newUser
-                      encodeAndSend(command)
-                    case command: ChatEvent =>
-                      encodeAndSend(command)
-                    case _ =>
-                  }
-                }*/
               case ResignCommand => resign()
               case RejoinCommand => rejoin()
               case command: ChannelCommand =>
@@ -275,13 +245,13 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
       }
 
     case Terminated(actor) =>
-      println("#TERMINATED " + sender() + " - " + actor + " - " + user)
+      //println("#TERMINATED " + sender() + " - " + actor + " - " + user)
       channelsActor ! RemUser(self)
       usersActor ! Rem(self)
       self ! PoisonPill
 
     case KillConnection =>
-      println("KILLCONNECTION FROM " + sender() + " - FOR: " + self + " - " + user)
+      //println("KILLCONNECTION FROM " + sender() + " - FOR: " + self + " - " + user)
       connection ! PoisonPill
 
     case x =>
@@ -303,8 +273,24 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
     }
   }
 
-  private def rejoin() = {
-    user = user.copy(joiningChannel = user.inChannel)
-    channelsActor ! UserSwitchedChat(self, user, user.inChannel)
+  private def rejoin(): Unit = {
+    joinChannel(user.inChannel)
+  }
+
+  private def joinChannel(channel: String) = {
+    implicit val timeout = Timeout(5, TimeUnit.SECONDS)
+    //println(user.name + " - " + self + " - SENDING JOIN")
+    Await.result(channelsActor ? UserSwitchedChat(self, user, channel), timeout.duration) match {
+      case ChannelJoinResponse(event) =>
+        //println(user.name + " - " + self + " - RECEIVED JOIN")
+        event match {
+          case UserChannel(newUser, channel, channelActor) =>
+            user = newUser
+            this.channelActor = channelActor
+            channelActor ! GetUsers
+          case _ =>
+        }
+        encodeAndSend(event)
+    }
   }
 }

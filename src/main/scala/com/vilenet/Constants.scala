@@ -26,6 +26,7 @@ object Constants {
   val VILE_NET_TOP_COMMAND_ACTOR = "TopCommand"
   val CHANNEL_DISPATCHER = "channel-dispatcher"
   val CHANNELS_DISPATCHER = "channels-dispatcher"
+  val SERVER_REGISTRY_DISPATCHER = "server-registry-dispatcher"
 
 
   val ALREADY_OPERATOR = "That user is already an operator."

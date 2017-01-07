@@ -24,20 +24,16 @@ import scala.util.{Failure, Success}
   * Created by filip on 1/2/17.
   */
 object ServerRegistry extends ViLeNetComponent {
-  def apply() = system.actorOf(Props[ServerRegistry].withDispatcher("server-registry-dispatcher"), VILE_NET_SERVER_REGISTRY_PATH)
+  def apply() = system.actorOf(Props[ServerRegistry].withDispatcher(SERVER_REGISTRY_DISPATCHER), VILE_NET_SERVER_REGISTRY_PATH)
 }
 
 // These are local only
-sealed trait ServerRegistryMessage
-
-case object GetCurrentServerList
 case class Subscribe(actor: ActorRef)
 case class SubscribeAck(address: Set[Address])
 case class Unsubscribe(actor: ActorRef)
 case object UnsubscribeAck
-case class CurrentServerList(address: Set[Address]) extends ServerRegistryMessage
-case class ServerAlive(address: Address) extends ServerRegistryMessage
-case class ServerDead(address: Address) extends ServerRegistryMessage
+case class ServerAlive(address: Address)
+case class ServerDead(address: Address)
 
 
 class ServerRegistry extends ViLeNetActor {
@@ -58,7 +54,7 @@ class ServerRegistry extends ViLeNetActor {
       Duration(500, TimeUnit.MILLISECONDS),
       Duration(10000, TimeUnit.MILLISECONDS)
     )({
-      // Prune keepAlives. Anything >= 4 seconds shall be deemed dead
+      // Prune keepAlives. Anything >= 30 seconds shall be deemed dead
       val now = System.currentTimeMillis()
       keepAlives.foreach {
         case (actor, time) =>
@@ -82,16 +78,12 @@ class ServerRegistry extends ViLeNetActor {
             keepAlives += actor -> System.currentTimeMillis()
 
           case Failure(ex) =>
-            log.error("Failed to contact remote server " + ex.getMessage)
-            ex.printStackTrace()
+            log.error("Failed to contact remote server: {}", ex.getMessage)
         })
     })
   }
 
   override def receive = {
-    case GetCurrentServerList =>
-      sender() ! CurrentServerList(keepAlives.keys.map(_.path.address).toSet)
-
     // From local actors subscribing
     case Subscribe(subscriber) =>
       subscribe(subscriber)

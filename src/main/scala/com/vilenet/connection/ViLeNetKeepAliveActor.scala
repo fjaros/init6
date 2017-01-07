@@ -1,21 +1,23 @@
 package com.vilenet.connection
 
-import java.util.concurrent.{Executors, TimeUnit}
+import java.util.concurrent.TimeUnit
 
-import akka.actor.ActorRef
+import akka.actor.{ActorRef, Cancellable}
 import com.vilenet.ViLeNetActor
 import com.vilenet.users.KillConnection
+
+import scala.concurrent.duration.Duration
 
 /**
   * Created by filip on 12/29/15.
   */
 trait ViLeNetKeepAliveActor extends ViLeNetActor {
 
-  private val keepAliveExecutor = Executors.newSingleThreadScheduledExecutor()
+  private var pingTask: Cancellable = _
   protected var keptAlive = 0
 
   override def postStop(): Unit = {
-    keepAliveExecutor.shutdown()
+    pingTask.cancel()
 
     super.postStop()
   }
@@ -25,15 +27,19 @@ trait ViLeNetKeepAliveActor extends ViLeNetActor {
   }
 
   def keepAlive(actor: ActorRef, f: () => Unit, delay: Long, unit: TimeUnit): Unit = {
-    keepAliveExecutor.scheduleWithFixedDelay(new Runnable {
-      override def run(): Unit = {
+    val pingDuration = Duration(25, TimeUnit.SECONDS)
+    import system.dispatcher
+
+    pingTask = system.scheduler.schedule(
+      pingDuration,
+      pingDuration
+    )({
         if (keptAlive < 4) {
           keptAlive += 1
           f()
         } else {
-          //actor ! KillConnection
+          actor ! KillConnection
         }
-      }
-    }, delay, delay, unit)
+    })
   }
 }
