@@ -54,9 +54,7 @@ class ChannelsActor extends ViLeNetRemotingActor {
         actor ! GetChannels
 
       case Failure(ex) =>
-        system.scheduler.scheduleOnce(Timeout(500, TimeUnit.MILLISECONDS).duration, new Runnable {
-          override def run(): Unit = sendGetChannels(address)
-        })
+        system.scheduler.scheduleOnce(Timeout(500, TimeUnit.MILLISECONDS).duration)(sendGetChannels(address))
     }
   }
 

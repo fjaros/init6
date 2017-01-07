@@ -62,9 +62,7 @@ class UsersActor extends ViLeNetRemotingActor {
         actor ! GetUsers
 
       case Failure(ex) =>
-        system.scheduler.scheduleOnce(Timeout(500, TimeUnit.MILLISECONDS).duration, new Runnable {
-          override def run(): Unit = sendGetUsers(address)
-        })
+        system.scheduler.scheduleOnce(Timeout(500, TimeUnit.MILLISECONDS).duration)(sendGetUsers(address))
     }
   }
 
