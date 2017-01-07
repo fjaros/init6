@@ -22,8 +22,8 @@ min_wait=120
 max_wait=180
 
 # in seconds
-min_between_drops=20
-max_between_drops=30
+min_between_drops=30
+max_between_drops=45
 
 restart_if_killed=true
 check_proc_interval=5

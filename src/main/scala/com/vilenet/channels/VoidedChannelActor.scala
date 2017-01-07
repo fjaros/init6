@@ -18,7 +18,10 @@ sealed class VoidedChannelActor(override val name: String)
     case WhoCommandToChannel(_, _) | UpdatePing(_) => // No-op
     case GetUsers => sender() ! UserInfo(NO_CHAT_PRIVILEGES)
     case ChannelsCommand => sender() ! ChannelInfo(name, 0, topic)
-    case EmoteCommand(_, message) => sender() ! UserEmote(users(sender()), message)
+    case EmoteCommand(_, message) =>
+      if (isLocal()) {
+        sender() ! UserEmote(users(sender()), message)
+      }
   }: Receive)
     .orElse(super.receiveEvent)
 }

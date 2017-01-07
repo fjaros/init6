@@ -17,7 +17,7 @@ trait ViLeNetKeepAliveActor extends ViLeNetActor {
   protected var keptAlive = 0
 
   override def postStop(): Unit = {
-    pingTask.cancel()
+    Option(pingTask).foreach(_.cancel())
 
     super.postStop()
   }
