@@ -1,6 +1,7 @@
 package com.vilenet.coders.commands
 
-import com.vilenet.channels.{UserError, Flags, User}
+import com.vilenet.channels.{Flags, User, UserError}
+import com.vilenet.servers.Remotable
 
 /**
   * Created by filip on 12/19/15.
@@ -16,4 +17,4 @@ object BroadcastCommand {
   }
 }
 
-case class BroadcastCommand(message: String) extends Command
+case class BroadcastCommand(message: String) extends Command with Remotable

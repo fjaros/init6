@@ -11,7 +11,7 @@ object Constants {
 
   val TOPIC_DAO = "dao"
   val TOPIC_ONLINE = "online"
-  val TOPIC_CHANNEL = "channel"
+  val TOPIC_CHANNEL = (channel: String) => s"_${channel.toLowerCase}"
   val TOPIC_CHANNELS = "channels"
   val TOPIC_USERS = "users"
   val TOPIC_SPLIT = "split"
@@ -19,12 +19,14 @@ object Constants {
   val VILE_NET = "ViLeNet"
   val VILE_NET_DAO_PATH = "DAO"
   val VILE_NET_SERVERS_PATH = "Servers"
+  val VILE_NET_SERVER_REGISTRY_PATH = "ServerRegistry"
   val VILE_NET_CHANNELS_PATH = "Channels"
   val VILE_NET_USERS_PATH = "Users"
   val VILE_NET_IP_LIMITER_PATH = "IpLimiter"
   val VILE_NET_TOP_COMMAND_ACTOR = "TopCommand"
   val CHANNEL_DISPATCHER = "channel-dispatcher"
   val CHANNELS_DISPATCHER = "channels-dispatcher"
+  val SERVER_REGISTRY_DISPATCHER = "server-registry-dispatcher"
 
 
   val ALREADY_OPERATOR = "That user is already an operator."
@@ -43,6 +45,7 @@ object Constants {
   )
   val CHANNEL_TOPIC = (topic: String) => s"Topic: $topic"
   val CHANNEL_RESTRICTED = "That channel is restricted."
+  val CHANNEL_FAILED_TO_JOIN = (channel: String) => s"Failed to join channel $channel"
   val DND_CANCELLED = "Do Not Disturb mode cancelled."
   val UNAVAILABLE_DEFAULT_MSG = "Not available"
   val DND_ENGAGED = "Do Not Disturb mode engaged."

@@ -3,11 +3,10 @@ package com.vilenet.servers
 import java.util.concurrent.TimeUnit
 
 import akka.actor.Props
-import akka.cluster.pubsub.DistributedPubSubMediator.Publish
 import akka.util.Timeout
 import com.vilenet.Constants._
 import com.vilenet.coders.commands.{BroadcastCommand, Command}
-import com.vilenet.{ViLeNetClusterActor, ViLeNetComponent}
+import com.vilenet.{ViLeNetActor, ViLeNetComponent}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.Random
@@ -29,7 +28,7 @@ case object AnnounceSplit extends Command
 case object Split extends Command
 case object Recon extends Command
 
-class ServerPantyDropper(serverName: String) extends ViLeNetClusterActor {
+class ServerPantyDropper(serverName: String) extends ViLeNetActor {
 
   val buildPath = (server: String) => s"akka://$VILE_NET@$server/user/$VILE_NET_SERVERS_PATH"
 
@@ -43,11 +42,11 @@ class ServerPantyDropper(serverName: String) extends ViLeNetClusterActor {
       system.scheduler.scheduleOnce(Timeout(10, TimeUnit.SECONDS).duration, self, Split)
 
     case Split =>
-      mediator ! Publish(TOPIC_SPLIT, SplitMe)
+      //mediator ! Publish(TOPIC_SPLIT, SplitMe)
       system.scheduler.scheduleOnce(Timeout(15 + random.nextInt(45), TimeUnit.SECONDS).duration, self, Recon)
 
     case Recon =>
-      mediator ! Publish(TOPIC_ONLINE, ServerOnline)
+      //mediator ! Publish(TOPIC_ONLINE, ServerOnline)
       usersActor ! BroadcastCommand(s">>> $serverName has reconnected to ViLeNet!")
       system.scheduler.scheduleOnce(Timeout(90 + random.nextInt(300), TimeUnit.MINUTES).duration, self, AnnounceSplit)
   }

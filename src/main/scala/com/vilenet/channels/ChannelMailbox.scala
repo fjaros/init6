@@ -16,8 +16,6 @@ class ChannelMailbox(settings: ActorSystem.Settings, config: Config)
            EmoteCommand |
            RemoteEvent(ChatCommand) |
            RemoteEvent(EmoteCommand) => 1
-      case AddUser => 4
-      case RemUser => 3
       case _ => 2
     }
   )

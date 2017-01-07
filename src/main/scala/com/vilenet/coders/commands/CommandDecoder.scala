@@ -82,7 +82,7 @@ object CommandDecoder {
         case "whisper" | "w" | "msg" | "m" => WhisperMessage(user, message)
         case "whoami" => WhoamiCommand(user)
         case "whois" | "whereis" => OneCommand(WhoisCommand(user, message), UserError(USER_NOT_LOGGED_ON), WhoamiCommand(user))
-        case "who" => OneCommand(WhoCommand(user, message), WhoCommand(user, user.channel))
+        case "who" => OneCommand(WhoCommand(user, message), WhoCommand(user, user.inChannel))
 
         // Admin commands
         case "broadcast" => BroadcastCommand(user, message)

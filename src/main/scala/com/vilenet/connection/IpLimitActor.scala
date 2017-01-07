@@ -2,7 +2,7 @@ package com.vilenet.connection
 
 import akka.actor.Props
 import com.vilenet.Constants._
-import com.vilenet.{ViLeNetComponent, ViLeNetClusterActor}
+import com.vilenet.{ViLeNetActor, ViLeNetComponent}
 
 import scala.collection.mutable
 
@@ -18,7 +18,7 @@ case class Disconnected(address: Array[Byte])
 case object Allowed
 case object NotAllowed
 
-class IpLimitActor(limit: Int) extends ViLeNetClusterActor {
+class IpLimitActor(limit: Int) extends ViLeNetActor {
 
   val ips = mutable.HashMap[Int, Int]()
 

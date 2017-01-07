@@ -2,26 +2,31 @@ package com.vilenet.channels
 
 import akka.actor.ActorRef
 import com.vilenet.Constants._
-import com.vilenet.coders.commands.{DesignateCommand, OperableCommand, TopicCommand}
+import com.vilenet.coders.commands.{DesignateCommand, OperableCommand}
 import com.vilenet.users.{UserToChannelCommandAck, UserUpdated}
+
+import scala.collection.mutable
 
 /**
   * Created by filip on 11/24/15.
   */
-trait OperableChannelActor extends RemoteOperableChannelActor {
+trait OperableChannelActor extends ChannelActor {
+
+  val designatedActors = mutable.HashMap[ActorRef, ActorRef]()
 
   override def receiveEvent = ({
     case command: UserToChannelCommandAck =>
-      users.get(sender()).foreach(user => {
+      val userActor = sender()
+      users.get(userActor).foreach(user => {
         if (Flags.canBan(user)) {
           command.command match {
             case DesignateCommand(_, designatee) =>
-              designate(sender(), command.userActor)
+              designate(userActor, command.userActor)
             case _ =>
           }
         } else {
           command.command match {
-            case command: OperableCommand => sender() ! UserError(NOT_OPERATOR)
+            case _: OperableCommand => sender() ! UserError(NOT_OPERATOR)
             case _ => super.receiveEvent(command)
           }
         }
@@ -33,7 +38,9 @@ trait OperableChannelActor extends RemoteOperableChannelActor {
   override def add(actor: ActorRef, user: User): User = {
     val newUser =
       if (users.isEmpty) {
-        Flags.op(user)
+        val oppedUser = Flags.op(user)
+        //publish(pubSubTopic, InternalChannelUserUpdate(actor, oppedUser))
+        oppedUser
       } else {
         user
       }
@@ -60,48 +67,25 @@ trait OperableChannelActor extends RemoteOperableChannelActor {
     userOpt
   }
 
-  override def designate(actor: ActorRef, designatee: ActorRef) = {
+  def designate(actor: ActorRef, designatee: ActorRef) = {
     users.get(actor).foreach(user => {
-      actor !
-        (if (Flags.isOp(user)) {
+      val result =
+        if (Flags.isOp(user)) {
           users.get(designatee).fold[ChatEvent](UserError(INVALID_USER))(designatedUser => {
             designatedActors += actor -> designatee
-            super.designate(actor, designatee)
             UserInfo(USER_DESIGNATED(designatedUser.name))
           })
         } else {
           UserError(NOT_OPERATOR)
-        })
-    })
-  }
-
-  override def remoteRem(actor: ActorRef) = {
-    val userOpt = super.remoteRem(actor)
-
-    userOpt.foreach(user => {
-      if (users.nonEmpty && Flags.isOp(user) && !existsOperator()) {
-        val designateeActor = designatedActors.getOrElse(actor, users.head._1)
-        val designatedUser = users.getOrElse(designateeActor, users.head._2)
-
-        val oppedUser = Flags.op(designatedUser)
-        users += designateeActor -> oppedUser
-        designatedActors -= actor
-        localUsers ! UserFlags(oppedUser)
+        }
+      if (isLocal(actor)) {
+        actor ! result
       }
     })
-
-    userOpt
   }
 
   def existsOperator(): Boolean = {
     // O(n) sadface
-    users
-      .values
-      .foreach(user => {
-        if (Flags.isOp(user)) {
-          return true
-        }
-      })
-    false
+    !users.values.forall(!Flags.isOp(_))
   }
 }

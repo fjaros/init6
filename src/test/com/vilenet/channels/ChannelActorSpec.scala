@@ -21,7 +21,7 @@ class ChannelActorSpec extends FunSuite with BeforeAndAfter with Matchers with V
   var actualQueue: mutable.SynchronizedQueue[Any] = _
 
   before {
-    channelActor = TestActorRef[ChannelActor](ChannelActor(CHAN_TEST_NAME, None))
+    channelActor = TestActorRef[ChannelActor](ChannelActor(CHAN_TEST_NAME))
 
     expectedQueue = new mutable.SynchronizedQueue[Any]
     actualQueue = new mutable.SynchronizedQueue[Any]

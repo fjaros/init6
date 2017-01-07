@@ -10,7 +10,7 @@ import com.vilenet.Constants._
 import com.vilenet.coders.chat1.Chat1Encoder
 import com.vilenet.coders.commands._
 import com.vilenet.connection.WriteOut
-import com.vilenet.{Config, ViLeNetClusterActor}
+import com.vilenet.{Config, ViLeNetActor}
 import com.vilenet.channels._
 import com.vilenet.coders._
 import com.vilenet.coders.binary.BinaryChatEncoder
@@ -40,9 +40,10 @@ case object KillConnection extends Command
 
 
 class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
-  extends FloodPreventer with ViLeNetClusterActor {
+  extends FloodPreventer with ViLeNetActor {
 
-  var channelActor: ActorRef = ActorRef.noSender
+  var isTerminated = false
+  var channelActor = ActorRef.noSender
   var squelchedUsers = CaseInsensitiveHashSet()
   val awayAvailablity = AwayAvailablity(user.name)
   val dndAvailablity = DndAvailablity(user.name)
@@ -52,6 +53,14 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
   val connectedTime = System.currentTimeMillis()
 
   context.watch(connection)
+
+  override def preStart() = {
+    super.preStart()
+
+    if (user.client == "TAHC") {
+      joinChannel("Chat")
+    }
+  }
 
   def checkSquelched(user: User) = {
     if (squelchedUsers.contains(user.name)) {
@@ -66,6 +75,9 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
   }
 
   override def receive: Receive = {
+    case ChannelToUserPing =>
+      sender() ! UserToChannelPing
+
     // From Users Actor
     case UsersUserAdded(userActor, newUser) =>
       if (self != userActor && user.name.equalsIgnoreCase(newUser.name)) {
@@ -83,10 +95,16 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
     case PongCommand(cookie) =>
       handlePingResponse(cookie)
 
-    case command @ UserChannel(newUser, channel, channelActor) =>
-      this.channelActor = channelActor
-      user = newUser
-      encodeAndSend(command)
+    case c@ ChannelJoinResponse(event) =>
+      event match {
+        case UserChannel(newUser, channel, channelActor) =>
+          this.channelActor = channelActor
+          channelActor ! GetUsers
+          user = newUser.copy(joiningChannel = "")
+        case _ =>
+          user = user.copy(joiningChannel = "")
+      }
+      encodeAndSend(event)
 
     case UserUpdated(newUser) =>
       user = newUser
@@ -107,11 +125,8 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
       encodeAndSend(UserFlags(checkSquelched(user)))
 
     case UserLeftChat =>
-      user = user.copy(channel = "")
-      if (channelActor != ActorRef.noSender) {
-        channelActor ! RemUser(self)
-        channelActor = ActorRef.noSender
-      }
+      user = user.copy(inChannel = "")
+      channelActor ! RemUser(self)
 
     case channelEvent: SquelchableTalkEvent =>
       if (!squelchedUsers.contains(channelEvent.user.name)) {
@@ -134,9 +149,10 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
         })
 
     case (actor: ActorRef, WhoisCommand(fromUser, username)) =>
-      actor ! UserInfo(s"${user.name} is using ${encodeClient(user.client)}${if (user.channel != "") s" in the channel ${user.channel}" else ""}.")
+      actor ! UserInfo(s"${user.name} is using ${encodeClient(user.client)}${if (user.inChannel != "") s" in the channel ${user.inChannel}" else ""}.")
 
-    case BanCommand(kicking, message) =>
+    case c@ BanCommand(kicking, message) =>
+      println(c)
       self ! UserInfo(YOU_KICKED(kicking))
       channelsActor ! UserSwitchedChat(self, user, THE_VOID)
 
@@ -177,17 +193,8 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
                 * channel exists.
                 */
               case c@JoinUserCommand(fromUser, channel) =>
-                implicit val timeout = Timeout(250, TimeUnit.MILLISECONDS)
-                if (!user.channel.equalsIgnoreCase(channel)) {
-                  Await.result(channelsActor ? UserSwitchedChat(self, fromUser, channel), timeout.duration) match {
-                    case command@UserChannel(newUser, channel, channelActor) =>
-                      this.channelActor = channelActor
-                      user = newUser
-                      encodeAndSend(command)
-                    case command: ChatEvent =>
-                      encodeAndSend(command)
-                    case _ =>
-                  }
+                if (!user.inChannel.equalsIgnoreCase(channel)) {
+                  joinChannel(channel)
                 }
               case ResignCommand => resign()
               case RejoinCommand => rejoin()
@@ -211,21 +218,25 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
               case AwayCommand(message) => awayAvailablity.enableAction(message)
               case DndCommand(message) => dndAvailablity.enableAction(message)
               case AccountMade(username, passwordHash) =>
-                publish(TOPIC_DAO, CreateAccount(username, passwordHash))
+                daoActor ! CreateAccount(username, passwordHash)
               case ChangePasswordCommand(newPassword) =>
-                publish(TOPIC_DAO, UpdateAccountPassword(user.name, newPassword))
+                daoActor ! UpdateAccountPassword(user.name, newPassword)
               case SplitMe =>
-                if (Flags.isAdmin(user)) publish(TOPIC_SPLIT, SplitMe)
+                if (Flags.isAdmin(user)) {
+//                  publish(TOPIC_SPLIT, SplitMe)
+                }
               case SendBirth =>
-                if (Flags.isAdmin(user)) publish(TOPIC_ONLINE, ServerOnline)
+                if (Flags.isAdmin(user)) {
+//                  publish(TOPIC_ONLINE, ServerOnline)
+                }
               case command @ BroadcastCommand(message) =>
                 usersActor ! command
               case command @ DisconnectCommand(user) =>
                 usersActor ! command
               case command @ CloseAccountCommand(account, reason) =>
-                publish(TOPIC_DAO, CloseAccount(account, reason))
+                daoActor ! CloseAccount(account, reason)
               case command @ OpenAccountCommand(account) =>
-                publish(TOPIC_DAO, OpenAccount(account))
+                daoActor ! OpenAccount(account)
               case _ =>
             }
           case x =>
@@ -236,15 +247,18 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
     case command: UserToChannelCommandAck =>
       //log.error(s"UTCCA $command")
       if (channelActor != ActorRef.noSender) {
+        //println("Sending to channel UTCCA " + command)
         channelActor ! command
       }
 
     case Terminated(actor) =>
-      channelsActor ! UserLeftChat(user)
-      publish(TOPIC_USERS, Rem(self))
+      //println("#TERMINATED " + sender() + " - " + actor + " - " + user)
+      channelsActor ! RemUser(self)
+      usersActor ! Rem(self)
       self ! PoisonPill
 
     case KillConnection =>
+      //println("KILLCONNECTION FROM " + sender() + " - FOR: " + self + " - " + user)
       connection ! PoisonPill
 
     case x =>
@@ -266,11 +280,24 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
     }
   }
 
-  private def rejoin() = {
-    val oldChannel = user.channel
-    channelActor ! RemUser(self)
-    channelActor = ActorRef.noSender
-    user = user.copy(channel = "")
-    self ! Received(ByteString(s"/j $oldChannel"))
+  private def rejoin(): Unit = {
+    joinChannel(user.inChannel)
+  }
+
+  private def joinChannel(channel: String) = {
+    implicit val timeout = Timeout(5, TimeUnit.SECONDS)
+    //println(user.name + " - " + self + " - SENDING JOIN")
+    Await.result(channelsActor ? UserSwitchedChat(self, user, channel), timeout.duration) match {
+      case ChannelJoinResponse(event) =>
+        //println(user.name + " - " + self + " - RECEIVED JOIN")
+        event match {
+          case UserChannel(newUser, channel, channelActor) =>
+            user = newUser
+            this.channelActor = channelActor
+            channelActor ! GetUsers
+          case _ =>
+        }
+        encodeAndSend(event)
+    }
   }
 }

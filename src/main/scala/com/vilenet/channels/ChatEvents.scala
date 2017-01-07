@@ -2,12 +2,13 @@ package com.vilenet.channels
 
 import akka.actor.ActorRef
 import com.vilenet.Constants._
-import com.vilenet.coders.commands.{ReturnableCommand, Command}
+import com.vilenet.coders.commands.{Command, ReturnableCommand}
+import com.vilenet.servers.Remotable
 
 /**
  * Created by filip on 9/20/15.
  */
-trait ChatEvent extends Command
+trait ChatEvent extends Command with Remotable
 trait SquelchableTalkEvent extends ChatEvent {
   val user: User
 }

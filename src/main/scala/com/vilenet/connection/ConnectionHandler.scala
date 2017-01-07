@@ -9,7 +9,7 @@ import akka.io.Tcp.{Abort, Bind, Bound, Register, ResumeAccepting}
 import akka.io.{IO, Tcp}
 import akka.util.Timeout
 import com.vilenet.Constants._
-import com.vilenet.{ViLeNetClusterActor, ViLeNetComponent}
+import com.vilenet.{ViLeNetActor, ViLeNetComponent}
 
 import scala.concurrent.Await
 import scala.util.Try
@@ -22,7 +22,7 @@ object ConnectionHandler extends ViLeNetComponent {
   def apply(bindAddress: InetSocketAddress) = system.actorOf(Props(classOf[ConnectionHandler], bindAddress), VILE_NET)
 }
 
-class ConnectionHandler(bindAddress: InetSocketAddress) extends ViLeNetClusterActor {
+class ConnectionHandler(bindAddress: InetSocketAddress) extends ViLeNetActor {
 
   implicit val timeout = Timeout(200, TimeUnit.MILLISECONDS)
 
