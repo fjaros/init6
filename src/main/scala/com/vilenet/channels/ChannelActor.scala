@@ -26,6 +26,7 @@ object ChannelActor {
       case "backstage" => AdminChannelActor("Backstage")
       case "the void" => VoidedChannelActor("The Void")
       case "vile" => PublicChannelActor("ViLe")
+      case "chat" => PublicLimitlessChannelActor("Chat")
       case _ => PrivateChannelActor(name)
     }
   })

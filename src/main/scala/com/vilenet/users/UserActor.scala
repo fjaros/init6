@@ -54,6 +54,14 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
 
   context.watch(connection)
 
+  override def preStart() = {
+    super.preStart()
+
+    if (user.client == "TAHC") {
+      joinChannel("Chat")
+    }
+  }
+
   def checkSquelched(user: User) = {
     if (squelchedUsers.contains(user.name)) {
       Flags.squelch(user)
@@ -74,7 +82,6 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
     case UsersUserAdded(userActor, newUser) =>
       if (self != userActor && user.name.equalsIgnoreCase(newUser.name)) {
         // This user is a stale connection!
-        println("USERSUSERADDED STALE " + userActor + " - " + self)
         self ! KillConnection
       }
 

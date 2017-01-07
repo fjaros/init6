@@ -8,7 +8,5 @@ object PublicChannelActor {
 }
 
 sealed class PublicChannelActor(override val name: String)
-  extends ChattableChannelActor
-  with BannableChannelActor
-  with NonOperableChannelActor
+  extends PublicLimitlessChannelActor(name)
   with FullableChannelActor
