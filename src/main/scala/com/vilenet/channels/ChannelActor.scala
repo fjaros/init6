@@ -111,7 +111,7 @@ trait ChannelActor extends ViLeNetRemotingActor {
 
   def add(actor: ActorRef, user: User): User = {
     // just in case
-    println("#ADD " + actor + " - " + user + " - " + sender())
+    //println("#ADD " + actor + " - " + user + " - " + sender())
     rem(actor)
 
     val newUser = user.copy(inChannel = name)
@@ -138,7 +138,7 @@ trait ChannelActor extends ViLeNetRemotingActor {
       remoteUsersMap -= actor.path.address -> actor
     }
     val userOpt = users.get(actor)
-    println("#REM " + actor + " - " + userOpt + " - " + sender())
+    //println("#REM " + actor + " - " + userOpt + " - " + sender())
     userOpt.foreach(_ => {
       users -= actor
       usersKeepAlive -= actor
@@ -148,7 +148,7 @@ trait ChannelActor extends ViLeNetRemotingActor {
   }
 
   def remoteIn(remoteChannelActor: ActorRef, remoteUserActor: ActorRef, user: User) = {
-    println("#REMOTEIN " + remoteChannelActor + " - " + remoteUserActor + " - " + user + " - " + users.contains(remoteUserActor))
+    //println("#REMOTEIN " + remoteChannelActor + " - " + remoteUserActor + " - " + user + " - " + users.contains(remoteUserActor))
     if (!users.contains(remoteUserActor)) {
       users += remoteUserActor -> user
       usersKeepAlive += remoteUserActor -> System.currentTimeMillis()
@@ -159,7 +159,7 @@ trait ChannelActor extends ViLeNetRemotingActor {
 
   // No. On Start advertise to remotes that you are alive.
   override protected def onServerAlive(address: Address) = {
-    println("onServerAlive Getting Channel Users")
+    //println("onServerAlive Getting Channel Users")
     system.actorSelection(s"akka://${address.hostPort}/user/$actorPath") ! GetChannelUsers
   }
 
@@ -202,15 +202,15 @@ trait ChannelActor extends ViLeNetRemotingActor {
       usersKeepAlive += sender() -> System.currentTimeMillis()
 
     case GetChannelUsers =>
-      println("RECEIVED GetChannelUsers from " + sender() + "\n" + "users: " + users)
+      //println("RECEIVED GetChannelUsers from " + sender() + "\n" + "users: " + users)
       if (isRemote()) {
         remoteActors += remoteActorSelection(sender().path.address)
-        println("SENDING ReceivedChannelUsers\n" + users.filterKeys(localUsers.contains).toSeq)
+        //println("SENDING ReceivedChannelUsers\n" + users.filterKeys(localUsers.contains).toSeq)
         sender() ! ReceivedChannelUsers(users.filterKeys(localUsers.contains).toSeq)
       }
 
     case ReceivedChannelUsers(remoteUsers) =>
-      println("RECEIVED ReceivedChannelUsers from " + sender() + "\nremoteUsers: " + remoteUsers)
+      //println("RECEIVED ReceivedChannelUsers from " + sender() + "\nremoteUsers: " + remoteUsers)
       remoteUsers.foreach {
         case (actor, user) =>
           remoteIn(sender(), actor, user)

@@ -179,7 +179,7 @@ class ChannelsActor extends ViLeNetRemotingActor {
       })
 
     case c @ RemUser(actor) =>
-      println("##RemUser " + c + " - " + sender() + " - " + remoteActors)
+      //println("##RemUser " + c + " - " + sender() + " - " + remoteActors)
       channels.values.map(_._2).foreach(_ ! c)
   }
 

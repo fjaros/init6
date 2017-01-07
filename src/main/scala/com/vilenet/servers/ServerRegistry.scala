@@ -8,7 +8,6 @@ import com.vilenet.{Config, ViLeNetActor, ViLeNetComponent}
 
 import scala.collection.mutable
 import scala.concurrent.duration.Duration
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success}
 
 /**
@@ -53,22 +52,23 @@ class ServerRegistry extends ViLeNetActor {
   var isSplit = false
 
   override def preStart() = {
+    import system.dispatcher
+
     system.scheduler.schedule(
-      Duration(2, TimeUnit.SECONDS),
-      Duration(10, TimeUnit.SECONDS)
+      Duration(500, TimeUnit.MILLISECONDS),
+      Duration(10000, TimeUnit.MILLISECONDS)
     )({
       // Prune keepAlives. Anything >= 4 seconds shall be deemed dead
       val now = System.currentTimeMillis()
       keepAlives.foreach {
         case (actor, time) =>
-          if (now - time >= 4000) {
+          if (now - time >= 30000) {
             // this actor is dead
             keepAlives -= actor
             val serverDead = ServerDead(actor.path.address)
             subscribers.foreach(_ ! serverDead)
           }
       }
-
 
       // TIMING OUT?
       remoteServerPaths
@@ -82,7 +82,7 @@ class ServerRegistry extends ViLeNetActor {
             keepAlives += actor -> System.currentTimeMillis()
 
           case Failure(ex) =>
-            println("FAILED TO RESOLVE ACTOR")
+            log.error("Failed to contact remote server " + ex.getMessage)
             ex.printStackTrace()
         })
     })

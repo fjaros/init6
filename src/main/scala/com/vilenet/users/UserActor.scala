@@ -74,6 +74,7 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
     case UsersUserAdded(userActor, newUser) =>
       if (self != userActor && user.name.equalsIgnoreCase(newUser.name)) {
         // This user is a stale connection!
+        println("USERSUSERADDED STALE " + userActor + " - " + self)
         self ! KillConnection
       }
 
@@ -188,10 +189,10 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
                 if (!user.inChannel.equalsIgnoreCase(channel)) {
                   user = user.copy(joiningChannel = channel)
                   implicit val timeout = Timeout(5, TimeUnit.SECONDS)
-                  println(user.name + " - " + self + " - SENDING JOIN")
+                  //println(user.name + " - " + self + " - SENDING JOIN")
                   Await.result(channelsActor ? UserSwitchedChat(self, fromUser, channel), timeout.duration) match {
                     case ChannelJoinResponse(event) =>
-                      println(user.name + " - " + self + " - RECEIVED JOIN")
+                      //println(user.name + " - " + self + " - RECEIVED JOIN")
                       event match {
                         case UserChannel(newUser, channel, channelActor) =>
                           this.channelActor = channelActor
@@ -269,16 +270,18 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
     case command: UserToChannelCommandAck =>
       //log.error(s"UTCCA $command")
       if (channelActor != ActorRef.noSender) {
-        println("Sending to channel UTCCA " + command)
+        //println("Sending to channel UTCCA " + command)
         channelActor ! command
       }
 
     case Terminated(actor) =>
+      println("#TERMINATED " + sender() + " - " + actor + " - " + user)
       channelsActor ! RemUser(self)
       usersActor ! Rem(self)
       self ! PoisonPill
 
     case KillConnection =>
+      println("KILLCONNECTION FROM " + sender() + " - FOR: " + self + " - " + user)
       connection ! PoisonPill
 
     case x =>

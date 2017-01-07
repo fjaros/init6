@@ -78,7 +78,7 @@ public class Tester {
     public static void main(String[] args) throws Exception {
         ExecutorService e = Executors.newFixedThreadPool(bots + 1);
         for (int i = 1; i <= bots; i++) {
-            e.submit(new Bot(i, args[0] + i));
+            e.submit(new Bot(i, "boat" + i));
         }
 
         Scanner stdIn = new Scanner(new BufferedReader(new InputStreamReader(System.in)));

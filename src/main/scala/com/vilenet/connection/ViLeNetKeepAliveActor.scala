@@ -31,7 +31,7 @@ trait ViLeNetKeepAliveActor extends ViLeNetActor {
           keptAlive += 1
           f()
         } else {
-          actor ! KillConnection
+          //actor ! KillConnection
         }
       }
     }, delay, delay, unit)

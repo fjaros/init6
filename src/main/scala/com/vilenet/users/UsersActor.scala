@@ -93,11 +93,13 @@ class UsersActor extends ViLeNetRemotingActor {
   def remoteAdd(actor: ActorRef, username: String): Unit = {
     // Kill any existing actors for this user (can be remote)
 //    println("#REMOTEADD " + actor + " - " + username)
-    rem(username)
+    if (!reverseUsers.contains(actor)) {
+      rem(username)
 
-    remoteUsersMap += actor.path.address -> actor
-    reverseUsers += actor -> username
-    users += username -> actor
+      remoteUsersMap += actor.path.address -> actor
+      reverseUsers += actor -> username
+      users += username -> actor
+    }
   }
 
   // Remove by actor
@@ -137,6 +139,7 @@ class UsersActor extends ViLeNetRemotingActor {
   }
 
   override protected def onServerAlive(address: Address) = {
+    log.error("onServerAlive {}", address)
     sendGetUsers(address)
   }
 

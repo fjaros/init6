@@ -29,7 +29,7 @@ private[vilenet] trait ViLeNetRemotingActor extends ViLeNetActor {
     implicit val timeout = Timeout(5, TimeUnit.SECONDS)
     Await.result(serverRegistry ? Subscribe(self), timeout.duration) match {
       case SubscribeAck(addresses) =>
-        println("Addresses for " + getClass + " - " + addresses)
+        //println("Addresses for " + getClass + " - " + addresses)
         remoteActors ++= addresses.map(remoteActorSelection)
         addresses.foreach(onServerAlive)
 
@@ -49,8 +49,11 @@ private[vilenet] trait ViLeNetRemotingActor extends ViLeNetActor {
           remoteActors.foreach(_.tell(msg, originalSender))
 
         case ServerAlive(address) =>
-          remoteActors += remoteActorSelection(address)
-          resolveRemote(address, actorPath, onServerAlive(address))
+          val aliveSelection = remoteActorSelection(address)
+          if (!remoteActors.contains(aliveSelection)) {
+            remoteActors += aliveSelection
+            onServerAlive(address)
+          }
 
         case ServerDead(address) =>
           remoteActors -= remoteActorSelection(address)
