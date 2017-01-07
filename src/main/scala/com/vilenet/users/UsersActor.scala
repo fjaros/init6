@@ -88,6 +88,9 @@ class UsersActor extends ViLeNetRemotingActor {
 
     // reply to sender
     sender() ! UsersUserAdded(userActor, newUser)
+
+    // place in Top
+    topCommandActor ! Add(userActor, newUser, protocol)
   }
 
   def remoteAdd(actor: ActorRef, username: String): Unit = {

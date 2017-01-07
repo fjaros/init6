@@ -5,7 +5,6 @@ import com.vilenet.Constants._
 import com.vilenet.{ViLeNetActor, ViLeNetComponent}
 import com.vilenet.channels.{User, UserInfo}
 import com.vilenet.coders.commands.TopCommand
-import com.vilenet.servers.RemoteEvent
 import com.vilenet.utils.FiniteArrayBuffer
 
 /**
@@ -23,10 +22,8 @@ class TopCommandActor extends ViLeNetActor {
     "all" -> FiniteArrayBuffer[User]()
   )
 
-  //subscribe(TOPIC_USERS)
-
   override def receive: Receive = {
-    case RemoteEvent(Add(actor, user, protocol)) =>
+    case Add(_, user, protocol) =>
       topMap(
         protocol match {
           case Chat1Protocol | TelnetProtocol => "chat"
