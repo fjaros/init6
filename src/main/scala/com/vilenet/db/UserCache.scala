@@ -35,7 +35,7 @@ private object UserCache {
   def apply(dbUsers: List[DbUser]) = {
     cache ++= dbUsers.map(dbUser => dbUser.username -> dbUser)
 
-    val updateInterval = Config.Database.batchUpdateInterval
+    val updateInterval = Config().Database.batchUpdateInterval
     executorService.scheduleWithFixedDelay(dbUpdateThread, updateInterval, updateInterval, TimeUnit.SECONDS)
   }
 

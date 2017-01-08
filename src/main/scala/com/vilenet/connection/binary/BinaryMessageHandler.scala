@@ -295,19 +295,19 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
   }
 
   def createAccount(passwordHash: Array[Byte], username: String): State = {
-    if (username.length < Config.Accounts.minLength) {
+    if (username.length < Config().Accounts.minLength) {
       send(SidCreateAccount(SidCreateAccount.RESULT_FAILED))
       return goto(ExpectingSidLogonResponse)
     }
 
     username.foreach(c => {
-      if (!Config.Accounts.allowedCharacters.contains(c.toLower)) {
+      if (!Config().Accounts.allowedCharacters.contains(c.toLower)) {
         send(SidCreateAccount(SidCreateAccount.RESULT_FAILED))
         return goto(ExpectingSidLogonResponse)
       }
     })
 
-    val maxLenUser = username.take(Config.Accounts.maxLength)
+    val maxLenUser = username.take(Config().Accounts.maxLength)
     DAO.getUser(maxLenUser).fold({
       daoActor ! CreateAccount(maxLenUser, passwordHash)
     })(dbUser => {
@@ -318,19 +318,19 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
   }
 
   def createAccount2(passwordHash: Array[Byte], username: String): State = {
-    if (username.length < Config.Accounts.minLength) {
+    if (username.length < Config().Accounts.minLength) {
       send(SidCreateAccount2(SidCreateAccount2.RESULT_NAME_TOO_SHORT))
       return goto(ExpectingSidLogonResponse)
     }
 
     username.foreach(c => {
-      if (!Config.Accounts.allowedCharacters.contains(c.toLower)) {
+      if (!Config().Accounts.allowedCharacters.contains(c.toLower)) {
         send(SidCreateAccount2(SidCreateAccount2.RESULT_INVALID_CHARACTERS))
         return goto(ExpectingSidLogonResponse)
       }
     })
 
-    val maxLenUser = username.take(Config.Accounts.maxLength)
+    val maxLenUser = username.take(Config().Accounts.maxLength)
     DAO.getUser(maxLenUser).fold({
       daoActor ! CreateAccount(maxLenUser, passwordHash)
     })(dbUser => {
@@ -427,7 +427,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
           data match {
             case SidEnterChat(packet) =>
               send(SidEnterChat(username, oldUsername, productId))
-              send(BinaryChatEncoder(UserInfoArray(Config.motd)).get)
+              send(BinaryChatEncoder(UserInfoArray(Config().motd)).get)
               keepAlive(actor, () => sendPing())
               goto(LoggedIn)
           }

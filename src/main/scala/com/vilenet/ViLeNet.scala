@@ -20,12 +20,12 @@ object ViLeNet extends App with ViLeNetComponent {
   DAO
   ServerRegistry()
   DAOActor()
-  ServerPantyDropper(Config.Server.name)
+  ServerPantyDropper(Config().Server.name)
   IpLimitActor(200)
   UsersActor()
   ChannelsActor()
 
-  val connectionHandlerActor = ConnectionHandler(Config.Server.host, Config.Server.port)
+  val connectionHandlerActor = ConnectionHandler(Config().Server.host, Config().Server.port)
 
   sys.addShutdownHook({
     connectionHandlerActor ! PoisonPill

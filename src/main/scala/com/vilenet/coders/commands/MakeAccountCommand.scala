@@ -16,13 +16,13 @@ object MakeAccountCommand {
 
     if (username.nonEmpty) {
       if (password.nonEmpty) {
-        if (username.length < Config.Accounts.minLength) {
+        if (username.length < Config().Accounts.minLength) {
           return UserInfo(ACCOUNT_TOO_SHORT)
         }
 
-        val maxLenUser = username.take(Config.Accounts.maxLength)
+        val maxLenUser = username.take(Config().Accounts.maxLength)
         // Check for illegal characters
-        if (maxLenUser.forall(c => Config.Accounts.allowedCharacters.contains(c.toLower))) {
+        if (maxLenUser.forall(c => Config().Accounts.allowedCharacters.contains(c.toLower))) {
           DAO.getUser(maxLenUser).fold[Command]({
             val passwordHash = BSHA1(password.toLowerCase)
             AccountMade(maxLenUser, passwordHash)

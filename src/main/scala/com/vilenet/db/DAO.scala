@@ -10,7 +10,7 @@ object DAO {
 
   Class.forName("org.mariadb.jdbc.Driver")
   ConnectionPool.singleton(
-    s"jdbc:mariadb://${Config.Database.host}:${Config.Database.port}/vilenet", Config.Database.username, Config.Database.password
+    s"jdbc:mariadb://${Config().Database.host}:${Config().Database.port}/vilenet", Config().Database.username, Config().Database.password
   )
   implicit val session = AutoSession
 

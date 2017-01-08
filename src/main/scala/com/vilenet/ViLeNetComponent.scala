@@ -25,8 +25,8 @@ private[vilenet] trait ViLeNetComponent {
 private object SystemContext {
 
   // Set akka config options from vilenet.conf
-  sys.props += "akka.remote.artery.canonical.hostname" -> Config.Server.akka_host
-  sys.props += "akka.remote.artery.canonical.port" -> Config.Server.akka_port.toString
+  sys.props += "akka.remote.artery.canonical.hostname" -> Config().Server.akka_host
+  sys.props += "akka.remote.artery.canonical.port" -> Config().Server.akka_port.toString
 
   val system = ActorSystem(Constants.VILE_NET, Config.load("akka.conf"))
 

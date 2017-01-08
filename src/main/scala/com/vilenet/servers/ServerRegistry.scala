@@ -39,7 +39,7 @@ case class ServerDead(address: Address)
 class ServerRegistry extends ViLeNetActor {
 
   val remoteServerPaths =
-    Config.Server.nodes
+    Config().Server.nodes
       .map(node => s"akka://$VILE_NET@$node/user/$VILE_NET_SERVER_REGISTRY_PATH")
 
   val subscribers = mutable.HashSet[ActorRef]()
@@ -50,15 +50,16 @@ class ServerRegistry extends ViLeNetActor {
   override def preStart() = {
     import system.dispatcher
 
+    val pingDelay = Duration(Config().Server.Registry.pingDelay, TimeUnit.MILLISECONDS)
     system.scheduler.schedule(
-      Duration(500, TimeUnit.MILLISECONDS),
-      Duration(10000, TimeUnit.MILLISECONDS)
+      Duration(250, TimeUnit.MILLISECONDS),
+      pingDelay
     )({
       // Prune keepAlives. Anything >= 30 seconds shall be deemed dead
       val now = System.currentTimeMillis()
       keepAlives.foreach {
         case (actor, time) =>
-          if (now - time >= 30000) {
+          if (now - time >= Config().Server.Registry.dropAfter) {
             // this actor is dead
             keepAlives -= actor
             val serverDead = ServerDead(actor.path.address)
@@ -68,7 +69,7 @@ class ServerRegistry extends ViLeNetActor {
 
       // TIMING OUT?
       remoteServerPaths
-        .map(system.actorSelection(_).resolveOne(Duration(10, TimeUnit.SECONDS)))
+        .map(system.actorSelection(_).resolveOne(pingDelay))
         .foreach(_.onComplete {
           case Success(actor) =>
             if (!keepAlives.contains(actor)) {

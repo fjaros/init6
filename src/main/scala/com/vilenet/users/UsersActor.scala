@@ -260,7 +260,7 @@ class UsersActor extends ViLeNetRemotingActor with VileNetLoggingActor {
   }
 
   def getRealUser(user: User): User = {
-    if (Config.Accounts.enableMultipleLogins) {
+    if (Config().Accounts.enableMultipleLogins) {
       var number = 1
       var username = user.name
       while (users.contains(username)) {

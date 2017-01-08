@@ -8,5 +8,5 @@ import com.vilenet.channels.UserInfoArray
   */
 object MotdCommand {
 
-  def apply() = UserInfoArray(Config.motd)
+  def apply() = UserInfoArray(Config().motd)
 }

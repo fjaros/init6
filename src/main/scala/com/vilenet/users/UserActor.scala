@@ -10,7 +10,7 @@ import com.vilenet.Constants._
 import com.vilenet.coders.chat1.Chat1Encoder
 import com.vilenet.coders.commands._
 import com.vilenet.connection.WriteOut
-import com.vilenet.{Config, ViLeNetActor, VileNetLoggingActor}
+import com.vilenet.{Config, ReloadConfig, ViLeNetActor, VileNetLoggingActor}
 import com.vilenet.channels._
 import com.vilenet.coders._
 import com.vilenet.coders.binary.BinaryChatEncoder
@@ -175,7 +175,7 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
     // THIS SHIT NEEDS TO BE REFACTORED!
     case Received(data) =>
       // Handle AntiFlood
-      if (Config.AntiFlood.enabled && floodState(data.length)) {
+      if (Config().AntiFlood.enabled && floodState(data.length)) {
         encodeAndSend(UserFlooded)
         self ! KillConnection
       } else {
@@ -221,6 +221,8 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
                 daoActor ! CreateAccount(username, passwordHash)
               case ChangePasswordCommand(newPassword) =>
                 daoActor ! UpdateAccountPassword(user.name, newPassword)
+
+              //ADMIN
               case SplitMe =>
                 if (Flags.isAdmin(user)) {
 //                  publish(TOPIC_SPLIT, SplitMe)
@@ -237,6 +239,9 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
                 daoActor ! CloseAccount(account, reason)
               case command @ OpenAccountCommand(account) =>
                 daoActor ! OpenAccount(account)
+              case ReloadConfig =>
+                Config.reload()
+                self ! UserInfo(s"$VILE_NET configuration reloaded.")
               case _ =>
             }
           case x =>

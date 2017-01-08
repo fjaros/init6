@@ -68,7 +68,7 @@ class Chat1Handler(clientAddress: InetSocketAddress, connection: ActorRef) exten
     case Event(JustLoggedInChat1, loggedInUser: LoggedInUser) =>
       log.debug(">> {} Chat1 LoggedInChat1State", connection)
       connection ! WriteOut(Chat1Encoder(UserInfo(TELNET_CONNECTED(clientAddress))).get)
-      connection ! WriteOut(Chat1Encoder(UserInfoArray(Config.motd)).get)
+      connection ! WriteOut(Chat1Encoder(UserInfoArray(Config().motd)).get)
       keepAlive(loggedInUser.actor, () => {
         sendPing(loggedInUser.actor)
       })
@@ -126,19 +126,19 @@ class Chat1Handler(clientAddress: InetSocketAddress, connection: ActorRef) exten
   }
 
   def createAccount(userCredentials: UserCredentials): State = {
-    if (userCredentials.username.length < Config.Accounts.minLength) {
+    if (userCredentials.username.length < Config().Accounts.minLength) {
       send(LoginFailed(ACCOUNT_TOO_SHORT))
       return goto(LoggingInChat1State)
     }
 
     userCredentials.username.foreach(c => {
-      if (!Config.Accounts.allowedCharacters.contains(c.toLower)) {
+      if (!Config().Accounts.allowedCharacters.contains(c.toLower)) {
         send(LoginFailed(ACCOUNT_CONTAINS_ILLEGAL))
         return goto(LoggingInChat1State)
       }
     })
 
-    val maxLenUser = userCredentials.username.take(Config.Accounts.maxLength)
+    val maxLenUser = userCredentials.username.take(Config().Accounts.maxLength)
     DAO.getUser(maxLenUser).fold({
       daoActor ! CreateAccount(maxLenUser, BSHA1(userCredentials.password))
     })(dbUser => {

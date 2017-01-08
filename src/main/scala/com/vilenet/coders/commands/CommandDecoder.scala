@@ -2,7 +2,8 @@ package com.vilenet.coders.commands
 
 import akka.util.ByteString
 import com.vilenet.Constants._
-import com.vilenet.channels.{UserError, User}
+import com.vilenet.ReloadConfig
+import com.vilenet.channels.{Flags, User, UserError}
 import com.vilenet.servers.{SendBirth, SplitMe}
 
 /**
@@ -91,6 +92,7 @@ object CommandDecoder {
         case "disconnect" | "dc" => DisconnectCommand(user, message)
         case "splitme" => SplitMe
         case "recon" => SendBirth
+        case "reloadconfig" | "configreload" => if (Flags.isAdmin(user)) ReloadConfig else UserError()
 
         //case "!bl!zzme!" => BlizzMe(user)
         case _ => UserError()

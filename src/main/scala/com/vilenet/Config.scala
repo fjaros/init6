@@ -3,6 +3,7 @@ package com.vilenet
 import java.io.File
 
 import com.typesafe.config.ConfigFactory
+import com.vilenet.coders.commands.Command
 
 import scala.collection.JavaConverters._
 import scala.util.Try
@@ -10,24 +11,43 @@ import scala.util.Try
 /**
   * Created by filip on 12/17/15.
   */
+case object ReloadConfig extends Command
+
 object Config {
 
-  def load(filepath: String) = {
-    val file = new File(filepath)
-    if (file.exists()) {
-      ConfigFactory.parseFile(file).resolve()
-    } else {
-      ConfigFactory.load(filepath)
+  private var config: Config = reload()
+
+  def apply() = {
+    this.synchronized {
+      config
     }
   }
 
+  def reload() = {
+    this.synchronized {
+      config = new Config(sys.props("config"))
+      config
+    }
+  }
 
-  val c = load(sys.props("config"))
-  val p = c.getConfig(Constants.VILE_NET)
+  def load(filePath: String) = {
+    val file = new File(filePath)
+    if (file.exists()) {
+      ConfigFactory.parseFile(file).resolve()
+    } else {
+      ConfigFactory.load(filePath)
+    }
+  }
+}
+
+class Config(filePath: String) {
+
+  val root = Config.load(filePath)
+    .getConfig(Constants.VILE_NET)
 
   object Server {
 
-    val p = Config.p.getConfig("server")
+    val p = root.getConfig("server")
 
     val name = p.getString("name")
     val host = p.getString("host")
@@ -37,11 +57,18 @@ object Config {
     val akka_port = p.getInt("akka_port")
     val nodes = p.getStringList("nodes").asScala
       .filterNot(_ == s"$akka_host:$akka_port")
+
+    object Registry {
+      val pA = p.getConfig("registry")
+
+      val pingDelay = pA.getInt("ping-delay")
+      val dropAfter = pA.getInt("drop-after")
+    }
   }
 
   object Accounts {
 
-    val p = Config.p.getConfig("accounts")
+    val p = root.getConfig("accounts")
 
     val allowedCharacters =
       s"abcdefghijklmnopqrstuvwxyz0123456789${p.getString("allowed-illegal-characters")}".toSet
@@ -54,7 +81,7 @@ object Config {
 
   object Database {
 
-    val p = Config.p.getConfig("database")
+    val p = root.getConfig("database")
 
     val host = p.getString("host")
     val port = p.getInt("port")
@@ -66,7 +93,7 @@ object Config {
 
   object AntiFlood {
 
-    val p = Config.p.getConfig("anti-flood")
+    val p = root.getConfig("anti-flood")
 
     val enabled = p.getBoolean("enabled")
     val maxCredits = p.getInt("max-credits")
@@ -76,7 +103,7 @@ object Config {
     val creditsReturnedPerSecond = p.getInt("credits-returned-per-second")
   }
 
-  val motd = p.getStringList("motd")
+  val motd = root.getStringList("motd")
     .asScala
     .map(line => {
       line
