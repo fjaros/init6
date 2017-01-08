@@ -49,7 +49,7 @@ class ChannelsActor extends ViLeNetRemotingActor {
 //  )
 
   private def sendGetChannels(address: Address): Unit = {
-    remoteActorSelection(address).resolveOne(Timeout(5, TimeUnit.SECONDS).duration).onComplete {
+    remoteActorSelection(address).resolveOne(Timeout(2, TimeUnit.SECONDS).duration).onComplete {
       case Success(actor) =>
         actor ! GetChannels
 
@@ -99,8 +99,11 @@ class ChannelsActor extends ViLeNetRemotingActor {
       log.error(s"### $c $channels")
       if (isRemote()) {
         val remoteActor = sender()
-        remoteActors += remoteActorSelection(remoteActor.path.address)
         remoteActor ! ChannelsAre(channels.values.toSeq)
+        if (!remoteActors.contains(remoteActorSelection(remoteActor.path.address))) {
+          remoteActor ! GetChannels
+          remoteActors += remoteActorSelection(remoteActor.path.address)
+        }
       }
 
     case c@ ChannelsAre(remoteChannels) =>
@@ -140,7 +143,7 @@ class ChannelsActor extends ViLeNetRemotingActor {
             println(msg)
         }
       }.getOrElse({
-          log.error("ChannelsActor createOrGet timed out for {}", command)
+          log.error("ChannelsActor getOrCreate timed out for {}", command)
           if (isLocal(userActor)) {
             userActor ! ChannelJoinResponse(UserError(CHANNEL_FAILED_TO_JOIN(channel)))
           }
@@ -176,6 +179,7 @@ class ChannelsActor extends ViLeNetRemotingActor {
         actor ! WhoCommandToChannel(sender(), user)
       })
 
+    // Need to get rid of this in the future. Puts too much strain on the outbound queue
     case c @ RemUser(actor) =>
       //println("##RemUser " + c + " - " + sender() + " - " + remoteActors)
       channels.values.map(_._2).foreach(_ ! c)

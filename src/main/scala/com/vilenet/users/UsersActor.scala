@@ -43,7 +43,7 @@ case class ReceivedUsers(users: Seq[(String, ActorRef)]) extends Command
 case class UserToChannelCommandAck(userActor: ActorRef, realUsername: String, command: UserToChannelCommand) extends Command with Remotable
 case class UsersUserAdded(userActor: ActorRef, user: User) extends Command
 
-class UsersActor extends ViLeNetRemotingActor {
+class UsersActor extends ViLeNetRemotingActor with VileNetLoggingActor {
 
   override val actorPath = VILE_NET_USERS_PATH
 
@@ -57,7 +57,7 @@ class UsersActor extends ViLeNetRemotingActor {
   val remoteUsersMap = RemoteMultiMap[Address, ActorRef]()
 
   private def sendGetUsers(address: Address): Unit = {
-    remoteActorSelection(address).resolveOne(Timeout(5, TimeUnit.SECONDS).duration).onComplete {
+    remoteActorSelection(address).resolveOne(Timeout(2, TimeUnit.SECONDS).duration).onComplete {
       case Success(actor) =>
         actor ! GetUsers
 
@@ -77,7 +77,7 @@ class UsersActor extends ViLeNetRemotingActor {
     val userActor = context.actorOf(UserActor(connectionActor, newUser, protocol))
 
     // Add to structures
-//    println("#ADD " + userActor + " - " + newUser.name)
+    //println("#ADD " + userActor + " - " + newUser.name)
     users += newUser.name -> userActor
     reverseUsers += userActor -> newUser.name
     localUsers += userActor
@@ -93,7 +93,7 @@ class UsersActor extends ViLeNetRemotingActor {
 
   def remoteAdd(actor: ActorRef, username: String): Unit = {
     // Kill any existing actors for this user (can be remote)
-//    println("#REMOTEADD " + actor + " - " + username)
+    //println("#REMOTEADD " + actor + " - " + username + " - " + reverseUsers.contains(actor))
     if (!reverseUsers.contains(actor)) {
       rem(username)
 
@@ -105,7 +105,7 @@ class UsersActor extends ViLeNetRemotingActor {
 
   // Remove by actor
   def rem(actor: ActorRef): Unit = {
-//    println("#REM " + actor + " - " + reverseUsers.get(actor))
+    //println("#REM " + actor + " - " + reverseUsers.get(actor))
     reverseUsers.get(actor).foreach(name => {
       if (isLocal(actor)) {
         localUsers -= actor
@@ -148,18 +148,21 @@ class UsersActor extends ViLeNetRemotingActor {
     removeAllRemote(address)
   }
 
-  override def receive: Receive = {
+  override def loggedReceive: Receive = {
     case ServerOnline =>
 //      publish(TOPIC_USERS, GetUsers)
 
     case GetUsers =>
       if (isRemote()) {
-        remoteActors += remoteActorSelection(sender().path.address)
         sender() ! ReceivedUsers(
           localUsers
             .map(actor => reverseUsers(actor) -> actor)
             .toSeq
         )
+        if (!remoteActors.contains(remoteActorSelection(sender().path.address))) {
+          sender() ! GetUsers
+          remoteActors += remoteActorSelection(sender().path.address)
+        }
       }
 
     case c@ ReceivedUsers(remoteUsers) =>
@@ -234,7 +237,8 @@ class UsersActor extends ViLeNetRemotingActor {
     case DisconnectCommand(user) =>
       rem(user)
 
-    case _ =>
+    case x =>
+      log.error("UsersActor Unhandled Local {}", x)
   }
 
   def handleRemote: Receive = {
@@ -251,7 +255,8 @@ class UsersActor extends ViLeNetRemotingActor {
       //println(s"### Remote Broadcast $localUsers")
       localUsers ! UserError(message)
 
-    case _ =>
+    case x =>
+      log.error("UsersActor Unhandled Remote {}", x)
   }
 
   def getRealUser(user: User): User = {

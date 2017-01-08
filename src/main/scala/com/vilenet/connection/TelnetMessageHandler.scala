@@ -143,10 +143,4 @@ class TelnetMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
     case ExpectingPassword -> LoggedIn =>
       self ! JustLoggedIn
   }
-
-  onTermination {
-    case x =>
-      //log.error(s"Connection stopped $x")
-      context.stop(self)
-  }
 }

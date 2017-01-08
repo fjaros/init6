@@ -19,14 +19,19 @@ import scala.util.Try
  * Created by filip on 9/19/15.
  */
 object ConnectionHandler extends ViLeNetComponent {
-  def apply(bindAddress: InetSocketAddress) = system.actorOf(Props(classOf[ConnectionHandler], bindAddress), VILE_NET)
+  def apply(host: String, port: Int) = system.actorOf(Props(classOf[ConnectionHandler], host, port), VILE_NET)
 }
 
-class ConnectionHandler(bindAddress: InetSocketAddress) extends ViLeNetActor {
+class ConnectionHandler(host: String, port: Int) extends ViLeNetActor {
 
   implicit val timeout = Timeout(200, TimeUnit.MILLISECONDS)
 
-  IO(Tcp) ! Bind(self, bindAddress, pullMode = true)
+  override def preStart() = {
+    super.preStart()
+
+    val bindAddress = new InetSocketAddress(host, port)
+    IO(Tcp) ! Bind(self, bindAddress, pullMode = true)
+  }
 
   override def receive: Receive = {
     case Bound(local) =>

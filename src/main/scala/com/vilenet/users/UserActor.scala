@@ -10,7 +10,7 @@ import com.vilenet.Constants._
 import com.vilenet.coders.chat1.Chat1Encoder
 import com.vilenet.coders.commands._
 import com.vilenet.connection.WriteOut
-import com.vilenet.{Config, ViLeNetActor}
+import com.vilenet.{Config, ViLeNetActor, VileNetLoggingActor}
 import com.vilenet.channels._
 import com.vilenet.coders._
 import com.vilenet.coders.binary.BinaryChatEncoder
@@ -40,7 +40,7 @@ case object KillConnection extends Command
 
 
 class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
-  extends FloodPreventer with ViLeNetActor {
+  extends FloodPreventer with ViLeNetActor with VileNetLoggingActor {
 
   var isTerminated = false
   var channelActor = ActorRef.noSender
@@ -74,7 +74,7 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
     encoder(chatEvent).foreach(message => connection ! WriteOut(message))
   }
 
-  override def receive: Receive = {
+  override def loggedReceive: Receive = {
     case ChannelToUserPing =>
       sender() ! UserToChannelPing
 
@@ -252,13 +252,17 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
       }
 
     case Terminated(actor) =>
-      //println("#TERMINATED " + sender() + " - " + actor + " - " + user)
-      channelsActor ! RemUser(self)
+      //println("#TERMINATED " + sender() + " - " + self + " - " + user)
+      if (channelActor != ActorRef.noSender) {
+        channelActor ! RemUser(self)
+      } else {
+        channelsActor ! RemUser(self)
+      }
       usersActor ! Rem(self)
       self ! PoisonPill
 
     case KillConnection =>
-      //println("KILLCONNECTION FROM " + sender() + " - FOR: " + self + " - " + user)
+      //println("#KILLCONNECTION FROM " + sender() + " - FOR: " + self + " - " + user)
       connection ! PoisonPill
 
     case x =>

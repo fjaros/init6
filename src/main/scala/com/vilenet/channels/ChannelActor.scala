@@ -5,7 +5,7 @@ import java.util.concurrent.TimeUnit
 import akka.actor.{ActorRef, Address, Props}
 import akka.util.Timeout
 import com.vilenet.Constants._
-import com.vilenet.{RemoteActorUp, ViLeNetActor, ViLeNetRemotingActor}
+import com.vilenet.ViLeNetRemotingActor
 import com.vilenet.channels.utils.{LocalUsersSet, RemoteMultiMap}
 import com.vilenet.coders.Base64
 import com.vilenet.coders.commands._
@@ -14,7 +14,7 @@ import com.vilenet.users.{GetUsers, UpdatePing, UserUpdated}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.collection.mutable
-import scala.util.Try
+import scala.util.{Failure, Success}
 
 /**
   * Created by filip on 11/12/15.
@@ -79,31 +79,16 @@ trait ChannelActor extends ViLeNetRemotingActor {
 
   // Settable topic by operator
   var topic = ""
-//
-//  subscribe(TOPIC_SPLIT)
-//  val pubSubTopic = TOPIC_CHANNEL(name)
-//  if (subscribe(pubSubTopic)) {
-//    system.scheduler.schedule(
-//      Timeout(1000, TimeUnit.MILLISECONDS).duration,
-//      Timeout(1000, TimeUnit.MILLISECONDS).duration
-//    ) {
-//      if (!isSplit) {
-//        publish(pubSubTopic, ChannelPing)
-//      }
-//
-//      val now = System.currentTimeMillis()
-//      usersKeepAlive.foreach {
-//        case (actor, time) =>
-//          if (now - time >= 4000) {
-//            rem(actor)
-//          } else {
-//            actor ! ChannelToUserPing
-//          }
-//      }
-//    }
-//  } else {
-//    log.error("Failed to subscribe to {}", pubSubTopic)
-//  }
+
+  private def sendGetChannelUsers(address: Address): Unit = {
+    remoteActorSelection(address).resolveOne(Timeout(2, TimeUnit.SECONDS).duration).onComplete {
+      case Success(actor) =>
+        actor ! GetChannelUsers
+
+      case Failure(ex) =>
+        system.scheduler.scheduleOnce(Timeout(500, TimeUnit.MILLISECONDS).duration)(sendGetChannelUsers(address))
+    }
+  }
 
   // Final. Should not be overriden in subclasses. Use receiveEvent to avoid calling super to an abstract declaration
   override final def receive: Receive = {
@@ -160,8 +145,8 @@ trait ChannelActor extends ViLeNetRemotingActor {
 
   // No. On Start advertise to remotes that you are alive.
   override protected def onServerAlive(address: Address) = {
-    //println("onServerAlive Getting Channel Users")
-    system.actorSelection(s"akka://${address.hostPort}/user/$actorPath") ! GetChannelUsers
+    //println("onServerAlive Getting Channel Users (" + name + ")")
+    sendGetChannelUsers(address)
   }
 
   override protected def onServerDead(address: Address) = {
@@ -203,15 +188,18 @@ trait ChannelActor extends ViLeNetRemotingActor {
       usersKeepAlive += sender() -> System.currentTimeMillis()
 
     case GetChannelUsers =>
-      //println("RECEIVED GetChannelUsers from " + sender() + "\n" + "users: " + users)
+      println("RECEIVED GetChannelUsers from " + sender() + "\n" + "users: " + users)
       if (isRemote()) {
-        remoteActors += remoteActorSelection(sender().path.address)
-        //println("SENDING ReceivedChannelUsers\n" + users.filterKeys(localUsers.contains).toSeq)
+        println("SENDING ReceivedChannelUsers\n" + users.filterKeys(localUsers.contains).toSeq)
         sender() ! ReceivedChannelUsers(users.filterKeys(localUsers.contains).toSeq)
+        if (!remoteActors.contains(remoteActorSelection(sender().path.address))) {
+          sender() ! GetChannelUsers
+          remoteActors += remoteActorSelection(sender().path.address)
+        }
       }
 
     case ReceivedChannelUsers(remoteUsers) =>
-      //println("RECEIVED ReceivedChannelUsers from " + sender() + "\nremoteUsers: " + remoteUsers)
+      println("RECEIVED ReceivedChannelUsers from " + sender() + "\nremoteUsers: " + remoteUsers)
       remoteUsers.foreach {
         case (actor, user) =>
           remoteIn(sender(), actor, user)

@@ -33,9 +33,12 @@ class ProtocolHandler(clientAddress: InetSocketAddress, client: ActorRef) extend
   val VILENET_CHAT: Byte = 'C'.toByte
   val VILENET_CHAT_1: Byte = '1'.toByte
 
-  startWith(Uninitialized, EmptyProtocolData)
+  override def preStart() = {
+    super.preStart()
 
-  client ! ResumeReading
+    startWith(Uninitialized, EmptyProtocolData)
+    client ! ResumeReading
+  }
 
   when(Uninitialized) {
     case Event(Received(data), _) =>
@@ -129,6 +132,7 @@ class ProtocolHandler(clientAddress: InetSocketAddress, client: ActorRef) extend
   onTermination {
     case x =>
       log.debug("{} ProtocolHandled terminated", clientAddress.getAddress)
+      client ! Close
       ipLimiterActor ! Disconnected(clientAddress.getAddress.getAddress)
   }
 }

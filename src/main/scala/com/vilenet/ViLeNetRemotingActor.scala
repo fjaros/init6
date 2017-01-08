@@ -15,8 +15,6 @@ import scala.util.{Failure, Success}
 /**
   * Created by filip on 1/3/17.
   */
-case object RemoteActorUp
-
 private[vilenet] trait ViLeNetRemotingActor extends ViLeNetActor {
 
   val actorPath: String
@@ -44,9 +42,8 @@ private[vilenet] trait ViLeNetRemotingActor extends ViLeNetActor {
     if (isLocal()) {
       msg match {
         case _: Remotable =>
-          val originalSender = sender()
           //println("#SEND " + remoteActors + " - " + originalSender + " - " + msg)
-          remoteActors.foreach(_.tell(msg, originalSender))
+          remoteActors.foreach(_.forward(msg))
 
         case ServerAlive(address) =>
           val aliveSelection = remoteActorSelection(address)
@@ -77,7 +74,7 @@ private[vilenet] trait ViLeNetRemotingActor extends ViLeNetActor {
   // Internal recursive for resolving in case of failure
   private def resolveRemote(resolvedPath: String, successFunc: => Unit, failedRunnable: Runnable) = {
     system.actorSelection(resolvedPath)
-      .resolveOne(Timeout(5, TimeUnit.SECONDS).duration).onComplete {
+      .resolveOne(Timeout(2, TimeUnit.SECONDS).duration).onComplete {
       case Success(_) =>
         successFunc
 
