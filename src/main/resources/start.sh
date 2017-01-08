@@ -141,7 +141,7 @@ while :; do
         if [ "$debug" = true ]; then
             java $java_run
         else
-            java $java_run > "$log_file" &
+            java $java_run &> "$log_file" &
         fi
         pid=$!
     fi
