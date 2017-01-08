@@ -41,6 +41,9 @@ private[vilenet] trait ViLeNetRemotingActor extends ViLeNetActor {
 
     if (isLocal()) {
       msg match {
+        case _: NonRemotable =>
+          // no-op
+
         case _: Remotable =>
           //println("#SEND " + remoteActors + " - " + originalSender + " - " + msg)
           remoteActors.foreach(_.forward(msg))

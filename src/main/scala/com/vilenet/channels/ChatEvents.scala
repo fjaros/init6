@@ -3,7 +3,7 @@ package com.vilenet.channels
 import akka.actor.ActorRef
 import com.vilenet.Constants._
 import com.vilenet.coders.commands.{Command, ReturnableCommand}
-import com.vilenet.servers.Remotable
+import com.vilenet.servers.{NonRemotable, Remotable}
 
 /**
  * Created by filip on 9/20/15.
@@ -40,7 +40,7 @@ case class UserUnsquelched(user: String) extends ChatEvent
 case class UserSentChat(user: String, message: String) extends ChatEvent
 case class UserSentEmote(user: String, message: String) extends ChatEvent
 case class Designate(user: String, message: String) extends ChatEvent
-case class UserSwitchedChat(actor: ActorRef, user: User, channel: String) extends ChatEvent
+case class UserSwitchedChat(actor: ActorRef, user: User, channel: String) extends ChatEvent with NonRemotable
 case class UserLeftChat(user: User) extends ChatEvent
 case object UserFlooded extends ChatEvent
 

@@ -134,6 +134,8 @@ class ChannelsActor extends ViLeNetRemotingActor {
               if (reply.channelTopic.nonEmpty) {
                 userActor ! UserInfo(CHANNEL_TOPIC(reply.channelTopic))
               }
+              // special case for now - refactor later
+              remoteActors.foreach(_.tell(command, userActor))
             }
           case reply: ChatEvent =>
             if (isLocal(userActor)) {
