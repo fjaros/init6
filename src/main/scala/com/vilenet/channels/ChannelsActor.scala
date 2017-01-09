@@ -28,7 +28,7 @@ object ChannelsActor extends ViLeNetComponent {
 case object GetChannels extends Command
 case class ChannelsAre(channels: Seq[(String, ActorRef)]) extends Command
 case object GetChannelUsers extends Command
-case class ReceivedChannelUsers(users: Seq[(ActorRef, User)], topic: String) extends Command
+case class ReceivedChannelUsers(users: Seq[(ActorRef, User)], topic: TopicExchange) extends Command
 case class ReceivedChannel(channel: (String, ActorRef)) extends Command
 case class UserAdded(actor: ActorRef, channel: String) extends Command
 case object ChannelEmpty extends Command
@@ -131,8 +131,8 @@ class ChannelsActor extends ViLeNetRemotingActor {
             if (isLocal(userActor)) {
               userActor ! ChannelJoinResponse(UserChannel(reply.user, reply.channelName, reply.channelActor))
               // real actor
-              if (reply.channelTopic.nonEmpty) {
-                userActor ! UserInfo(CHANNEL_TOPIC(reply.channelTopic))
+              if (reply.topicExchange.topic.nonEmpty) {
+                userActor ! UserInfo(CHANNEL_TOPIC(reply.topicExchange.topic))
               }
               // special case for now - refactor later
               remoteActors.foreach(_.tell(command, userActor))

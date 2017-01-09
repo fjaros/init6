@@ -19,13 +19,17 @@ trait ChattableChannelActor extends ChannelActor {
     case command: UserToChannelCommandAck =>
       command.command match {
         case _: SquelchCommand =>
-          sender() ! UserInfo(USER_SQUELCHED(command.realUsername))
-          sender() ! UserSquelched(command.realUsername)
-          users.get(command.userActor).foreach(user => sender() ! UserFlags(Flags.squelch(user)))
+          if (isLocal()) {
+            sender() ! UserSquelched(command.realUsername)
+            sender() ! UserInfo(USER_SQUELCHED(command.realUsername))
+            users.get(command.userActor).foreach(user => sender() ! UserFlags(Flags.squelch(user)))
+          }
         case _: UnsquelchCommand =>
-          sender() ! UserInfo(USER_UNSQUELCHED(command.realUsername))
-          sender() ! UserUnsquelched(command.realUsername)
-          users.get(command.userActor).foreach(user => sender() ! UserFlags(Flags.unsquelch(user)))
+          if (isLocal()) {
+            sender() ! UserUnsquelched(command.realUsername)
+            sender() ! UserInfo(USER_UNSQUELCHED(command.realUsername))
+            users.get(command.userActor).foreach(user => sender() ! UserFlags(Flags.unsquelch(user)))
+          }
         case _ =>
       }
       super.receiveEvent(command)
@@ -34,8 +38,8 @@ trait ChattableChannelActor extends ChannelActor {
       val userActor = sender()
       users.get(userActor).foreach(user => {
         if (Flags.canBan(user)) {
-          topic = message
-          localUsers ! UserInfo(SET_TOPIC(user.name, topic))
+          topicExchange = TopicExchange(message, System.currentTimeMillis())
+          localUsers ! UserInfo(SET_TOPIC(user.name, topicExchange.topic))
         } else {
           if (isLocal()) {
             userActor ! UserError(NOT_OPERATOR)

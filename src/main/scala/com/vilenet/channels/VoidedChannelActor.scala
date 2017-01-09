@@ -17,7 +17,7 @@ sealed class VoidedChannelActor(override val name: String)
   override def receiveEvent = ({
     case WhoCommandToChannel(_, _) | UpdatePing(_) => // No-op
     case GetUsers => sender() ! UserInfo(NO_CHAT_PRIVILEGES)
-    case ChannelsCommand => sender() ! ChannelInfo(name, 0, topic)
+    case ChannelsCommand => sender() ! ChannelInfo(name, 0, topicExchange.topic)
     case EmoteCommand(_, message) =>
       if (isLocal()) {
         sender() ! UserEmote(users(sender()), message)

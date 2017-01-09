@@ -33,23 +33,28 @@ object ChannelActor {
 }
 
 case class User(
-                 // Static variables
-                 name: String,
-                 flags: Long = 0,
-                 ping: Long = 0,
-                 client: String = "CHAT",
-                 place: Int = 0,
+  // Static variables
+  name: String,
+  flags: Long = 0,
+  ping: Long = 0,
+  client: String = "CHAT",
+  place: Int = 0,
 
-                 // Changeable
-                 inChannel: String = "",
-                 joiningChannel: String = ""
-               ) extends Command
+  // Changeable
+  inChannel: String = "",
+  joiningChannel: String = ""
+) extends Command
+
+case class TopicExchange(
+  topic: String = "",
+  timestamp: Long = 0
+) extends Command
 
 case class AddUser(actor: ActorRef, user: User) extends Command
 case class RemUser(actor: ActorRef) extends Command with Remotable
 case object IsEmpty
 case object NonEmpty
-case class UserAddedToChannel(user: User, channelName: String, channelActor: ActorRef, channelTopic: String)
+case class UserAddedToChannel(user: User, channelName: String, channelActor: ActorRef, topicExchange: TopicExchange)
 case object CheckSize extends Command
 case class ChannelSize(actor: ActorRef, name: String, size: Int) extends Command
 case object ChannelToUserPing extends Command
@@ -78,7 +83,7 @@ trait ChannelActor extends ViLeNetRemotingActor {
   var isSplit = false
 
   // Settable topic by operator
-  var topic = ""
+  var topicExchange = TopicExchange()
 
   private def sendGetChannelUsers(address: Address): Unit = {
     remoteActorSelection(address).resolveOne(Timeout(2, TimeUnit.SECONDS).duration).onComplete {
@@ -112,7 +117,7 @@ trait ChannelActor extends ViLeNetRemotingActor {
 
     if (isLocal()) {
       //println("sender " + sender())
-      sender() ! UserAddedToChannel(newUser, name, self, topic)
+      sender() ! UserAddedToChannel(newUser, name, self, topicExchange)
     }
     newUser
   }
@@ -192,20 +197,23 @@ trait ChannelActor extends ViLeNetRemotingActor {
       println("RECEIVED GetChannelUsers from " + sender() + "\n" + "users: " + users)
       if (isRemote()) {
         println("SENDING ReceivedChannelUsers\n" + users.filterKeys(localUsers.contains).toSeq)
-        sender() ! ReceivedChannelUsers(users.filterKeys(localUsers.contains).toSeq, topic)
+        sender() ! ReceivedChannelUsers(users.filterKeys(localUsers.contains).toSeq, topicExchange)
         if (!remoteActors.contains(remoteActorSelection(sender().path.address))) {
           sender() ! GetChannelUsers
           remoteActors += remoteActorSelection(sender().path.address)
         }
       }
 
-    case ReceivedChannelUsers(remoteUsers, topic) =>
+    case ReceivedChannelUsers(remoteUsers, topicExchange) =>
       println("RECEIVED ReceivedChannelUsers from " + sender() + "\nremoteUsers: " + remoteUsers)
       remoteUsers.foreach {
         case (actor, user) =>
           remoteIn(sender(), actor, user)
       }
-      this.topic = topic
+      // Replace topic only if timestamp is newer
+      if (topicExchange.timestamp > this.topicExchange.timestamp) {
+        this.topicExchange = topicExchange
+      }
 
     case GetUsers =>
       //println("RECEIVED GetUsers from " + sender())
@@ -218,7 +226,7 @@ trait ChannelActor extends ViLeNetRemotingActor {
     case c@ AddUser(actor, user) => add(actor, user)
     case RemUser(actor) => rem(actor)
     case CheckSize => sender() ! ChannelSize(self, name, users.size)
-    case ChannelsCommand => sender() ! ChannelInfo(name, users.size, topic)
+    case ChannelsCommand => sender() ! ChannelInfo(name, users.size, topicExchange.topic)
     case c@ WhoCommandToChannel(actor, user) => whoCommand(actor, user)
     case UpdatePing(ping) =>
       val userActor = sender()
