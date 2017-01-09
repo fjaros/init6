@@ -78,7 +78,7 @@ trait ChannelActor extends ViLeNetRemotingActor {
 
   val remoteUsersMap = RemoteMultiMap[Address, ActorRef]()
   //val usersKeepAlive = mutable.HashMap[ActorRef, Long]()
-  val remoteAddressReceived = mutable.HashSet[Address]()
+  //val remoteAddressReceived = mutable.HashSet[Address]()
 
   var isSplit = false
 
@@ -246,7 +246,7 @@ trait ChannelActor extends ViLeNetRemotingActor {
 
   def whoCommand(actor: ActorRef, user: User) = {
     if (users.nonEmpty) {
-      println("#WHO USERS " + users + "\n#WHO REMOTEUSERSEMAP " + remoteUsersMap)
+      println("#WHO USERS " + users + "\n#WHO LOCALUSERS: " + localUsers + "\n#WHO REMOTEUSERSEMAP " + remoteUsersMap)
       val usernames = users
         .values
         .map(user => {
