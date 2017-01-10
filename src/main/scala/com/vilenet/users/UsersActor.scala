@@ -133,8 +133,9 @@ class UsersActor extends ViLeNetRemotingActor with VileNetLoggingActor {
 
   def removeAllRemote(address: Address) = {
     remoteUsersMap.get(address).foreach(actors => {
-      users --= actors.flatMap(reverseUsers.get)
-      reverseUsers --= actors
+      val _actors = actors.toSeq // just in case (immutability)
+      users --= _actors.flatMap(reverseUsers.get)
+      reverseUsers --= _actors
       remoteUsersMap -= address
     })
   }

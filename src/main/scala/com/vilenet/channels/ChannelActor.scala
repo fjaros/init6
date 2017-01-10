@@ -156,7 +156,8 @@ trait ChannelActor extends ViLeNetRemotingActor {
 
   override protected def onServerDead(address: Address) = {
     log.info("#Received ServerDead {} in channel {}", address, name)
-    remoteUsersMap.get(address).foreach(_.foreach(rem))
+    // call toSet to make immutable so we're not calling rem during a loop over an iterator
+    remoteUsersMap.get(address).foreach(_.toSeq.foreach(rem))
     remoteUsersMap -= address
   }
 
