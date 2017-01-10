@@ -38,9 +38,7 @@ trait OperableChannelActor extends ChannelActor {
   override def add(actor: ActorRef, user: User): User = {
     val newUser =
       if (users.isEmpty) {
-        val oppedUser = Flags.op(user)
-        //publish(pubSubTopic, InternalChannelUserUpdate(actor, oppedUser))
-        oppedUser
+        Flags.op(user)
       } else {
         user
       }

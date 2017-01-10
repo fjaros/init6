@@ -258,11 +258,12 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
 
     case Terminated(actor) =>
       //println("#TERMINATED " + sender() + " - " + self + " - " + user)
-      if (channelActor != ActorRef.noSender) {
-        channelActor ! RemUser(self)
-      } else {
+      // CAN'T DO THIS - channelActor msg might be faster than channelSActor join msg. might remove itself then add after
+//      if (channelActor != ActorRef.noSender) {
+//        channelActor ! RemUser(self)
+//      } else {
         channelsActor ! RemUser(self)
-      }
+//      }
       usersActor ! Rem(self)
       self ! PoisonPill
 

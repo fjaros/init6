@@ -135,7 +135,9 @@ class ChannelsActor extends ViLeNetRemotingActor {
                 userActor ! UserInfo(CHANNEL_TOPIC(reply.topicExchange.topic))
               }
               // special case for now - refactor later
-              remoteActors.foreach(_.tell(command, userActor))
+              // !!!!!!!!!!!!!!!
+              // NEED TO GIVE REMOTES THE CORRECT FLAGS FROM THIS SERVER!!!!
+              remoteActors.foreach(_.tell(UserSwitchedChat(actor, user.copy(flags = reply.user.flags), channel), userActor))
             }
           case reply: ChatEvent =>
             if (isLocal(userActor)) {

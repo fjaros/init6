@@ -16,6 +16,7 @@ sealed class PrivateChannelActor(override val name: String)
   with FullableChannelActor {
 
   override def add(actor: ActorRef, user: User): User = {
-    super.add(actor, Flags.deOp(user))
+    // Only deOp if it's local, if it's remote, blindly accept flag from the other server
+    super.add(actor, if (isLocal(actor)) Flags.deOp(user) else user)
   }
 }
