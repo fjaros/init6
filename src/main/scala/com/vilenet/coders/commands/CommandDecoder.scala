@@ -45,7 +45,7 @@ object CommandDecoder {
   def apply(user: User, byteString: ByteString) = {
     if (byteString.head == '/') {
       val (command, message) = spanBySpace(byteString.tail)
-      command.toLowerCase match {
+      val userCommand = command.toLowerCase match {
         case "away" => AwayCommand(message)
         case "ban" => OneCommand(BanCommand(message), UserError(USER_NOT_LOGGED_ON))
         case "changepassword" | "chpass" => ChangePasswordCommand(message)
@@ -84,18 +84,26 @@ object CommandDecoder {
         case "whoami" => WhoamiCommand(user)
         case "whois" | "whereis" => OneCommand(WhoisCommand(user, message), UserError(USER_NOT_LOGGED_ON), WhoamiCommand(user))
         case "who" => OneCommand(WhoCommand(user, message), WhoCommand(user, user.inChannel))
-
-        // Admin commands
-        case "broadcast" => BroadcastCommand(user, message)
-        case "closeaccount" => CloseAccountCommand(user, message)
-        case "openaccount" => OpenAccountCommand(user, message)
-        case "disconnect" | "dc" => DisconnectCommand(user, message)
-        case "splitme" => SplitMe
-        case "recon" => SendBirth
-        case "reloadconfig" | "configreload" => if (Flags.isAdmin(user)) ReloadConfig else UserError()
-
         //case "!bl!zzme!" => BlizzMe(user)
         case _ => UserError()
+      }
+
+      if (Flags.isAdmin(user)) {
+        command.toLowerCase match {
+          // Admin commands
+          case "broadcast" | "bcast" => BroadcastCommand(message)
+          case "closeaccount" => CloseAccountCommand(user, message)
+          case "openaccount" => OpenAccountCommand(user, message)
+          case "disconnect" | "dc" => DisconnectCommand(message)
+          //case "splitme" => SplitMe
+          //case "recon" => SendBirth
+          case "reloadconfig" | "configreload" => ReloadConfig
+          case "usermute" | "muteuser" => UserMute(message)
+          case "userunmute" | "unmuteuser" => UserUnmute(message)
+          case _ => userCommand
+        }
+      } else {
+        userCommand
       }
     } else {
       OneCommand(ChatCommand(user, byteString.take(250)), EmptyCommand)

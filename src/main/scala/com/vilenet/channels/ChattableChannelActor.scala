@@ -5,10 +5,14 @@ import com.vilenet.Constants._
 import com.vilenet.coders.commands._
 import com.vilenet.users.UserToChannelCommandAck
 
+import scala.collection.mutable
+
 /**
   * Created by filip on 11/15/15.
   */
 trait ChattableChannelActor extends ChannelActor {
+
+  val mutedUsers = mutable.HashSet.empty[ActorRef]
 
   override def receiveEvent = ({
     case ChatCommand(user, message) =>
@@ -24,12 +28,21 @@ trait ChattableChannelActor extends ChannelActor {
             sender() ! UserInfo(USER_SQUELCHED(command.realUsername))
             users.get(command.userActor).foreach(user => sender() ! UserFlags(Flags.squelch(user)))
           }
+
         case _: UnsquelchCommand =>
           if (isLocal()) {
             sender() ! UserUnsquelched(command.realUsername)
             sender() ! UserInfo(USER_UNSQUELCHED(command.realUsername))
             users.get(command.userActor).foreach(user => sender() ! UserFlags(Flags.unsquelch(user)))
           }
+
+        case userMute: UserMute =>
+          mutedUsers += command.userActor
+          sender() ! UserInfo(USER_MUTED(command.realUsername, name))
+
+        case userUnmute: UserUnmute =>
+          mutedUsers -= command.userActor
+          sender() ! UserInfo(USER_UNMUTED(command.realUsername, name))
         case _ =>
       }
       super.receiveEvent(command)
@@ -56,13 +69,22 @@ trait ChattableChannelActor extends ChannelActor {
     if (isLocal(userActor)) {
       userActor ! ITalked(user, message)
     }
-    localUsers
-      .filterNot(_ == userActor)
-      .foreach(_ ! UserTalked(user, message))
+
+    if (!mutedUsers.contains(userActor)) {
+      localUsers
+        .filterNot(_ == userActor)
+        .foreach(_ ! UserTalked(user, message))
+    }
   }
 
   def onEmoteMessage(user: User, message: String) = {
-    localUsers ! UserEmote(user, message)
+    val userActor = sender()
+
+    if (mutedUsers.contains(sender())) {
+      userActor ! UserEmote(user, message)
+    } else {
+      localUsers ! UserEmote(user, message)
+    }
   }
 
   override def add(actor: ActorRef, user: User): User = {

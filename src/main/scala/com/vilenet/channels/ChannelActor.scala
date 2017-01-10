@@ -234,7 +234,9 @@ trait ChannelActor extends ViLeNetRemotingActor {
         val newUser = user.copy(ping = ping)
         users += userActor -> newUser
         userActor ! UserUpdated(newUser)
-        sendUserUpdate(newUser)
+
+        // Remove for shitty bnet bots
+        //sendUserUpdate(newUser)
       })
     case event =>
       //println("Unhandled ChannelActor " + event)

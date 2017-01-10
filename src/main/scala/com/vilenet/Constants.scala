@@ -68,9 +68,11 @@ object Constants {
   val USER_BANNED = (banning: String, banned: String, message: String) => s"$banned was banned by $banning${if (message.nonEmpty) s" ($message)" else ""}."
   val USER_DESIGNATED = (designated: String) => s"$designated is your new designated heir."
   val USER_KICKED = (kicking: String, kicked: String, message: String) => s"$kicked was kicked out of the channel by $kicking${if (message.nonEmpty) s" ($message)" else ""}."
+  val USER_MUTED = (muted: String, channel: String) => s"$muted has been muted in the channel $channel."
   val USER_NOT_LOGGED_ON = "That user is not logged on."
   val USER_SQUELCHED = (squelched: String) => s"$squelched has been squelched."
   val USER_UNBANNED = (unbanning: String, unbanned: String) => s"$unbanned was unbanned by $unbanning."
+  val USER_UNMUTED = (unmuted: String, channel: String) => s"$unmuted has been unmuted in the channel $channel."
   val USER_UNSQUELCHED = (unsquelched: String) => s"$unsquelched has been unsquelched."
   val USERS = (localUsersCount: Int, allUsersCount: Int) =>
     s"There ${if (localUsersCount != 1) s"are $localUsersCount users" else s"is $localUsersCount user"} on this server and $allUsersCount ${addS(allUsersCount, "user")} on $VILE_NET."
