@@ -38,11 +38,15 @@ trait ChattableChannelActor extends ChannelActor {
 
         case userMute: UserMute =>
           mutedUsers += command.userActor
-          sender() ! UserInfo(USER_MUTED(command.realUsername, name))
+          if (isLocal()) {
+            sender() ! UserInfo(USER_MUTED(command.realUsername, name))
+          }
 
         case userUnmute: UserUnmute =>
           mutedUsers -= command.userActor
-          sender() ! UserInfo(USER_UNMUTED(command.realUsername, name))
+          if (isLocal()) {
+            sender() ! UserInfo(USER_UNMUTED(command.realUsername, name))
+          }
         case _ =>
       }
       super.receiveEvent(command)
@@ -80,8 +84,10 @@ trait ChattableChannelActor extends ChannelActor {
   def onEmoteMessage(user: User, message: String) = {
     val userActor = sender()
 
-    if (mutedUsers.contains(sender())) {
-      userActor ! UserEmote(user, message)
+    if (mutedUsers.contains(userActor)) {
+      if (isLocal()) {
+        userActor ! UserEmote(user, message)
+      }
     } else {
       localUsers ! UserEmote(user, message)
     }
