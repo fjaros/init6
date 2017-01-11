@@ -18,11 +18,14 @@ case class WriteOut(data: ByteString)
 
 sealed trait ProtocolState
 case object Uninitialized extends ProtocolState
+case object Uninitialized2Telnet extends ProtocolState
+case object Uninitialized2Chat1 extends ProtocolState
 case object Initialized extends ProtocolState
 case object InitializedBuffering extends ProtocolState
 
 sealed trait ProtocolData
 case object EmptyProtocolData extends ProtocolData
+case class ConnectingProtocolData(bufferedData: ByteString) extends ProtocolData
 case class ConnectionProtocolData(messageHandler: ActorRef, data: ByteString) extends ProtocolData
 
 class ProtocolHandler(clientAddress: InetSocketAddress, client: ActorRef) extends ViLeNetActor with FSM[ProtocolState, ProtocolData] {
@@ -46,19 +49,29 @@ class ProtocolHandler(clientAddress: InetSocketAddress, client: ActorRef) extend
         case BINARY =>
           goto (Initialized) using ConnectionProtocolData(context.actorOf(BinaryMessageReceiver(clientAddress, self)), data.tail)
         case TELNET =>
-          val dataTail = data.tail
-          dataTail.head match {
-            case TELNET_2 =>
-              goto (Initialized) using ConnectionProtocolData(context.actorOf(TelnetMessageReceiver(clientAddress, self)), dataTail.tail)
-            case _ => stop()
-          }
+          goto (Uninitialized2Telnet) using ConnectingProtocolData(data.tail)
         case VILENET_CHAT =>
-          val dataTail = data.tail
-          dataTail.head match {
-            case VILENET_CHAT_1 =>
-              goto (Initialized) using ConnectionProtocolData(context.actorOf(Chat1Receiver(clientAddress, self)), dataTail.tail)
-            case _ => stop()
-          }
+          goto (Uninitialized2Chat1) using ConnectingProtocolData(data.tail)
+        case _ => stop()
+      }
+    case _ => stop()
+  }
+
+  when (Uninitialized2Telnet) {
+    case Event(Received(data), protocolData: ConnectingProtocolData) =>
+      data.head match {
+        case TELNET_2 =>
+          goto (Initialized) using ConnectionProtocolData(context.actorOf(TelnetMessageReceiver(clientAddress, self)), data.tail)
+        case _ => stop()
+      }
+    case _ => stop()
+  }
+
+  when (Uninitialized2Chat1) {
+    case Event(Received(data), protocolData: ConnectingProtocolData) =>
+      data.head match {
+        case VILENET_CHAT_1 =>
+          goto (Initialized) using ConnectionProtocolData(context.actorOf(Chat1Receiver(clientAddress, self)), data.tail)
         case _ => stop()
       }
     case _ => stop()
@@ -112,7 +125,9 @@ class ProtocolHandler(clientAddress: InetSocketAddress, client: ActorRef) extend
   }
 
   onTransition {
-    case Uninitialized -> Initialized =>
+    case Uninitialized -> Initialized |
+         Uninitialized2Telnet -> Initialized |
+         Uninitialized2Chat1 -> Initialized =>
       nextStateData match {
         case ConnectionProtocolData(actor, data) =>
           if (data.nonEmpty) {
@@ -123,10 +138,25 @@ class ProtocolHandler(clientAddress: InetSocketAddress, client: ActorRef) extend
         case x =>
           log.error("{} ProtocolHandler onTransition unhandled state data: {}", clientAddress.getAddress, x)
       }
+    case Uninitialized -> Uninitialized2Telnet => transitionToExpectByte2()
+    case Uninitialized -> Uninitialized2Chat1 => transitionToExpectByte2()
     case Initialized -> InitializedBuffering =>
     case InitializedBuffering -> Initialized =>
     case x =>
       log.error("{} ProtocolHandler onTransition unhandled transition: {}", clientAddress.getAddress, x)
+  }
+
+  def transitionToExpectByte2() = {
+    nextStateData match {
+      case ConnectingProtocolData(data) =>
+        if (data.nonEmpty) {
+          self ! Received(data)
+        } else {
+          client ! ResumeReading
+        }
+      case x =>
+        log.error("{} ProtocolHandler onTransition unhandled state data: {}", clientAddress.getAddress, x)
+    }
   }
 
   onTermination {
