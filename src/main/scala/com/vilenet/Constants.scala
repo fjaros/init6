@@ -79,7 +79,7 @@ object Constants {
   val YOU_KICKED = (kicking: String) => s"$kicking kicked you out of the channel!"
   val YOU_BANNED = "You are banned from that channel."
   val YOU_CANT_SQUELCH = "You can't squelch yourself."
-  val WHO_CHANNEL = (name: String) => s"Users in channel $name:"
+  val WHO_CHANNEL = (name: String, size: Int) => s"Listing $size ${addS(size, "user")} in channel $name:"
 
   val WHOAMI = (username: String, client: String, channel: String) => s"You are $username, using $client in the channel $channel."
   val TOP_INFO = (number: Int, protocol: String) => s"Showing the top $number $protocol connections:"

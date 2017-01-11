@@ -133,6 +133,12 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
     case (actor: ActorRef, WhoisCommand(fromUser, username)) =>
       actor ! UserInfo(s"${user.name} is using ${encodeClient(user.client)}${if (user.inChannel != "") s" in the channel ${user.inChannel}" else ""}.")
 
+    case WhoCommandResponse(whoResponseMessage, userMessages) =>
+      whoResponseMessage.fold(encodeAndSend(UserErrorArray(CHANNEL_NOT_EXIST)))(whoResponseMessage => {
+        encodeAndSend(UserInfo(whoResponseMessage))
+        userMessages.foreach(userMessage => encodeAndSend(UserInfo(userMessage)))
+      })
+
     case c@ BanCommand(kicking, message) =>
       println(c)
       self ! UserInfo(YOU_KICKED(kicking))

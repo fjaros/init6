@@ -61,6 +61,7 @@ case object ChannelToUserPing extends Command
 case object UserToChannelPing extends Command
 case class InternalChannelUserUpdate(actor: ActorRef, user: User) extends Command
 case class ChannelJoinResponse(message: ChatEvent) extends Command
+case class WhoCommandResponse(whoResponseMessage: Option[String], userMessages: Seq[String]) extends Command
 
 trait ChannelActor extends ViLeNetRemotingActor {
 
@@ -134,6 +135,11 @@ trait ChannelActor extends ViLeNetRemotingActor {
       users -= actor
       //usersKeepAlive -= actor
     })
+
+    // clear topic if applicable
+    if (users.isEmpty) {
+      topicExchange = TopicExchange()
+    }
 
     userOpt
   }
@@ -261,11 +267,11 @@ trait ChannelActor extends ViLeNetRemotingActor {
         })
         .grouped(2)
         .map(_.mkString(", "))
+        .toSeq
 
-      actor ! UserInfo(WHO_CHANNEL(name))
-      usernames.foreach(actor ! UserInfo(_))
+      actor ! WhoCommandResponse(Some(WHO_CHANNEL(name, users.size)), usernames)
     } else {
-      actor ! UserErrorArray(CHANNEL_NOT_EXIST)
+      actor ! WhoCommandResponse(None, Seq.empty)
     }
   }
 }

@@ -68,8 +68,9 @@ object CommandDecoder {
         case "squelch" | "ignore" => SquelchCommand(user, message.takeWhile(_ != ' '))
         case "top" =>
           if (message.nonEmpty) {
-            message.toLowerCase match {
-              case "chat" | "binary" | "all" => TopCommand(message)
+            val lowerCaseMessage = message.toLowerCase
+            lowerCaseMessage match {
+              case "chat" | "binary" | "all" => TopCommand(lowerCaseMessage)
               case "" => TopCommand("all")
               case _ => UserError()
             }
