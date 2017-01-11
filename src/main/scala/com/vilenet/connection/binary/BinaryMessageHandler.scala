@@ -97,12 +97,12 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
           case x =>
             log.error(">> {} Unexpected ping packet: {}", connection, x)
         }
-      case SID_LEAVECHAT =>
-        binaryPacket.packet match {
-          case SidLeaveChat(packet) =>
-            stateData ! UserLeftChat
-          case x => ////println(s"${x.getClass}")
-        }
+//      case SID_LEAVECHAT =>
+//        binaryPacket.packet match {
+//          case SidLeaveChat(packet) =>
+//            //stateData ! UserLeftChat
+//          case x => ////println(s"${x.getClass}")
+//        }
       case packetId =>
         log.error(">> {} Unexpected: {}", connection, f"$packetId%X")
     }

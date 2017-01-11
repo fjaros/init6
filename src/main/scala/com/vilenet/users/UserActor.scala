@@ -106,35 +106,17 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
       }
       encodeAndSend(event)
 
-    case UserUpdated(newUser) =>
-      user = newUser
-
     case UserSquelched(username) =>
       squelchedUsers += username
 
     case UserUnsquelched(username) =>
       squelchedUsers -= username
 
-    case UserIn(user) =>
-      encodeAndSend(UserIn(checkSquelched(user)))
+    case UserUpdated(newUser) =>
+      user = newUser
 
-    case UserJoined(user) =>
-      encodeAndSend(UserJoined(checkSquelched(user)))
-
-    case UserFlags(user) =>
-      encodeAndSend(UserFlags(checkSquelched(user)))
-
-    case UserLeftChat =>
-      user = user.copy(inChannel = "")
-      channelActor ! RemUser(self)
-
-    case channelEvent: SquelchableTalkEvent =>
-      if (!squelchedUsers.contains(channelEvent.user.name)) {
-        encodeAndSend(channelEvent)
-      }
-
-    case channelEvent: ChatEvent =>
-      encodeAndSend(channelEvent)
+    case chatEvent: ChatEvent =>
+      handleChatEvent(chatEvent)
 
     case (actor: ActorRef, WhisperMessage(fromUser, toUsername, message)) =>
       encoder(UserWhisperedFrom(fromUser, message))
@@ -273,6 +255,31 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
 
     case x =>
       log.debug("{} UserActor Unhandled {}", user.name, x)
+  }
+
+  private def handleChatEvent(chatEvent: ChatEvent) = {
+    val chatEventSender = sender()
+    // If it comes from Channels/*, make sure it is the current channelActor
+    if (chatEventSender.path.parent.name != VILE_NET_CHANNELS_PATH || chatEventSender == channelActor) {
+      chatEvent match {
+        case UserIn(user) =>
+          encodeAndSend(UserIn(checkSquelched(user)))
+
+        case UserJoined(user) =>
+          encodeAndSend(UserJoined(checkSquelched(user)))
+
+        case UserFlags(user) =>
+          encodeAndSend(UserFlags(checkSquelched(user)))
+
+        case channelEvent: SquelchableTalkEvent =>
+          if (!squelchedUsers.contains(channelEvent.user.name)) {
+            encodeAndSend(channelEvent)
+          }
+
+        case _ =>
+          encodeAndSend(chatEvent)
+      }
+    }
   }
 
   private def handlePingResponse(cookie: String) = {
