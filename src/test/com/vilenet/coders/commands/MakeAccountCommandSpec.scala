@@ -1,7 +1,7 @@
-package com.vilenet.coders.commands
+package com.init6.coders.commands
 
-import com.vilenet.Constants
-import com.vilenet.coders.binary.hash.BSHA1
+import com.init6.Constants
+import com.init6.coders.binary.hash.BSHA1
 import org.scalatest.{Matchers, FlatSpec}
 
 /**

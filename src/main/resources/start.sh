@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# -- ViLeNet Server Start + Drop Script --
+# -- init6 Server Start + Drop Script --
 #
 # Created by filip on 1/28/16.
 #
@@ -13,9 +13,9 @@
 debug=false
 
 # update jar. if this file is in the folder, it will be used on next restart
-update_jar=vilenet.jar.update
+update_jar=init6.jar.update
 
-config=vilenet.conf
+config=init6.conf
 
 # in minutes
 min_wait=120
@@ -94,7 +94,7 @@ function echo() {
 trap shutdown_hook INT TERM
 
 function shutdown_hook() {
-    echo "Script received terminate. Killing ViLeNet."
+    echo "Script received terminate. Killing init6."
     if [ -n "$pid" ] && [ -e "/proc/$pid" ]; then
         kill "$pid"
         wait "$pid"
@@ -116,7 +116,7 @@ function random_range() {
 java_version=$(java -version 2>&1 | awk -F '"' '/version/ {print $2}')
 echo "Detected java version $java_version"
 if [[ ! "$java_version" > 1.8.* ]]; then
-    echo "ViLeNet requires java 1.8+ . Exiting."
+    echo "init6 requires java 1.8+ . Exiting."
     exit
 fi
 
@@ -124,20 +124,20 @@ java_run=" \
     -XX:+HeapDumpOnOutOfMemoryError -XX:+DisableExplicitGC \
     -Xms128m -Xmx4g \
     -Dconfig=$config \
-    -cp lib/*:vilenet.jar \
-    com.vilenet.ViLeNet"
+    -cp lib/*:init6.jar \
+    com.init6.init6"
 
 while :; do
     if [ -n "$pid" ]; then
         echo "PID set to $pid"
     else
         if [ -e "$update_jar" ]; then
-            echo "Found $update_jar. Rewriting vilenet.jar..."
-            mv "$update_jar" vilenet.jar
+            echo "Found $update_jar. Rewriting init6.jar..."
+            mv "$update_jar" init6.jar
         fi
-        echo "Starting ViLeNet..."
+        echo "Starting init6..."
 
-        log_file="vilenet_$(date +'%s%N'|cut -b1-13).log"
+        log_file="init6_$(date +'%s%N'|cut -b1-13).log"
         if [ "$debug" = true ]; then
             java $java_run
         else
@@ -158,22 +158,22 @@ while :; do
             let "waited_time += check_proc_interval"
 
             if [ "$waited_time" -ge "$wait_time" ]; then
-                echo "Wait time elapsed. Dropping ViLeNet..."
+                echo "Wait time elapsed. Dropping init6..."
                 kill "$pid"
                 wait "$pid"
                 pid=""
 
                 random_range between_drops "$min_between_drops" "$max_between_drops"
 
-                echo "Killed ViLeNet. Sleeping $between_drops seconds between drops."
+                echo "Killed init6. Sleeping $between_drops seconds between drops."
                 sleep "$between_drops"
             fi
         else
             if [ "$restart_if_killed" = true ]; then
-                echo "ViLeNet dropped outside of drop script. Restarting..."
+                echo "init6 dropped outside of drop script. Restarting..."
                 break
             else
-                echo "ViLeNet dropped outside of drop script."
+                echo "init6 dropped outside of drop script."
                 exit
             fi
         fi

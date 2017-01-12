@@ -1,4 +1,4 @@
-package com.vilenet.test;
+package com.init6.test;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;

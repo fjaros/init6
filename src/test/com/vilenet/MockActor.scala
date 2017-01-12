@@ -1,4 +1,4 @@
-package com.vilenet
+package com.init6
 
 import akka.actor.{Props, Actor}
 import akka.testkit.TestActorRef

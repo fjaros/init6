@@ -1,8 +1,8 @@
-package com.vilenet.channels
+package com.init6.channels
 
 import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.testkit.TestActorRef
-import com.vilenet.utils.RealKeyedCaseInsensitiveHashMap
+import com.init6.utils.RealKeyedCaseInsensitiveHashMap
 import org.scalatest.{Matchers, FlatSpec}
 
 /**

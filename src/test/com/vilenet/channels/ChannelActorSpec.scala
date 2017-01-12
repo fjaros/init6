@@ -1,10 +1,10 @@
-package com.vilenet.channels
+package com.init6.channels
 
 import akka.actor.ActorRef
 import akka.testkit.TestActorRef
-import com.vilenet.servers.RemoteEvent
-import com.vilenet.users.UserUpdated
-import com.vilenet.{MockActor, ViLeNetTestComponent}
+import com.init6.servers.RemoteEvent
+import com.init6.users.UserUpdated
+import com.init6.{MockActor, ViLeNetTestComponent}
 import org.scalatest._
 
 import scala.collection.mutable

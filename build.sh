@@ -1,6 +1,6 @@
 #!/bin/bash
 
-BUILD_INFO_FILE="src/main/scala/com/vilenet/BuildInfo.scala"
+BUILD_INFO_FILE="src/main/scala/com/init6/BuildInfo.scala"
 BUILD_NUMBER=$(git rev-list --count HEAD)
 BUILD_HASH=$(git rev-list --max-count 1 HEAD)
 OS=$(uname)

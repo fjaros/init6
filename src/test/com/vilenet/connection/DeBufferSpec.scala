@@ -1,7 +1,7 @@
-package com.vilenet.connection
+package com.init6.connection
 
 import akka.util.ByteString
-import com.vilenet.coders.binary.DeBuffer
+import com.init6.coders.binary.DeBuffer
 import org.scalatest.{Matchers, FlatSpec}
 
 /**

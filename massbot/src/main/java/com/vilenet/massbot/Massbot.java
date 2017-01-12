@@ -1,4 +1,4 @@
-package com.vilenet.massbot;
+package com.init6.massbot;
 
 import java.io.BufferedReader;
 import java.io.IOException;

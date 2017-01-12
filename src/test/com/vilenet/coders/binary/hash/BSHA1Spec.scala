@@ -1,4 +1,4 @@
-package com.vilenet.coders.binary.hash
+package com.init6.coders.binary.hash
 
 import org.scalatest.{Matchers, FlatSpec}
 

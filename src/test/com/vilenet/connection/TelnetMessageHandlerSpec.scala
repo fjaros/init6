@@ -1,4 +1,4 @@
-package com.vilenet.connection
+package com.init6.connection
 
 import java.net.InetSocketAddress
 
@@ -7,7 +7,7 @@ import akka.actor.ActorRef
 import akka.io.Tcp.Received
 import akka.testkit.{TestActorRef, TestActor}
 import akka.util.ByteString
-import com.vilenet.{ViLeNetActor, ViLeNetTestComponent}
+import com.init6.{ViLeNetActor, ViLeNetTestComponent}
 import org.scalatest.FlatSpec
 
 import scala.collection.mutable.ArrayBuffer
