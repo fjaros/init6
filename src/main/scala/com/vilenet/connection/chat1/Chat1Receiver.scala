@@ -97,7 +97,7 @@ class Chat1Handler(clientAddress: InetSocketAddress, connection: ActorRef) exten
           goto(BlockedInChat1State)
         } else {
           if (BSHA1(userCredentials.password).sameElements(dbUser.passwordHash)) {
-            val u = User(userCredentials.username, dbUser.flags | Flags.UDP, 0, client = "TAHC")
+            val u = User(clientAddress.getAddress.getHostAddress, userCredentials.username, dbUser.flags | Flags.UDP, 0, client = "TAHC")
             Await.result(usersActor ? Add(connection, u, Chat1Protocol), timeout.duration) match {
               case UsersUserAdded(actor, user) =>
                 connection ! WriteOut(Chat1Encoder(LoginOK).get)

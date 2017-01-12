@@ -34,6 +34,7 @@ object ChannelActor {
 
 case class User(
   // Static variables
+  ipAddress: String,
   name: String,
   flags: Long = 0,
   ping: Long = 0,

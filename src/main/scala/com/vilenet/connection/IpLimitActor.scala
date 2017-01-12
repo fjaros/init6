@@ -1,8 +1,10 @@
 package com.vilenet.connection
 
+import java.net.InetAddress
+
 import akka.actor.Props
 import com.vilenet.Constants._
-import com.vilenet.{ViLeNetActor, ViLeNetComponent}
+import com.vilenet.{Config, ViLeNetActor, ViLeNetComponent}
 
 import scala.collection.mutable
 
@@ -13,8 +15,8 @@ object IpLimitActor extends ViLeNetComponent {
   def apply(limit: Int) = system.actorOf(Props(classOf[IpLimitActor], limit), VILE_NET_IP_LIMITER_PATH)
 }
 
-case class Connected(address: Array[Byte])
-case class Disconnected(address: Array[Byte])
+case class Connected(address: InetAddress)
+case class Disconnected(address: InetAddress)
 case object Allowed
 case object NotAllowed
 
@@ -26,7 +28,15 @@ class IpLimitActor(limit: Int) extends ViLeNetActor {
 
   override def receive: Receive = {
     case Connected(address) =>
-      val addressInt = toDword(address)
+      if (
+        Config().Accounts.enableIpWhitelist &&
+        !Config().Accounts.ipWhitelist.contains(address.getHostAddress)
+      ) {
+        sender() ! NotAllowed
+        return receive
+      }
+
+      val addressInt = toDword(address.getAddress)
       val current = ips.getOrElse(addressInt, 0)
 
       if (limit > current) {
@@ -37,7 +47,7 @@ class IpLimitActor(limit: Int) extends ViLeNetActor {
       }
 
     case Disconnected(address) =>
-      val addressInt = toDword(address)
+      val addressInt = toDword(address.getAddress)
       val current = ips.getOrElse(addressInt, 0)
       if (current > 0) { // Should always get through the if though...
         ips += addressInt -> (current - 1)

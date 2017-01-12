@@ -351,7 +351,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
         goto(ExpectingSidLogonResponse)
       } else {
         if (BSHA1(clientToken, serverToken, dbUser.passwordHash).sameElements(passwordHash)) {
-          val u = User(oldUsername, dbUser.flags, ping, client = productId)
+          val u = User(clientAddress.getAddress.getHostAddress, oldUsername, dbUser.flags, ping, client = productId)
           usersActor ! Add(connection, u, BinaryProtocol)
           goto(ExpectingLogonHandled)
         } else {
@@ -373,7 +373,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
         goto(ExpectingSidLogonResponse)
       } else {
         if (BSHA1(clientToken, serverToken, dbUser.passwordHash).sameElements(passwordHash)) {
-          val u = User(oldUsername, dbUser.flags, ping, client = productId)
+          val u = User(clientAddress.getAddress.getHostAddress, oldUsername, dbUser.flags, ping, client = productId)
           usersActor ! Add(connection, u, BinaryProtocol)
           goto(ExpectingLogon2Handled)
         } else {

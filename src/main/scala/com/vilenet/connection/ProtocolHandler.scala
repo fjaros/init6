@@ -93,7 +93,7 @@ class ProtocolHandler(clientAddress: InetSocketAddress, client: ActorRef) extend
       protocolData.messageHandler ! x
       stop()
     case x =>
-      log.error("{} ProtocolHandler InitializedBuffering unhandled: {}", clientAddress.getAddress, x)
+      log.error("{} ProtocolHandler InitializedBuffering unhandled: {}", clientAddress.getAddress.getHostAddress, x)
       stay()
   }
 
@@ -120,7 +120,7 @@ class ProtocolHandler(clientAddress: InetSocketAddress, client: ActorRef) extend
       protocolData.messageHandler ! x
       stop()
     case x =>
-      log.error("{} ProtocolHandler InitializedBuffering unhandled: {}", clientAddress.getAddress, x)
+      log.error("{} ProtocolHandler InitializedBuffering unhandled: {}", clientAddress.getAddress.getHostAddress, x)
       stay()
   }
 
@@ -136,14 +136,14 @@ class ProtocolHandler(clientAddress: InetSocketAddress, client: ActorRef) extend
             client ! ResumeReading
           }
         case x =>
-          log.error("{} ProtocolHandler onTransition unhandled state data: {}", clientAddress.getAddress, x)
+          log.error("{} ProtocolHandler onTransition unhandled state data: {}", clientAddress.getAddress.getHostAddress, x)
       }
     case Uninitialized -> Uninitialized2Telnet => transitionToExpectByte2()
     case Uninitialized -> Uninitialized2Chat1 => transitionToExpectByte2()
     case Initialized -> InitializedBuffering =>
     case InitializedBuffering -> Initialized =>
     case x =>
-      log.error("{} ProtocolHandler onTransition unhandled transition: {}", clientAddress.getAddress, x)
+      log.error("{} ProtocolHandler onTransition unhandled transition: {}", clientAddress.getAddress.getHostAddress, x)
   }
 
   def transitionToExpectByte2() = {
@@ -155,14 +155,14 @@ class ProtocolHandler(clientAddress: InetSocketAddress, client: ActorRef) extend
           client ! ResumeReading
         }
       case x =>
-        log.error("{} ProtocolHandler onTransition unhandled state data: {}", clientAddress.getAddress, x)
+        log.error("{} ProtocolHandler onTransition unhandled state data: {}", clientAddress.getAddress.getHostAddress, x)
     }
   }
 
   onTermination {
     case x =>
-      log.debug("{} ProtocolHandled terminated", clientAddress.getAddress)
+      log.debug("{} ProtocolHandled terminated", clientAddress.getAddress.getHostAddress)
       client ! Close
-      ipLimiterActor ! Disconnected(clientAddress.getAddress.getAddress)
+      ipLimiterActor ! Disconnected(clientAddress.getAddress)
   }
 }

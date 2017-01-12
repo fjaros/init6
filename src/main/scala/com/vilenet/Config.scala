@@ -77,6 +77,9 @@ class Config(filePath: String) {
     val maxLength = p.getInt("max-length")
 
     val enableMultipleLogins = p.getBoolean("enable-multiple")
+
+    val enableIpWhitelist = p.getBoolean("enable-ip-whitelist")
+    val ipWhitelist = p.getStringList("ip-whitelist").asScala.toSet
   }
 
   object Database {

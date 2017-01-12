@@ -43,9 +43,9 @@ class ConnectionHandler(host: String, port: Int) extends ViLeNetActor {
   def accept(listener: ActorRef): Receive = {
     case Tcp.Connected(remote, _) =>
       val remoteInetAddress = remote.getAddress
-      log.debug("Address {} connected", remoteInetAddress)
+      log.debug("Address {} connected", remoteInetAddress.getHostAddress)
       Try {
-        Await.result(ipLimiterActor ? Connected(remoteInetAddress.getAddress), timeout.duration) match {
+        Await.result(ipLimiterActor ? Connected(remoteInetAddress), timeout.duration) match {
           case Allowed => allowed(remote)
           case _ => disallowed(remote)
         }
