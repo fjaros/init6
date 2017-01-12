@@ -10,8 +10,9 @@ import com.init6.Constants._
 import com.init6.coders.chat1.Chat1Encoder
 import com.init6.coders.commands._
 import com.init6.connection.WriteOut
-import com.init6.{Config, ReloadConfig, Init6Actor, Init6LoggingActor}
+import com.init6.{Config, Init6Actor, Init6LoggingActor, ReloadConfig}
 import com.init6.channels._
+import com.init6.channels.utils.ChannelJoinValidator
 import com.init6.coders._
 import com.init6.coders.binary.BinaryChatEncoder
 import com.init6.coders.telnet._
@@ -144,6 +145,9 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
         userMessages.foreach(userMessage => encodeAndSend(UserInfo(userMessage)))
       })
 
+    case WhoCommandError(errorMessage) =>
+      encodeAndSend(UserError(errorMessage))
+
     case c@ BanCommand(kicking, message) =>
       println(c)
       self ! UserInfo(YOU_KICKED(kicking))
@@ -186,7 +190,7 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
                 * channel exists.
                 */
               case c@JoinUserCommand(fromUser, channel) =>
-                if (!user.inChannel.equalsIgnoreCase(channel)) {
+                if (ChannelJoinValidator(user.inChannel, channel)) {
                   joinChannel(channel)
                 }
               case ResignCommand => resign()

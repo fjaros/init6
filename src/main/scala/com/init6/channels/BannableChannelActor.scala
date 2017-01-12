@@ -119,7 +119,7 @@ trait BannableChannelActor extends ChannelActor {
     if (!bannedUsers(user.name)) {
       super.whoCommand(actor, user)
     } else {
-      actor ! UserError(NOT_ALLOWED_TO_VIEW)
+      actor ! WhoCommandError(NOT_ALLOWED_TO_VIEW)
     }
   }
 }

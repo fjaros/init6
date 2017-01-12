@@ -26,7 +26,7 @@ object ChannelActor {
       case "backstage" => AdminChannelActor("Backstage")
       case "vile" => LockedChannelActor("ViLe", "Channel ViLe has been locked. Please use our new chatting channel: init 6")
       case "the void" => VoidedChannelActor("The Void")
-      case "init 6" | "init6" => PublicChannelActor("init 6")
+      case "init 6" => PublicChannelActor("init 6")
       case "chat" => PublicLimitlessChannelActor("Chat")
       case _ => PrivateChannelActor(name)
     }
@@ -64,6 +64,7 @@ case object UserToChannelPing extends Command
 case class InternalChannelUserUpdate(actor: ActorRef, user: User) extends Command
 case class ChannelJoinResponse(message: ChatEvent) extends Command
 case class WhoCommandResponse(whoResponseMessage: Option[String], userMessages: Seq[String]) extends Command
+case class WhoCommandError(errorMessage: String) extends Command
 
 trait ChannelActor extends Init6RemotingActor {
 

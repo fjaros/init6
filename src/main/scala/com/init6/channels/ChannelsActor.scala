@@ -196,12 +196,21 @@ class ChannelsActor extends Init6RemotingActor {
   }
 
   def getOrCreate(name: String) = {
-    val channelActor = channels.getOrElse(name, {
-      val channelActor = context.actorOf(ChannelActor(name).withDispatcher(CHANNEL_DISPATCHER), Base64(name.toLowerCase))
-      channels += name -> channelActor
-      name -> channelActor
+    val fixedName = nameFixer(name)
+
+    val channelActor = channels.getOrElse(fixedName, {
+      val channelActor = context.actorOf(ChannelActor(fixedName).withDispatcher(CHANNEL_DISPATCHER), Base64(fixedName.toLowerCase))
+      channels += fixedName -> channelActor
+      fixedName -> channelActor
     })._2
 
     channelActor
+  }
+
+  def nameFixer(name: String) = {
+    name.toLowerCase match {
+      case "init 6" | "init6" => "init 6"
+      case _ => name
+    }
   }
 }

@@ -27,7 +27,7 @@ sealed class AdminChannelActor(override val name: String)
     if (Flags.isAdmin(user)) {
       super.whoCommand(actor, user)
     } else {
-      actor ! UserError(NOT_ALLOWED_TO_VIEW)
+      actor ! WhoCommandError(NOT_ALLOWED_TO_VIEW)
     }
   }
 }
