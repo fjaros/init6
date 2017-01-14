@@ -63,7 +63,7 @@ object DAO {
     if (inserted.nonEmpty) {
       DB localTx { implicit session =>
         withSQL {
-          insertInto(DbUser)
+          InsertSQLBuilder(sqls"insert ignore into ${DbUser.table}")
             .namedValues(
               DbUser.column.username -> sqls.?,
               DbUser.column.passwordHash -> sqls.?,
