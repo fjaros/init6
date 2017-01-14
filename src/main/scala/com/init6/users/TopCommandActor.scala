@@ -1,5 +1,7 @@
 package com.init6.users
 
+import java.text.DecimalFormat
+
 import akka.actor.Props
 import com.init6.Constants._
 import com.init6.{Init6Actor, Init6Component}
@@ -14,23 +16,28 @@ object TopCommandActor extends Init6Component {
   def apply() = system.actorOf(Props[TopCommandActor], INIT6_TOP_COMMAND_ACTOR)
 }
 
+case class TopInfo(user: User, loggedInTime: String)
+
 class TopCommandActor extends Init6Actor {
 
+  val decimalFormat = new DecimalFormat("#.000")
+
   val topMap = Map(
-    "binary" -> FiniteArrayBuffer[User](),
-    "chat" -> FiniteArrayBuffer[User](),
-    "all" -> FiniteArrayBuffer[User]()
+    "binary" -> FiniteArrayBuffer[TopInfo](),
+    "chat" -> FiniteArrayBuffer[TopInfo](),
+    "all" -> FiniteArrayBuffer[TopInfo]()
   )
 
   override def receive: Receive = {
     case Add(_, user, protocol) =>
+      val topInfo = TopInfo(user, decimalFormat.format(math.round((System.nanoTime() - getBindTime).toDouble / 1000).toDouble / 1000))
       topMap(
         protocol match {
           case Chat1Protocol | TelnetProtocol => "chat"
           case _ => "binary"
         }
-      ) += user
-      topMap("all") += user
+      ) += topInfo
+      topMap("all") += topInfo
 
     case TopCommand(which) =>
       val topList = topMap(which)
@@ -38,8 +45,8 @@ class TopCommandActor extends Init6Actor {
       topList
         .zipWithIndex
         .foreach {
-          case (user, i) =>
-            sender() ! UserInfo(TOP_LIST(i + 1, user.name, encodeClient(user.client)))
+          case (topInfo, i) =>
+            sender() ! UserInfo(TOP_LIST(i + 1, topInfo.user.name, encodeClient(topInfo.user.client), topInfo.loggedInTime))
         }
   }
 }

@@ -20,6 +20,14 @@ private[init6] trait Init6Component {
   val ipLimiterActor = system.actorSelection(s"/user/$INIT6_IP_LIMITER_PATH")
   val topCommandActor = system.actorSelection(s"/user/$INIT6_TOP_COMMAND_ACTOR")
   val serverRegistry = system.actorSelection(s"/user/$INIT6_SERVER_REGISTRY_PATH")
+
+  def setBindTime() = {
+    SystemContext.bindTime = System.nanoTime()
+  }
+
+  def getBindTime = {
+    SystemContext.bindTime
+  }
 }
 
 private object SystemContext {
@@ -32,4 +40,6 @@ private object SystemContext {
 
   private val start = System.currentTimeMillis()
   def getUptime = Duration(System.currentTimeMillis() - start, TimeUnit.MILLISECONDS)
+
+  var bindTime: Long = _
 }
