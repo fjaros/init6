@@ -37,7 +37,7 @@ trait OperableChannelActor extends ChannelActor {
 
   override def add(actor: ActorRef, user: User): User = {
     val newUser =
-      if (users.isEmpty) {
+      if (isLocal(actor) && users.isEmpty) {
         Flags.op(user)
       } else {
         user

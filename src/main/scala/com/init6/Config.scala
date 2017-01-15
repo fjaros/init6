@@ -61,6 +61,7 @@ class Config(filePath: String) {
     object Registry {
       val pA = p.getConfig("registry")
 
+      val initialDelay = pA.getInt("initial-delay")
       val pingDelay = pA.getInt("ping-delay")
       val dropAfter = pA.getInt("drop-after")
     }

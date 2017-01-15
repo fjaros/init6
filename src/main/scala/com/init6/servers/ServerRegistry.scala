@@ -50,9 +50,10 @@ class ServerRegistry extends Init6Actor {
   override def preStart() = {
     import system.dispatcher
 
+    val initialDelay = Duration(Config().Server.Registry.initialDelay, TimeUnit.MILLISECONDS)
     val pingDelay = Duration(Config().Server.Registry.pingDelay, TimeUnit.MILLISECONDS)
     system.scheduler.schedule(
-      Duration(250, TimeUnit.MILLISECONDS),
+      initialDelay,
       pingDelay
     )({
       // Prune keepAlives. Anything >= 30 seconds shall be deemed dead
