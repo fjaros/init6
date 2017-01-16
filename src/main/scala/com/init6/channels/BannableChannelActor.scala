@@ -15,6 +15,13 @@ trait BannableChannelActor extends ChannelActor {
   val bannedUsers = CaseInsensitiveFiniteHashSet(limit)
 
   override def receiveEvent = ({
+    case command @ GetChannelUsers =>
+      sender() ! ReceivedBannedUsers(bannedUsers.toSeq)
+      super.receiveEvent(command)
+
+    case ReceivedBannedUsers(names) =>
+      bannedUsers ++= names
+
     case command: UserToChannelCommandAck =>
       users.get(sender()).foreach(user => {
         if (Flags.canBan(user)) {
@@ -49,6 +56,14 @@ trait BannableChannelActor extends ChannelActor {
     } else {
       super.add(actor, user)
     }
+  }
+
+  // remove users from banned when server reconnects if they are already in the channel
+  // the ops on other servers will have to ban them again.
+  override def remoteIn(remoteChannelActor: ActorRef, remoteUserActor: ActorRef, user: User) = {
+    bannedUsers -= user.name
+
+    super.remoteIn(remoteChannelActor, remoteUserActor, user)
   }
 
   override def rem(actor: ActorRef): Option[User] = {

@@ -8,18 +8,16 @@ import akka.pattern.ask
 import akka.io.Tcp.{Abort, Bind, Bound, Register, ResumeAccepting}
 import akka.io.{IO, Tcp}
 import akka.util.Timeout
-import com.init6.Constants._
 import com.init6.{Init6Actor, Init6Component}
 
 import scala.concurrent.Await
 import scala.util.Try
 
-
 /**
  * Created by filip on 9/19/15.
  */
 object ConnectionHandler extends Init6Component {
-  def apply(host: String, port: Int) = system.actorOf(Props(classOf[ConnectionHandler], host, port), INIT6)
+  def apply(host: String, port: Int) = system.actorOf(Props(classOf[ConnectionHandler], host, port))
 }
 
 class ConnectionHandler(host: String, port: Int) extends Init6Actor {
