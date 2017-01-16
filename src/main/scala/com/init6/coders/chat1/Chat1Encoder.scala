@@ -21,9 +21,9 @@ object Chat1Encoder extends Encoder {
       case LoginFailed(reason) =>
         s"FAIL $reason"
       case UserIn(user) =>
-        s"USER IN   ${user.flags} ${user.ping} ${user.name} NONE"
+        s"USER IN   ${user.flags} ${user.ping} ${user.name} ${user.client}"
       case UserJoined(user) =>
-        s"USER JOIN   ${user.flags} ${user.ping} ${user.name} NONE"
+        s"USER JOIN   ${user.flags} ${user.ping} ${user.name} ${user.client}"
       case UserLeft(user) =>
         s"USER LEAVE     ${user.name} "
       case UserWhisperedFrom(user, message) =>
@@ -37,7 +37,7 @@ object Chat1Encoder extends Encoder {
       case UserChannel(user, channel, _) =>
         s"CHANNEL JOIN    $channel"
       case UserFlags(user) =>
-        s"USER UPDATE   ${user.flags} ${user.ping} ${user.name} NONE"
+        s"USER UPDATE   ${user.flags} ${user.ping} ${user.name} ${user.client}"
       case UserWhisperedTo(user, message) =>
         s"USER WHISPER TO    ${user.name} $message"
       case UserInfo(message) =>

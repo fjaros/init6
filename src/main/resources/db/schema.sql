@@ -1,4 +1,7 @@
 GRANT ALL PRIVILEGES ON *.* TO 'filip'@'localhost' IDENTIFIED BY '12345' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON *.* TO 'replicator'@'%' IDENTIFIED BY '8init6gz47z0';
+GRANT ALL PRIVILEGES ON *.* TO 'vilenet'@'localhost' IDENTIFIED BY 'picakokot';
+
 DROP DATABASE vilenet;
 CREATE SCHEMA vilenet;
 USE vilenet;

@@ -125,7 +125,7 @@ java_run=" \
     -Xms128m -Xmx4g \
     -Dconfig=$config \
     -cp lib/*:init6.jar \
-    com.init6.init6"
+    com.init6.Init6"
 
 while :; do
     if [ -n "$pid" ]; then

@@ -11,7 +11,6 @@ object Constants {
 
   val TOPIC_DAO = "dao"
   val TOPIC_ONLINE = "online"
-  val TOPIC_CHANNEL = (channel: String) => s"_${channel.toLowerCase}"
   val TOPIC_CHANNELS = "channels"
   val TOPIC_USERS = "users"
   val TOPIC_SPLIT = "split"
