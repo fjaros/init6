@@ -30,7 +30,7 @@ trait OperableChannelActor extends ChannelActor {
 //            case _ => super.receiveEvent(command)
 //          }
 //        }
-//        super.receiveEvent(command)
+        super.receiveEvent(command)
 //      })
   }: Receive)
     .orElse(super.receiveEvent)

@@ -96,6 +96,15 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
     case PongCommand(cookie) =>
       handlePingResponse(cookie)
 
+    case c@ ChannelJoinResponse(event) =>
+      event match {
+        case UserChannel(newUser, channel, channelActor) =>
+          this.channelActor = channelActor
+          channelActor ! GetUsers
+        case _ =>
+      }
+      encodeAndSend(event)
+
     case UserSquelched(username) =>
       squelchedUsers += username
 
@@ -141,7 +150,6 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
       encodeAndSend(UserError(errorMessage))
 
     case c@ BanCommand(kicking, message) =>
-      println(c)
       self ! UserInfo(YOU_KICKED(kicking))
       channelsActor ! UserSwitchedChat(self, user, THE_VOID)
 
