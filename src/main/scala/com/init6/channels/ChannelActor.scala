@@ -156,12 +156,19 @@ trait ChannelActor extends Init6RemotingActor {
 
   def remoteIn(remoteChannelActor: ActorRef, remoteUserActor: ActorRef, user: User) = {
     //println("#REMOTEIN " + remoteChannelActor + " - " + remoteUserActor + " - " + user + " - " + users.contains(remoteUserActor))
-    if (!users.contains(remoteUserActor)) {
+    users.get(remoteUserActor).fold({
+      // new user
       users += remoteUserActor -> user
       //usersKeepAlive += remoteUserActor -> System.currentTimeMillis()
       remoteUsersMap += remoteChannelActor.path.address -> remoteUserActor
       localUsers ! UserIn(user)
-    }
+    })(currentUser => {
+      // existing but have to honor the flags of remote
+      users += remoteUserActor -> user
+      if (currentUser.flags != user.flags) {
+        sendUserUpdate(user)
+      }
+    })
   }
 
   // No. On Start advertise to remotes that you are alive.

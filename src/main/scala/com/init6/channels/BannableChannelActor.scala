@@ -24,7 +24,7 @@ trait BannableChannelActor extends ChannelActor {
 
     case command: UserToChannelCommandAck =>
       users.get(sender()).foreach(user => {
-        if (Flags.canBan(user)) {
+//        if (Flags.canBan(user)) {
           command.command match {
             case KickCommand(kicked, message) =>
               kickAction(sender(), command.userActor, message)
@@ -34,15 +34,15 @@ trait BannableChannelActor extends ChannelActor {
               unbanAction(sender(), command.realUsername)
             case _ => super.receiveEvent(command)
           }
-        } else {
-          command.command match {
-            case _: OperableCommand =>
-              if (isLocal()) {
-                sender() ! UserError(NOT_OPERATOR)
-              }
-            case _ => super.receiveEvent(command)
-          }
-        }
+//        } else {
+//          command.command match {
+//            case _: OperableCommand =>
+//              if (isLocal()) {
+//                sender() ! UserError(NOT_OPERATOR)
+//              }
+//            case _ => super.receiveEvent(command)
+//          }
+//        }
       })
   }: Receive)
     .orElse(super.receiveEvent)
