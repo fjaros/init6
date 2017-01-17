@@ -96,17 +96,6 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
     case PongCommand(cookie) =>
       handlePingResponse(cookie)
 
-    case c@ ChannelJoinResponse(event) =>
-      event match {
-        case UserChannel(newUser, channel, channelActor) =>
-          this.channelActor = channelActor
-          channelActor ! GetUsers
-          user = newUser.copy(joiningChannel = "")
-        case _ =>
-          user = user.copy(joiningChannel = "")
-      }
-      encodeAndSend(event)
-
     case UserSquelched(username) =>
       squelchedUsers += username
 
@@ -134,10 +123,13 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
     case (actor: ActorRef, WhoisCommand(fromUser, username)) =>
       actor !
         (if (Flags.isAdmin(fromUser)) {
-          UserInfo(s"${user.name} (${user.ipAddress}) is using ${encodeClient(user.client)}${if (user.inChannel != "") s" in the channel ${user.inChannel}" else ""}.")
+          UserInfo(s"${user.name} (${user.ipAddress}) is using ${encodeClient(user.client)}${if (user.inChannel != "") s" in the channel ${user.inChannel}" else ""} on server ${Config().Server.host}.")
         } else {
-          UserInfo(s"${user.name} is using ${encodeClient(user.client)}${if (user.inChannel != "") s" in the channel ${user.inChannel}" else ""}.")
+          UserInfo(s"${user.name} is using ${encodeClient(user.client)}${if (user.inChannel != "") s" in the channel ${user.inChannel}" else ""} on server ${Config().Server.host}.")
         })
+
+    case (actor: ActorRef, PlaceOfUserCommand(_, _)) =>
+      actor ! UserInfo(USER_PLACED(user.name, user.place, Config().Server.host))
 
     case WhoCommandResponse(whoResponseMessage, userMessages) =>
       whoResponseMessage.fold(encodeAndSend(UserErrorArray(CHANNEL_NOT_EXIST)))(whoResponseMessage => {

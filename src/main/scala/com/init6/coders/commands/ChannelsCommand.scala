@@ -9,4 +9,4 @@ case object ChannelsCommand extends Command
 
 //case class ChannelsCommand(actor: ActorRef) extends Command
 
-case class ChannelInfo(name: String, size: Int, topic: String) extends Command
+case class ChannelInfo(name: String, size: Int, topic: String, creationTime: Long) extends Command

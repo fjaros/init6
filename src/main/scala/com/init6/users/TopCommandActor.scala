@@ -1,13 +1,11 @@
 package com.init6.users
 
-import java.text.DecimalFormat
-
-import akka.actor.Props
+import akka.actor.{ActorRef, Props}
 import com.init6.Constants._
 import com.init6.{Init6Actor, Init6Component}
 import com.init6.channels.{User, UserInfo}
 import com.init6.coders.commands.TopCommand
-import com.init6.utils.FiniteArrayBuffer
+import com.init6.utils.FiniteLinkedHashMap
 
 /**
   * Created by filip on 2/8/16.
@@ -16,37 +14,62 @@ object TopCommandActor extends Init6Component {
   def apply() = system.actorOf(Props[TopCommandActor], INIT6_TOP_COMMAND_ACTOR)
 }
 
-case class TopInfo(user: User, loggedInTime: String)
+case class TopInfo(user: User, loggedInTime: Long)
+case class UserChannelChanged(actor: ActorRef, user: User)
 
 class TopCommandActor extends Init6Actor {
 
-  val decimalFormat = new DecimalFormat("#.000")
-
   val topMap = Map(
-    "binary" -> FiniteArrayBuffer[TopInfo](),
-    "chat" -> FiniteArrayBuffer[TopInfo](),
-    "all" -> FiniteArrayBuffer[TopInfo]()
+    "binary" -> FiniteLinkedHashMap[ActorRef, TopInfo](),
+    "chat" -> FiniteLinkedHashMap[ActorRef, TopInfo](),
+    "all" -> FiniteLinkedHashMap[ActorRef, TopInfo]()
   )
 
   override def receive: Receive = {
-    case Add(_, user, protocol) =>
-      val topInfo = TopInfo(user, decimalFormat.format(math.round((System.nanoTime() - getBindTime).toDouble / 1000).toDouble / 1000))
+    case Add(userActor, user, protocol) =>
+      val topInfo = TopInfo(user, System.nanoTime() - getBindTime)
       topMap(
         protocol match {
           case Chat1Protocol | TelnetProtocol => "chat"
           case _ => "binary"
         }
-      ) += topInfo
-      topMap("all") += topInfo
+      ) += userActor -> topInfo
+      topMap("all") += userActor -> topInfo
+
+    case UserChannelChanged(actor, user) =>
+      val topMapId =
+        if (isChatProtocol(user.client)) {
+          "chat"
+        } else {
+          "binary"
+        }
+
+      topMap(topMapId)
+        .get(actor)
+        .filter(_.user.inChannel.isEmpty)
+        .foreach(topInfo => {
+          val newEntry = actor -> topInfo.copy(user = user)
+
+          if (isChatProtocol(user.client)) {
+            if (!user.inChannel.equalsIgnoreCase("chat")) {
+              topMap("chat") += newEntry
+              topMap("all") += newEntry
+            }
+          } else {
+            topMap("binary") += newEntry
+            topMap("all") += newEntry
+          }
+        })
 
     case TopCommand(which) =>
       val topList = topMap(which)
       sender() ! UserInfo(TOP_INFO(topList.getInitialSize, which))
       topList
+        .values
         .zipWithIndex
         .foreach {
-          case (topInfo, i) =>
-            sender() ! UserInfo(TOP_LIST(i + 1, topInfo.user.name, encodeClient(topInfo.user.client), topInfo.loggedInTime))
+          case (TopInfo(user, loggedInTime), i) =>
+            sender() ! UserInfo(TOP_LIST(i + 1, user.name, user.client, user.inChannel, loggedInTime))
         }
   }
 }

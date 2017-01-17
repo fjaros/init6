@@ -10,7 +10,7 @@ import com.init6.channels.utils.{LocalUsersSet, RemoteMultiMap}
 import com.init6.coders.Base64
 import com.init6.coders.commands._
 import com.init6.servers.{Remotable, ServerOnline, SplitMe}
-import com.init6.users.{GetUsers, UpdatePing, UserUpdated}
+import com.init6.users.{GetUsers, UpdatePing, UserChannelChanged, UserUpdated}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.collection.mutable
@@ -43,8 +43,7 @@ case class User(
   place: Int = 0,
 
   // Changeable
-  inChannel: String = "",
-  joiningChannel: String = ""
+  inChannel: String = ""
 ) extends Command
 
 case class TopicExchange(
@@ -88,6 +87,13 @@ trait ChannelActor extends Init6RemotingActor {
 
   // Settable topic by operator
   var topicExchange = TopicExchange()
+  var creationTime: Long = _
+
+  override def preStart() = {
+    super.preStart()
+
+    creationTime = System.nanoTime() - getBindTime
+  }
 
   private def sendGetChannelUsers(address: Address): Unit = {
     remoteActorSelection(address).resolveOne(Timeout(2, TimeUnit.SECONDS).duration).onComplete {
@@ -122,6 +128,7 @@ trait ChannelActor extends Init6RemotingActor {
     if (isLocal()) {
       //println("sender " + sender())
       sender() ! UserAddedToChannel(newUser, name, self, topicExchange)
+      topCommandActor ! UserChannelChanged(actor, newUser)
     }
     newUser
   }
@@ -236,7 +243,7 @@ trait ChannelActor extends Init6RemotingActor {
     case c@ AddUser(actor, user) => add(actor, user)
     case RemUser(actor) => rem(actor)
     case CheckSize => sender() ! ChannelSize(self, name, users.size)
-    case ChannelsCommand => sender() ! ChannelInfo(name, users.size, topicExchange.topic)
+    case ChannelsCommand => sender() ! ChannelInfo(name, users.size, topicExchange.topic, creationTime)
     case c@ WhoCommandToChannel(actor, user) => whoCommand(actor, user)
     case UpdatePing(ping) =>
       val userActor = sender()

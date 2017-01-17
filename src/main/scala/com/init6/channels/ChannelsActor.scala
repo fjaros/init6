@@ -163,16 +163,16 @@ class ChannelsActor extends Init6RemotingActor {
           case (_, actor) => actor ? ChannelsCommand
         }
         .collectResults {
-          case ChannelInfo(name, size, topic) if size > 0 => Some(name -> (size, topic))
+          case channelInfo @ ChannelInfo(name, size, topic, creationTime) if size > 0 => Some(channelInfo)
           case _ => None
         }
         .foreach(responses => {
           if (responses.nonEmpty) {
-            val sortedResponses = responses.sortBy(_._2._1)(Ordering[Int].reverse)
+            val sortedResponses = responses.sortBy(_.creationTime)
 
             replyActor ! UserInfo(CHANNEL_LIST(sortedResponses.size))
             sortedResponses.foreach {
-              case (name, (size, topic)) => replyActor ! UserInfo(CHANNEL_INFO(name, size, topic))
+              case ChannelInfo(name, size, topic, creationTime) => replyActor ! UserInfo(CHANNEL_INFO(name, size, topic, creationTime))
             }
           } else {
             replyActor ! UserInfo(CHANNEL_LIST_EMPTY)

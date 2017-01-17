@@ -1,6 +1,7 @@
 package com.init6
 
 import java.net.InetSocketAddress
+import java.text.DecimalFormat
 
 /**
  * Created by filip on 10/2/15.
@@ -35,7 +36,9 @@ object Constants {
   val CANNOT_BAN_OPERATOR = "You can't ban a channel operator."
   val CANNOT_KICK_OPERATOR = "You can't kick a channel operator."
   val CHANNEL_FULL = "Channel is full."
-  val CHANNEL_INFO = (name: String, size: Int, topic: String) => s"$name with $size ${addS(size, "user")}${if (topic.nonEmpty) s" - $topic" else "."}"
+  val CHANNEL_INFO = (name: String, size: Int, topic: String, creationTime: Long) =>
+    String.format("%1$-15s| %2$-5s| %3$-10s| %4$s", name, size.toString, formatNanos(creationTime), topic)
+
   val CHANNEL_LIST = (size: Int) => s"Listing $size ${addS(size, "channel")}:"
   val CHANNEL_LIST_EMPTY = "There are no visible channels."
   val CHANNEL_NOT_EXIST = Array(
@@ -59,7 +62,8 @@ object Constants {
   val NOT_ALLOWED_TO_VIEW = "You do not have permission to view that channel."
   val NOT_BANNED = "That user is not banned."
   val NOT_OPERATOR = "You are not a channel operator."
-  val PLACED = (place: Int) => s"You placed $place on the server."
+  val PLACED = (place: Int, serverIp: String) => s"You placed $place on server $serverIp."
+  val USER_PLACED = (username: String, place: Int, serverIp: String) => s"$username placed $place on server $serverIp."
   val PUBLIC_CHANNEL = "This is a chat channel. No Ops will be given."
 
   val SET_TOPIC = (name: String, topic: String) => s"$name ${if (topic.nonEmpty) s"set the topic to: $topic" else "unset the topic."}"
@@ -74,7 +78,7 @@ object Constants {
   val USER_UNMUTED = (unmuted: String, channel: String) => s"$unmuted has been unmuted in the channel $channel."
   val USER_UNSQUELCHED = (unsquelched: String) => s"$unsquelched has been unsquelched."
   val USERS = (localUsersCount: Int, allUsersCount: Int) =>
-    s"There ${if (localUsersCount != 1) s"are $localUsersCount users" else s"is $localUsersCount user"} on this server and $allUsersCount ${addS(allUsersCount, "user")} on $INIT6."
+    s"There ${if (localUsersCount != 1) s"are $localUsersCount users" else s"is $localUsersCount user"} on this server and $allUsersCount ${addS(allUsersCount, "user")} on init 6."
   val YOU_KICKED = (kicking: String) => s"$kicking kicked you out of the channel!"
   val YOU_BANNED = "You are banned from that channel."
   val YOU_CANT_SQUELCH = "You can't squelch yourself."
@@ -82,7 +86,8 @@ object Constants {
 
   val WHOAMI = (username: String, client: String, channel: String) => s"You are $username, using $client in the channel $channel."
   val TOP_INFO = (number: Int, protocol: String) => s"Showing the top $number $protocol connections:"
-  val TOP_LIST = (number: Int, username: String, client: String, loggedInTime: String) => s"$number. $username was using $client ${loggedInTime}ms after server start."
+  val TOP_LIST = (number: Int, username: String, client: String, channel: String, loggedInTime: Long) =>
+    String.format("%1$-3s| %2$-16s| %3$-5s| %4$-10s| %5$s", number.toString, username, client.reverse, formatNanos(loggedInTime), channel)
 
   val THE_VOID = "The Void"
 
@@ -100,6 +105,13 @@ object Constants {
   val ACCOUNT_UPDATED = (name: String, passwordHash: Array[Byte]) => s"Changed password of account $name to hash ${getStringFromHash(passwordHash)}."
   val NO_ACCOUNT_INPUT = "What account do you want to make?"
   val NO_PASSWORD_INPUT = "You did not enter a password."
+
+  def isChatProtocol(client: String) = {
+    client match {
+      case "CHAT" | "TAHC" => true
+      case _ => false
+    }
+  }
 
   def encodeClient(client: String) = {
     client match {
@@ -133,5 +145,18 @@ object Constants {
       .foldLeft("")((result: String, group: Array[Byte]) =>
         result + group.foldRight("")((b: Byte, result: String) => result + "%02x".format(b))
       )
+  }
+
+  val decimalFormat = new DecimalFormat("#.000")
+  def formatNanos(nanos: Long) = {
+    val truncated = math.round(nanos.toDouble / 1000).toDouble / 1000
+
+    if (truncated >= 1000) {
+      // seconds
+      decimalFormat.format(truncated / 1000) + "s"
+    } else {
+      // milliseconds
+      decimalFormat.format(truncated) + "ms"
+    }
   }
 }

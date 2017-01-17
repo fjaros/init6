@@ -50,7 +50,7 @@ object CommandDecoder {
         case "ban" => OneCommand(BanCommand(message), UserError(USER_NOT_LOGGED_ON))
         case "changepassword" | "chpass" => ChangePasswordCommand(message)
         case "channel" | "join" | "j" => OneCommand(JoinUserCommand(user, message), UserError(NO_CHANNEL_INPUT))
-        case "channels" | "list" => ChannelsCommand
+        case "channels" | "chs" | "list" => ChannelsCommand
         case "designate" => OneCommand(DesignateCommand(user, message), UserError(INVALID_USER), UserError(ALREADY_OPERATOR))
         case "dnd" => DndCommand(message)
         case "emote" | "me" => OneCommand(EmoteCommand(user, message), EmptyCommand)
@@ -59,7 +59,7 @@ object CommandDecoder {
         case "makeaccount" | "createaccount" => MakeAccountCommand(message)
         case "motd" => MotdCommand()
         case "null" => EmptyCommand
-        case "place" => PlaceCommand(user)
+        case "place" => PlaceCommand(user, message)
         case "pong" => PongCommand(message)
         case "rejoin" => RejoinCommand
         case "resign" => ResignCommand
