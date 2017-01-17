@@ -199,7 +199,19 @@ class UsersActor extends Init6RemotingActor with Init6LoggingActor {
       println(remoteUsersMap)
       println("=== USERS " + users.size)
       println(users)
-      sender() ! UserInfo(USERS(localUsers.size, users.size))
+      val userActor = sender()
+      userActor ! UserInfo(USERS_TOTAL(users.size, Config().Server.host))
+      (remoteUsersMap
+        .toSeq
+        .map {
+          case (address, userSet) => address.host.getOrElse(UNKNOWN) -> userSet.size
+        } :+ (Config().Server.host -> localUsers.size))
+        .sortBy {
+          case (_, size) => size
+        }(Ordering[Int].reverse)
+        .foreach {
+          case (host, size) => userActor ! UserInfo(USERS(size, host))
+        }
 
     case event =>
       //log.error(s"event $event from ${sender()}")

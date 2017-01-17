@@ -68,6 +68,7 @@ object Constants {
 
   val SET_TOPIC = (name: String, topic: String) => s"$name ${if (topic.nonEmpty) s"set the topic to: $topic" else "unset the topic."}"
 
+  val UNKNOWN = "Unknown"
   val USER_BANNED = (banning: String, banned: String, message: String) => s"$banned was banned by $banning${if (message.nonEmpty) s" ($message)" else ""}."
   val USER_DESIGNATED = (designated: String) => s"$designated is your new designated heir."
   val USER_KICKED = (kicking: String, kicked: String, message: String) => s"$kicked was kicked out of the channel by $kicking${if (message.nonEmpty) s" ($message)" else ""}."
@@ -77,8 +78,10 @@ object Constants {
   val USER_UNBANNED = (unbanning: String, unbanned: String) => s"$unbanned was unbanned by $unbanning."
   val USER_UNMUTED = (unmuted: String, channel: String) => s"$unmuted has been unmuted in the channel $channel."
   val USER_UNSQUELCHED = (unsquelched: String) => s"$unsquelched has been unsquelched."
-  val USERS = (localUsersCount: Int, allUsersCount: Int) =>
-    s"There ${if (localUsersCount != 1) s"are $localUsersCount users" else s"is $localUsersCount user"} on this server and $allUsersCount ${addS(allUsersCount, "user")} on init 6."
+  val USERS_TOTAL = (allUsersCount: Int, serverIp: String) => s"There ${if (allUsersCount != 1) s"are $allUsersCount users" else s"is $allUsersCount user"} on init 6. You are on server $serverIp."
+  val USERS = (localUsersCount: Int, serverIp: String) =>
+    String.format("%1$-16s| %2$-5s", serverIp, localUsersCount.toString)
+
   val YOU_KICKED = (kicking: String) => s"$kicking kicked you out of the channel!"
   val YOU_BANNED = "You are banned from that channel."
   val YOU_CANT_SQUELCH = "You can't squelch yourself."
