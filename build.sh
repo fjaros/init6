@@ -7,12 +7,12 @@ OS=$(uname)
 
 if [ "$OS" = "Linux" ]; then
     sed -e "s/<buildNumber>Unknown<\/buildNumber>/<buildNumber>$BUILD_NUMBER<\/buildNumber>/g" -i'' pom.xml
-    sed -e "s/BUILD_NUMBER = \"Unknown\"/BUILD_NUMBER = \"$BUILD_NUMBER\"/g" -i'' $BUILD_INFO_FILE
-    sed -e "s/BUILD_HASH = \"Unknown\"/BUILD_HASH = \"$BUILD_HASH\"/g" -i'' $BUILD_INFO_FILE
+    sed -e "s/BUILD_NUMBER = UNKNOWN/BUILD_NUMBER = \"$BUILD_NUMBER\"/g" -i'' $BUILD_INFO_FILE
+    sed -e "s/BUILD_HASH = UNKNOWN/BUILD_HASH = \"$BUILD_HASH\"/g" -i'' $BUILD_INFO_FILE
 elif [ "$OS" = "Darwin" ]; then
     sed -e "s/<buildNumber>Unknown<\/buildNumber>/<buildNumber>$BUILD_NUMBER<\/buildNumber>/g" -i "" pom.xml
-    sed -e "s/BUILD_NUMBER = \"Unknown\"/BUILD_NUMBER = \"$BUILD_NUMBER\"/g" -i "" $BUILD_INFO_FILE
-    sed -e "s/BUILD_HASH = \"Unknown\"/BUILD_HASH = \"$BUILD_HASH\"/g" -i "" $BUILD_INFO_FILE
+    sed -e "s/BUILD_NUMBER = UNKNOWN/BUILD_NUMBER = \"$BUILD_NUMBER\"/g" -i "" $BUILD_INFO_FILE
+    sed -e "s/BUILD_HASH = UNKNOWN/BUILD_HASH = \"$BUILD_HASH\"/g" -i "" $BUILD_INFO_FILE
 else
     echo "Unrecognized OS"
     exit

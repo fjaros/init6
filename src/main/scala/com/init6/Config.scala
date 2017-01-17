@@ -40,7 +40,7 @@ object Config {
   }
 }
 
-class Config(filePath: String) {
+sealed class Config(filePath: String) {
 
   val root = Config.load(filePath)
     .getConfig(Constants.INIT6)
@@ -49,7 +49,6 @@ class Config(filePath: String) {
 
     val p = root.getConfig("server")
 
-    val name = p.getString("name")
     val host = p.getString("host")
     val port = p.getInt("port")
 
