@@ -25,12 +25,13 @@ object Init6 extends App with Init6Component {
   UsersActor()
   ChannelsActor()
 
-  val connectionHandlerActor = ConnectionHandler(Config().Server.host, Config().Server.port)
-  val connectionHandlerActor2 = ConnectionHandler(Config().Server.host, 64999)
+  val connectionHandlers = Config().Server.ports
+    .map(port => {
+      ConnectionHandler(Config().Server.host, port)
+    })
 
   sys.addShutdownHook({
-    connectionHandlerActor ! PoisonPill
-    connectionHandlerActor2 ! PoisonPill
+    connectionHandlers.foreach(_ ! PoisonPill)
 
     implicit val timeout = Duration(10, TimeUnit.SECONDS)
     Await.ready(system.terminate(), timeout)

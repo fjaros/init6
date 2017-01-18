@@ -87,7 +87,7 @@ object Constants {
   val YOU_CANT_SQUELCH = "You can't squelch yourself."
   val WHO_CHANNEL = (name: String, size: Int) => s"Listing $size ${addS(size, "user")} in channel $name:"
 
-  val WHOAMI = (username: String, client: String, channel: String) => s"You are $username, using $client in the channel $channel."
+  val WHOAMI = (username: String, client: String, channel: String, serverIp: String) => s"You are $username, using $client in the channel $channel on server $serverIp."
   val TOP_INFO = (number: Int, protocol: String) => s"Showing the top $number $protocol connections:"
   val TOP_LIST = (number: Int, username: String, client: String, channel: String, loggedInTime: Long) =>
     String.format("%1$-3s| %2$-16s| %3$-5s| %4$-10s| %5$s", number.toString, username, client.reverse, formatNanos(loggedInTime), channel)

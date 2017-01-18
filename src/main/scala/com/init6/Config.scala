@@ -50,7 +50,7 @@ sealed class Config(filePath: String) {
     val p = root.getConfig("server")
 
     val host = p.getString("host")
-    val port = p.getInt("port")
+    val ports = p.getIntList("ports").asScala
 
     val akka_host = Try(p.getString("akka_host")).getOrElse(host)
     val akka_port = p.getInt("akka_port")

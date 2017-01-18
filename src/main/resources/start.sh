@@ -139,7 +139,7 @@ while :; do
 
         # delete aeron dir before start
         # doesn't seem akka handles it even with config turned on in our kill server case
-        rm -rf /dev/shm/aeron-*
+        rm -rf aeron
 
         log_file="init6_$(date +'%s%N'|cut -b1-13).log"
         if [ "$debug" = true ]; then
