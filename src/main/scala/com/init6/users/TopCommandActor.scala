@@ -2,7 +2,7 @@ package com.init6.users
 
 import akka.actor.{ActorRef, Props}
 import com.init6.Constants._
-import com.init6.{Init6Actor, Init6Component}
+import com.init6.{Init6Actor, Init6Component, SystemContext}
 import com.init6.channels.{User, UserInfo}
 import com.init6.coders.commands.TopCommand
 import com.init6.utils.FiniteLinkedHashMap
@@ -27,7 +27,7 @@ class TopCommandActor extends Init6Actor {
 
   override def receive: Receive = {
     case Add(userActor, user, protocol) =>
-      val topInfo = TopInfo(user, System.nanoTime() - getBindTime)
+      val topInfo = TopInfo(user, SystemContext.getUptime.toNanos)
       topMap(
         protocol match {
           case Chat1Protocol | TelnetProtocol => "chat"

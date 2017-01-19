@@ -5,7 +5,7 @@ import java.util.concurrent.TimeUnit
 import akka.actor.{ActorRef, Address, Props}
 import akka.util.Timeout
 import com.init6.Constants._
-import com.init6.Init6RemotingActor
+import com.init6.{Init6RemotingActor, SystemContext}
 import com.init6.channels.utils.{LocalUsersSet, RemoteMultiMap}
 import com.init6.coders.Base64
 import com.init6.coders.commands._
@@ -92,7 +92,7 @@ trait ChannelActor extends Init6RemotingActor {
   override def preStart() = {
     super.preStart()
 
-    creationTime = System.nanoTime() - getBindTime
+    creationTime = SystemContext.getUptime.toNanos
   }
 
   private def sendGetChannelUsers(address: Address): Unit = {

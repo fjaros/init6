@@ -64,6 +64,8 @@ sealed class Config(filePath: String) {
       val pingDelay = pA.getInt("ping-delay")
       val dropAfter = pA.getInt("drop-after")
     }
+
+    val reconThreshold = p.getInt("recon-threshold")
   }
 
   object Accounts {

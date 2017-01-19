@@ -20,14 +20,6 @@ private[init6] trait Init6Component {
   val ipLimiterActor = system.actorSelection(s"/user/$INIT6_IP_LIMITER_PATH")
   val topCommandActor = system.actorSelection(s"/user/$INIT6_TOP_COMMAND_ACTOR")
   val serverRegistry = system.actorSelection(s"/user/$INIT6_SERVER_REGISTRY_PATH")
-
-  def setBindTime() = {
-    SystemContext.bindTime = System.nanoTime()
-  }
-
-  def getBindTime = {
-    SystemContext.bindTime
-  }
 }
 
 private object SystemContext {
@@ -38,8 +30,6 @@ private object SystemContext {
 
   val system = ActorSystem(Constants.INIT6, Config.load("akka.conf"))
 
-  private val start = System.currentTimeMillis()
-  def getUptime = Duration(System.currentTimeMillis() - start, TimeUnit.MILLISECONDS)
-
-  var bindTime: Long = _
+  val start = System.nanoTime()
+  def getUptime = Duration(System.nanoTime() - start, TimeUnit.NANOSECONDS)
 }
