@@ -12,7 +12,7 @@ object VersionCommand {
   def apply() = {
     UserInfoArray(Array(
       "Server Information:",
-      s"$INIT6 By l2k-Shadow",
+      s"$INIT6_SPACE By l2k-Shadow",
       s"Build ${BuildInfo.BUILD_NUMBER}",
       s"Hash ${BuildInfo.BUILD_HASH}"
     ))

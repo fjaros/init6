@@ -34,7 +34,7 @@ object UserActor {
   })
 }
 
-case class UserUpdated(user: User) extends Command
+case class UserUpdated(user: User) extends ChatEvent
 case class PingSent(time: Long, cookie: String) extends Command
 case class UpdatePing(ping: Int) extends Command
 case object KillConnection extends Command
@@ -110,9 +110,6 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
 
     case UserUnsquelched(username) =>
       squelchedUsers -= username
-
-    case UserUpdated(newUser) =>
-      user = newUser
 
     case chatEvent: ChatEvent =>
       handleChatEvent(chatEvent)
@@ -238,7 +235,7 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
                 daoActor ! OpenAccount(account)
               case ReloadConfig =>
                 Config.reload()
-                self ! UserInfo(s"$INIT6 configuration reloaded.")
+                self ! UserInfo(s"$INIT6_SPACE configuration reloaded.")
               case _ =>
             }
           case x =>
@@ -277,6 +274,9 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
     // If it comes from Channels/*, make sure it is the current channelActor
     if (chatEventSender.path.parent.name != INIT6_CHANNELS_PATH || chatEventSender == channelActor) {
       chatEvent match {
+        case UserUpdated(newUser) =>
+          user = newUser
+
         case UserIn(user) =>
           encodeAndSend(UserIn(checkSquelched(user)))
 

@@ -17,6 +17,7 @@ object Constants {
   val TOPIC_SPLIT = "split"
 
   val INIT6 = "init6"
+  val INIT6_SPACE = "init 6"
   val INIT6_DAO_PATH = "DAO"
   val INIT6_SERVERS_PATH = "Servers"
   val INIT6_SERVER_REGISTRY_PATH = "ServerRegistry"
@@ -94,7 +95,7 @@ object Constants {
 
   val THE_VOID = "The Void"
 
-  val TELNET_CONNECTED = (address: InetSocketAddress) => s"$INIT6 Telnet Connection from [${address.getAddress.getHostAddress}:${address.getPort}]"
+  val TELNET_CONNECTED = (address: InetSocketAddress) => s"$INIT6_SPACE Telnet Connection from [${address.getAddress.getHostAddress}:${address.getPort}]"
   val TELNET_INCORRECT_PASSWORD = "Incorrect password."
   val TELNET_INCORRECT_USERNAME = "Incorrect username."
 

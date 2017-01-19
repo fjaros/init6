@@ -57,7 +57,7 @@ object CommandDecoder {
         case "help" | "?" => HelpCommand()
         case "kick" => OneCommand(KickCommand(message), UserError(USER_NOT_LOGGED_ON))
         case "makeaccount" | "createaccount" => MakeAccountCommand(message)
-        case "motd" => MotdCommand()
+        case "servermotd" | "motd" => MotdCommand()
         case "null" => EmptyCommand
         case "place" => PlaceCommand(user, message)
         case "pong" => PongCommand(message)
