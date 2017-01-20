@@ -51,7 +51,7 @@ trait OperableChannelActor extends ChannelActor {
 
     userOpt.foreach(user => {
       if (users.nonEmpty && Flags.isOp(user) && !existsOperator()) {
-        val designateeActor = designatedActors.getOrElse(actor, users.head._1)
+        val designateeActor = designatedActors.getOrElse(actor, userJoinTimes.head._2)
         val designatedUser = users(designateeActor)
 
         val oppedUser = Flags.op(designatedUser)

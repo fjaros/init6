@@ -99,6 +99,7 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
     case c@ ChannelJoinResponse(event) =>
       event match {
         case UserChannel(newUser, channel, channelActor) =>
+          user = newUser
           this.channelActor = channelActor
           channelActor ! GetUsers
         case _ =>

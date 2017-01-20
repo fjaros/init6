@@ -138,7 +138,7 @@ class ChannelsActor extends Init6RemotingActor {
               // special case for now - refactor later
               // !!!!!!!!!!!!!!!
               // NEED TO GIVE REMOTES THE CORRECT FLAGS FROM THIS SERVER!!!!
-              remoteActors.foreach(_.tell(UserSwitchedChat(actor, user.copy(flags = reply.user.flags), channel), userActor))
+              remoteActors.foreach(_.tell(UserSwitchedChat(actor, reply.user, channel), userActor))
             }
           case reply: ChatEvent =>
             if (isLocal(userActor)) {
