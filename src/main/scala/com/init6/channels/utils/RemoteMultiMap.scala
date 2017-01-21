@@ -1,8 +1,5 @@
 package com.init6.channels.utils
 
-import akka.actor.ActorRef
-import com.init6.servers.RemoteEvent
-
 import scala.annotation.tailrec
 import scala.collection.mutable
 
@@ -39,24 +36,5 @@ sealed class RemoteMultiMap[A, B] extends mutable.HashMap[A, mutable.Set[B]] wit
   def -=(kv: (A, B)): this.type = {
     get(kv._1).foreach(_ -= kv._2)
     this
-  }
-}
-
-
-object RemoteChannelsMultiMap {
-  def apply() = new RemoteChannelsMultiMap
-}
-
-sealed class RemoteChannelsMultiMap extends RemoteMultiMap[ActorRef, ActorRef] {
-
-  def !(message: Any)(implicit sender: ActorRef): Unit = {
-    message match {
-      case Unit =>
-      case _ => keys.foreach(_ ! RemoteEvent(message))
-    }
-  }
-
-  def tell(message: Any, sender: ActorRef): Unit = {
-    this.!(message)(sender)
   }
 }

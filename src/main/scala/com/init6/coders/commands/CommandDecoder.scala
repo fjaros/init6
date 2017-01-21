@@ -61,7 +61,7 @@ object CommandDecoder {
         case "null" => EmptyCommand
         case "place" => PlaceCommand(user, message)
         case "pong" => PongCommand(message)
-        case "rejoin" => RejoinCommand
+        case "rejoin" | "rj" => RejoinCommand
         case "resign" => ResignCommand
         case "serveruptime" | "uptime" => UptimeCommand()
         case "serverversion" | "version" => VersionCommand()

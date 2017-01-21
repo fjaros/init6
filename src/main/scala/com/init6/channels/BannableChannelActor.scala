@@ -2,9 +2,9 @@ package com.init6.channels
 
 import akka.actor.ActorRef
 import com.init6.Constants._
-import com.init6.coders.commands.{BanCommand, KickCommand, OperableCommand, UnbanCommand}
+import com.init6.channels.utils.BannedMap
+import com.init6.coders.commands.{BanCommand, KickCommand, UnbanCommand}
 import com.init6.users.UserToChannelCommandAck
-import com.init6.utils.CaseInsensitiveFiniteHashSet
 
 /**
   * Created by filip on 11/24/15.
@@ -12,11 +12,11 @@ import com.init6.utils.CaseInsensitiveFiniteHashSet
 trait BannableChannelActor extends ChannelActor {
 
   // Banned users
-  val bannedUsers = CaseInsensitiveFiniteHashSet(limit)
+  val bannedUsers = BannedMap(limit)
 
   override def receiveEvent = ({
     case command @ GetChannelUsers =>
-      sender() ! ReceivedBannedUsers(bannedUsers.toSeq)
+      sender() ! ReceivedBannedUsers(bannedUsers.toImmutable)
       super.receiveEvent(command)
 
     case ReceivedBannedUsers(names) =>
@@ -69,9 +69,7 @@ trait BannableChannelActor extends ChannelActor {
   override def rem(actor: ActorRef): Option[User] = {
     val userOpt = super.rem(actor)
 
-    if (users.isEmpty) {
-      bannedUsers.clear()
-    }
+    bannedUsers -= actor
 
     userOpt
   }
@@ -100,7 +98,7 @@ trait BannableChannelActor extends ChannelActor {
     val banning = users(banningActor).name
 
     users.get(bannedActor).fold({
-      bannedUsers += banned
+      bannedUsers += banningActor -> banned
       localUsers ! UserInfo(USER_BANNED(banning, banned, message))
     })(bannedUser => {
       if (Flags.canBan(bannedUser)) {
@@ -108,7 +106,7 @@ trait BannableChannelActor extends ChannelActor {
           banningActor ! UserError(CANNOT_BAN_OPERATOR)
         }
       } else {
-        bannedUsers += banned
+        bannedUsers += banningActor -> banned
         if (isLocal(bannedActor)) {
           bannedActor ! BanCommand(banning)
         }

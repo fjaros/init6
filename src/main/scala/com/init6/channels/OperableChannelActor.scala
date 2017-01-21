@@ -1,6 +1,6 @@
 package com.init6.channels
 
-import akka.actor.ActorRef
+import akka.actor.{ActorRef, Address}
 import com.init6.Constants._
 import com.init6.coders.commands.{DesignateCommand, OperableCommand}
 import com.init6.users.{UserToChannelCommandAck, UserUpdated}
@@ -51,7 +51,7 @@ trait OperableChannelActor extends ChannelActor {
 
     userOpt.foreach(user => {
       if (users.nonEmpty && Flags.isOp(user) && !existsOperator()) {
-        val designateeActor = designatedActors.getOrElse(actor, userJoinTimes.head._2)
+        val designateeActor = designatedActors.getOrElse(actor, determineNextOp)
         val designatedUser = users(designateeActor)
 
         val oppedUser = Flags.op(designatedUser)
@@ -85,5 +85,26 @@ trait OperableChannelActor extends ChannelActor {
   def existsOperator(): Boolean = {
     // O(n) sadface
     !users.values.forall(!Flags.isOp(_))
+  }
+
+  // First user from each server, then determine one with the oldest/lowest channel timestamp
+  def determineNextOp: ActorRef = {
+    val checkedAddresses = mutable.HashSet.empty[Address]
+
+    users
+      .reduceLeft[(ActorRef, User)] {
+        case (nextOp, (actor, user)) =>
+          if (!checkedAddresses.contains(actor.path.address)) {
+            checkedAddresses += actor.path.address
+            if (nextOp._2.channelTimestamp > user.channelTimestamp) {
+              actor -> user
+            } else {
+              nextOp
+            }
+          } else {
+            nextOp
+          }
+      }
+      ._1
   }
 }

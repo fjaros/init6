@@ -29,7 +29,7 @@ case object GetChannels extends Command
 case class ChannelsAre(channels: Seq[(String, ActorRef)]) extends Command
 case object GetChannelUsers extends Command
 case class ReceivedChannelUsers(users: Seq[(ActorRef, User)], topic: TopicExchange) extends Command
-case class ReceivedBannedUsers(names: Seq[String]) extends Command
+case class ReceivedBannedUsers(names: Seq[(ActorRef, Seq[String])]) extends Command
 case class ReceivedChannel(channel: (String, ActorRef)) extends Command
 case class UserAdded(actor: ActorRef, channel: String) extends Command
 case object ChannelEmpty extends Command

@@ -44,7 +44,7 @@ case class User(
 
   // Changeable
   inChannel: String = "",
-  channelJoinTime: Long = 0
+  channelTimestamp: Long = 0
 ) extends Command
 
 case class TopicExchange(
@@ -78,10 +78,7 @@ trait ChannelActor extends Init6RemotingActor {
   val localUsers = LocalUsersSet()
 
   // Map of actor -> user. Actor can be local or remote.
-  val users = mutable.HashMap[ActorRef, User]()
-  // Map of joinTime -> actor
-  val userJoinTimes = mutable.SortedMap[Long, ActorRef]()
-
+  val users = mutable.LinkedHashMap[ActorRef, User]()
   val remoteUsersMap = RemoteMultiMap[Address, ActorRef]()
 
   var isSplit = false
@@ -122,21 +119,15 @@ trait ChannelActor extends Init6RemotingActor {
       remoteUsersMap += actor.path.address -> actor
     }
 
-    var joinTime = System.currentTimeMillis
-    while (userJoinTimes.contains(joinTime)) {
-      joinTime += 1
-    }
-    
     val newUser =
-      if (user.channelJoinTime == 0) {
-        user.copy(inChannel = name, channelJoinTime = joinTime)
+      if (isLocal(actor)) {
+        user.copy(inChannel = name, channelTimestamp = System.currentTimeMillis)
       } else {
-        user
+        user.copy(inChannel = name)
       }
 
-    println("#ADD " + actor + " - " + newUser + " - " + joinTime)
+    println("#ADD " + actor + " - " + newUser)
     users += actor -> newUser
-    userJoinTimes += newUser.channelJoinTime -> actor
 
     if (isLocal()) {
       //println("sender " + sender())
@@ -154,9 +145,8 @@ trait ChannelActor extends Init6RemotingActor {
     }
     val userOpt = users.get(actor)
     userOpt.foreach(user => {
-      println("#REM " + actor + " - " + userOpt + " - " + sender() + " - " + user.channelJoinTime)
+      println("#REM " + actor + " - " + userOpt + " - " + sender() + " - " + user.channelTimestamp)
       users -= actor
-      userJoinTimes -= user.channelJoinTime
     })
 
     // clear topic if applicable
@@ -173,7 +163,6 @@ trait ChannelActor extends Init6RemotingActor {
       // new user
       println("#RADD " + remoteUserActor + " - " + user)
       users += remoteUserActor -> user
-      userJoinTimes += user.channelJoinTime -> remoteUserActor
 
       remoteUsersMap += remoteChannelActor.path.address -> remoteUserActor
       localUsers ! UserIn(user)
@@ -181,7 +170,6 @@ trait ChannelActor extends Init6RemotingActor {
       // existing but have to honor the flags of remote
       println("#RMOD " + users)
       users += remoteUserActor -> user
-      userJoinTimes += user.channelJoinTime -> remoteUserActor
       if (currentUser.flags != user.flags) {
         sendUserUpdate(user)
       }
@@ -259,9 +247,8 @@ trait ChannelActor extends Init6RemotingActor {
     case GetUsers =>
       //println("RECEIVED GetUsers from " + sender())
       //println(users + " - " + userJoinTimes)
-      userJoinTimes
+      users
         .values
-        .map(users)
         .foreach(sender() ! UserIn(_))
 
     case c@ AddUser(actor, user) => add(actor, user)
@@ -290,9 +277,8 @@ trait ChannelActor extends Init6RemotingActor {
   def whoCommand(actor: ActorRef, user: User) = {
     if (users.nonEmpty) {
       println("#WHO USERS " + users + "\n#WHO LOCALUSERS: " + localUsers + "\n#WHO REMOTEUSERSEMAP " + remoteUsersMap)
-      val usernames = userJoinTimes
+      val usernames = users
         .values
-        .map(users)
         .map(user => {
           if (Flags.isOp(user)) {
             s"[${user.name.toUpperCase}]"
