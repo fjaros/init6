@@ -1,6 +1,6 @@
 package com.init6.channels
 
-import akka.actor.ActorRef
+import akka.actor.{ActorRef, Address}
 import com.init6.Constants._
 import com.init6.channels.utils.BannedMap
 import com.init6.coders.commands.{BanCommand, KickCommand, UnbanCommand}
@@ -13,6 +13,19 @@ trait BannableChannelActor extends ChannelActor {
 
   // Banned users
   val bannedUsers = BannedMap(limit)
+
+
+  override protected def onServerDead(address: Address) = {
+    remoteUsersMap
+      .get(address)
+      .foreach(actors => {
+        actors
+          .map(users)
+          .foreach(bannedUsers -= _.name)
+      })
+
+    super.onServerDead(address)
+  }
 
   override def receiveEvent = ({
     case command @ GetChannelUsers =>
