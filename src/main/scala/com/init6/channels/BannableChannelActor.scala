@@ -15,6 +15,8 @@ trait BannableChannelActor extends ChannelActor {
   val bannedUsers = BannedMap(limit)
 
 
+  // Unbans existing names if server drops
+  // (probably shouldn't do that)
   override protected def onServerDead(address: Address) = {
     remoteUsersMap
       .get(address)
