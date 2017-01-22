@@ -27,7 +27,7 @@ class TopCommandActor extends Init6Actor {
 
   override def receive: Receive = {
     case Add(userActor, user, protocol) =>
-      val topInfo = TopInfo(user, SystemContext.getUptime.toNanos)
+      val topInfo = TopInfo(user, getAcceptingUptime.toNanos)
       topMap(
         protocol match {
           case Chat1Protocol | TelnetProtocol => "chat"

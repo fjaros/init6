@@ -87,11 +87,6 @@ trait ChannelActor extends Init6RemotingActor {
   var topicExchange = TopicExchange()
   var creationTime: Long = _
 
-  override def preStart() = {
-    super.preStart()
-
-    creationTime = SystemContext.getUptime.toNanos
-  }
 
   private def sendGetChannelUsers(address: Address): Unit = {
     remoteActorSelection(address).resolveOne(Timeout(2, TimeUnit.SECONDS).duration).onComplete {
@@ -114,6 +109,9 @@ trait ChannelActor extends Init6RemotingActor {
     rem(actor)
 
     if (isLocal(actor)) {
+      if (creationTime == 0) {
+        creationTime = getAcceptingUptime.toNanos
+      }
       localUsers += actor
     } else {
       remoteUsersMap += actor.path.address -> actor
@@ -152,6 +150,7 @@ trait ChannelActor extends Init6RemotingActor {
     // clear topic if applicable
     if (users.isEmpty) {
       topicExchange = TopicExchange()
+      creationTime = 0
     }
 
     userOpt

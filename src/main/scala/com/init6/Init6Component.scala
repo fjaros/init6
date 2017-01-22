@@ -20,6 +20,18 @@ private[init6] trait Init6Component {
   val ipLimiterActor = system.actorSelection(s"/user/$INIT6_IP_LIMITER_PATH")
   val topCommandActor = system.actorSelection(s"/user/$INIT6_TOP_COMMAND_ACTOR")
   val serverRegistry = system.actorSelection(s"/user/$INIT6_SERVER_REGISTRY_PATH")
+
+  def getAcceptingUptime = {
+    Duration(System.nanoTime() - SystemContext.startAccepting, TimeUnit.NANOSECONDS)
+  }
+
+  def setAcceptingUptime() = {
+    SystemContext.synchronized {
+      if (SystemContext.startAccepting == 0) {
+        SystemContext.startAccepting = System.nanoTime
+      }
+    }
+  }
 }
 
 private object SystemContext {
@@ -32,4 +44,6 @@ private object SystemContext {
 
   val start = System.nanoTime()
   def getUptime = Duration(System.nanoTime() - start, TimeUnit.NANOSECONDS)
+
+  var startAccepting: Long = 0
 }

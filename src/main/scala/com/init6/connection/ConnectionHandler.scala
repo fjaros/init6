@@ -35,6 +35,7 @@ class ConnectionHandler(host: String, port: Int) extends Init6Actor {
     case Bound(local) =>
       log.error("Local address {} bound", local)
       sender ! ResumeAccepting(1)
+      setAcceptingUptime()
       context.become(accept(sender()))
   }
 

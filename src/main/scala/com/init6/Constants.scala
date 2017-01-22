@@ -153,14 +153,18 @@ object Constants {
 
   val decimalFormat = new DecimalFormat("#.000")
   def formatNanos(nanos: Long) = {
-    val truncated = math.round(nanos.toDouble / 1000).toDouble / 1000
+    if (nanos > 0) {
+      val truncated = math.round(nanos.toDouble / 1000).toDouble / 1000
 
-    if (truncated >= 1000) {
-      // seconds
-      decimalFormat.format(truncated / 1000) + "s"
+      if (truncated >= 1000) {
+        // seconds
+        decimalFormat.format(truncated / 1000) + "s"
+      } else {
+        // milliseconds
+        decimalFormat.format(truncated) + "ms"
+      }
     } else {
-      // milliseconds
-      decimalFormat.format(truncated) + "ms"
+      "---"
     }
   }
 }

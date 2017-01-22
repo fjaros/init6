@@ -31,7 +31,7 @@ object Init6 extends App with Init6Component {
     if (random.nextInt(100) < Config().Server.reconThreshold) {
       0
     } else {
-      8
+      6
     }
 
   var connectionHandlers: Seq[ActorRef] = _

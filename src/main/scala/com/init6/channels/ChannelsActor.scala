@@ -168,7 +168,15 @@ class ChannelsActor extends Init6RemotingActor {
         }
         .foreach(responses => {
           if (responses.nonEmpty) {
-            val sortedResponses = responses.sortBy(_.creationTime)
+            val sortedResponses = responses.sortWith((c1, c2) => {
+              if (c1.creationTime == 0) {
+                false
+              } else if (c2.creationTime == 0) {
+                c1.creationTime > 0
+              } else {
+                c2.creationTime > c1.creationTime
+              }
+            })
 
             replyActor ! UserInfo(CHANNEL_LIST(sortedResponses.size))
             sortedResponses.foreach {
