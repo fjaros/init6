@@ -124,7 +124,7 @@ trait ChannelActor extends Init6RemotingActor {
         user.copy(inChannel = name)
       }
 
-    println("#ADD " + actor + " - " + newUser)
+    log.info("#ADD " + actor + " - " + newUser)
     users += actor -> newUser
 
     if (isLocal()) {
@@ -143,7 +143,7 @@ trait ChannelActor extends Init6RemotingActor {
     }
     val userOpt = users.get(actor)
     userOpt.foreach(user => {
-      println("#REM " + actor + " - " + userOpt + " - " + sender() + " - " + user.channelTimestamp)
+      log.info("#REM " + actor + " - " + userOpt + " - " + sender() + " - " + user.channelTimestamp)
       users -= actor
     })
 
@@ -156,18 +156,18 @@ trait ChannelActor extends Init6RemotingActor {
     userOpt
   }
 
-  def remoteIn(remoteChannelActor: ActorRef, remoteUserActor: ActorRef, user: User) = {
+  def remoteIn(remoteUserActor: ActorRef, user: User) = {
     //println("#REMOTEIN " + remoteChannelActor + " - " + remoteUserActor + " - " + user + " - " + users.contains(remoteUserActor))
     users.get(remoteUserActor).fold({
       // new user
-      println("#RADD " + remoteUserActor + " - " + user)
+      log.info("#RADD " + remoteUserActor + " - " + user)
       users += remoteUserActor -> user
 
-      remoteUsersMap += remoteChannelActor.path.address -> remoteUserActor
+      remoteUsersMap += remoteUserActor.path.address -> remoteUserActor
       localUsers ! UserIn(user)
     })(currentUser => {
       // existing but have to honor the flags of remote
-      println("#RMOD " + users)
+      log.info("#RMOD " + currentUser + " -> " + user)
       users += remoteUserActor -> user
       if (currentUser.flags != user.flags) {
         sendUserUpdate(user)
@@ -213,18 +213,15 @@ trait ChannelActor extends Init6RemotingActor {
       }
 
     case InternalChannelUserUpdate(actor, user) =>
-      if (users.contains(actor)) {
-        users += actor -> user
-        sendUserUpdate(user)
-      }
+      remoteIn(actor, user)
 
 //    case UserToChannelPing =>
 //      usersKeepAlive += sender() -> System.currentTimeMillis()
 
     case GetChannelUsers =>
-      println("RECEIVED GetChannelUsers from " + sender() + "\n" + "users: " + users)
+      log.info("RECEIVED GetChannelUsers from " + sender())
       if (isRemote()) {
-        println("SENDING ReceivedChannelUsers\n" + users.filterKeys(localUsers.contains).toSeq)
+        log.info("SENDING ReceivedChannelUsers\n" + users.filterKeys(localUsers.contains).toSeq)
         sender() ! ReceivedChannelUsers(users.filterKeys(localUsers.contains).toSeq, topicExchange)
         if (!remoteActors.contains(remoteActorSelection(sender().path.address))) {
           sender() ! GetChannelUsers
@@ -233,10 +230,10 @@ trait ChannelActor extends Init6RemotingActor {
       }
 
     case ReceivedChannelUsers(remoteUsers, topicExchange) =>
-      println("RECEIVED ReceivedChannelUsers from " + sender() + "\nremoteUsers: " + remoteUsers)
+      log.info("RECEIVED ReceivedChannelUsers from " + sender() + "\nremoteUsers: " + remoteUsers)
       remoteUsers.foreach {
         case (actor, user) =>
-          remoteIn(sender(), actor, user)
+          remoteIn(actor, user)
       }
       // Replace topic only if timestamp is newer
       if (topicExchange.timestamp > this.topicExchange.timestamp) {
@@ -275,7 +272,7 @@ trait ChannelActor extends Init6RemotingActor {
 
   def whoCommand(actor: ActorRef, user: User) = {
     if (users.nonEmpty) {
-      println("#WHO USERS " + users + "\n#WHO LOCALUSERS: " + localUsers + "\n#WHO REMOTEUSERSEMAP " + remoteUsersMap)
+      log.debug("#WHO USERS " + users + "\n#WHO LOCALUSERS: " + localUsers + "\n#WHO REMOTEUSERSEMAP " + remoteUsersMap)
       val usernames = users
         .values
         .map(user => {

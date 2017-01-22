@@ -14,26 +14,13 @@ trait NonOperableChannelActor extends ChannelActor {
     case command: UserToChannelCommandAck =>
       command.command match {
         case command: OperableCommand =>
-          if (isLocal()) {
-            sender() ! UserError(NOT_OPERATOR)
-          }
+          handleOperableCommand(command)
         case _ => super.receiveEvent(command)
       }
+
     case command: OperableCommand =>
-      val userActor = sender()
-      users.get(userActor).fold({
-        if (isLocal()) {
-          userActor ! UserError(NOT_OPERATOR)
-        }
-      })(user => {
-        if (Flags.isAdmin(user)) {
-          super.receiveEvent(command)
-        } else {
-          if (isLocal()) {
-            userActor ! UserError(NOT_OPERATOR)
-          }
-        }
-      })
+      handleOperableCommand(command)
+
     case command @ GetUsers =>
       super.receiveEvent(command)
       sender() ! UserInfo(PUBLIC_CHANNEL)
@@ -42,5 +29,22 @@ trait NonOperableChannelActor extends ChannelActor {
 
   override def add(actor: ActorRef, user: User): User = {
     super.add(actor, Flags.deOp(user))
+  }
+
+  def handleOperableCommand(command: OperableCommand) = {
+    val userActor = sender()
+    users.get(userActor).fold({
+      if (isLocal()) {
+        userActor ! UserError(NOT_OPERATOR)
+      }
+    })(user => {
+      if (Flags.isAdmin(user)) {
+        super.receiveEvent(command)
+      } else {
+        if (isLocal()) {
+          userActor ! UserError(NOT_OPERATOR)
+        }
+      }
+    })
   }
 }

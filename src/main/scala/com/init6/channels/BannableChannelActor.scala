@@ -14,7 +14,6 @@ trait BannableChannelActor extends ChannelActor {
   // Banned users
   val bannedUsers = BannedMap(limit)
 
-
   // Unbans existing names if server drops
   // (probably shouldn't do that)
   override protected def onServerDead(address: Address) = {
@@ -75,10 +74,10 @@ trait BannableChannelActor extends ChannelActor {
 
   // remove users from banned when server reconnects if they are already in the channel
   // the ops on other servers will have to ban them again.
-  override def remoteIn(remoteChannelActor: ActorRef, remoteUserActor: ActorRef, user: User) = {
+  override def remoteIn(remoteUserActor: ActorRef, user: User) = {
     bannedUsers -= user.name
 
-    super.remoteIn(remoteChannelActor, remoteUserActor, user)
+    super.remoteIn(remoteUserActor, user)
   }
 
   override def rem(actor: ActorRef): Option[User] = {
@@ -109,7 +108,7 @@ trait BannableChannelActor extends ChannelActor {
   }
 
   def banAction(banningActor: ActorRef, bannedActor: ActorRef, banned: String, message: String) = {
-    println("banAction " + banningActor + " - " + bannedActor + " - " + banned + " - " + sender())
+    log.info("banAction " + banningActor + " - " + bannedActor + " - " + banned + " - " + sender())
     val banning = users(banningActor).name
 
     users.get(bannedActor).fold({

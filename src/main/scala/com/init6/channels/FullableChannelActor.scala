@@ -9,11 +9,11 @@ import com.init6.Constants._
 trait FullableChannelActor extends ChannelActor {
 
   override def add(actor: ActorRef, user: User): User = {
-    if (users.size >= limit) {
+    if (Flags.isAdmin(user) || limit > users.size) {
+      super.add(actor, user)
+    } else {
       sender() ! UserError(CHANNEL_FULL)
       user
-    } else {
-      super.add(actor, user)
     }
   }
 }

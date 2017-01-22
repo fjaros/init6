@@ -2,7 +2,7 @@ package com.init6.channels
 
 import akka.actor.{ActorRef, Address}
 import com.init6.Constants._
-import com.init6.coders.commands.{DesignateCommand, OperableCommand}
+import com.init6.coders.commands.{Command, DesignateCommand, OperableCommand}
 import com.init6.users.{UserToChannelCommandAck, UserUpdated}
 
 import scala.collection.mutable
@@ -15,6 +15,13 @@ trait OperableChannelActor extends ChannelActor {
   val designatedActors = mutable.HashMap[ActorRef, ActorRef]()
 
   override def receiveEvent = ({
+    case command @ GetChannelUsers =>
+      sender() ! ReceivedDesignatedActors(designatedActors.toSeq)
+      super.receiveEvent(command)
+
+    case ReceivedDesignatedActors(designatedActors) =>
+      this.designatedActors ++= designatedActors
+
     case command: UserToChannelCommandAck =>
       val userActor = sender()
 //      users.get(userActor).foreach(user => {
@@ -51,14 +58,23 @@ trait OperableChannelActor extends ChannelActor {
 
     userOpt.foreach(user => {
       if (users.nonEmpty && Flags.isOp(user) && !existsOperator()) {
-        val designateeActor = designatedActors.getOrElse(actor, determineNextOp)
-        val designatedUser = users(designateeActor)
+        val possibleNextOpActor = determineNextOp
+        val designatedActorOpt = designatedActors.get(actor)
+        val (oppedActor, oppedUser) =
+          if (designatedActorOpt.isDefined && users.contains(designatedActorOpt.get)) {
+            // designated is in the channel
+            designatedActorOpt.get -> Flags.op(users(designatedActorOpt.get))
+          } else {
+            possibleNextOpActor -> Flags.op(users(possibleNextOpActor))
+          }
+        log.info("###OPPED " + oppedActor + " - " + oppedUser)
 
-        val oppedUser = Flags.op(designatedUser)
-        users += designateeActor -> oppedUser
+        users += oppedActor -> oppedUser
         designatedActors -= actor
-        designateeActor ! UserUpdated(oppedUser)
+        oppedActor ! UserUpdated(oppedUser)
         localUsers ! UserFlags(oppedUser)
+
+        remoteActors.foreach(_ ! InternalChannelUserUpdate(oppedActor, oppedUser))
       }
     })
 
