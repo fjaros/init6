@@ -6,14 +6,14 @@ import java.util.concurrent.TimeUnit
 import akka.actor.{ActorRef, FSM, Props}
 import akka.io.Tcp.{Close, Received}
 import akka.pattern.ask
-import akka.util.{Timeout, ByteString}
+import akka.util.{ByteString, Timeout}
 import com.init6.Constants._
 import com.init6.coders.binary.hash.BSHA1
 import com.init6.db.DAO
-import com.init6.{Init6Actor, Config}
+import com.init6.{Config, Init6Actor}
 import com.init6.channels._
 import com.init6.coders.telnet.TelnetEncoder
-import com.init6.users.{UsersUserAdded, TelnetProtocol, Add}
+import com.init6.users.{Add, JoinChannelFromConnection, TelnetProtocol, UsersUserAdded}
 
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.Await
@@ -120,9 +120,12 @@ class TelnetMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
     case Event(JustLoggedIn, buffer: AuthenticatedUser) =>
       connection ! WriteOut(TelnetEncoder(TELNET_CONNECTED(clientAddress)))
       connection ! WriteOut(TelnetEncoder(UserName(buffer.user.name)).get)
-      connection ! WriteOut(TelnetEncoder(UserInfoArray(Config().motd)).get)
-      //keepAlive(buffer.actor, sendNull)
-      stay()
+      Await.result(connection ? WriteOut(TelnetEncoder(UserInfoArray(Config().motd)).get), timeout.duration) match {
+        case WrittenOut =>
+          buffer.actor ! JoinChannelFromConnection("Chat")
+          stay()
+        case _ => stop()
+      }
     case Event(Received(data), buffer: AuthenticatedUser) =>
       keptAlive = 0
       buffer.actor ! Received(data)

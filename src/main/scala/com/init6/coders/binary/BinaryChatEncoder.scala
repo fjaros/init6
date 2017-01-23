@@ -37,6 +37,8 @@ object BinaryChatEncoder extends Encoder {
         SidChatEvent(0x12, 0,0, "", message)
       case UserInfoArray(messages) =>
         handleArrayEvent(0x12, messages)
+      case ServerTopicArray(messages) =>
+        handleArrayEvent(0x12, messages)
       case UserError(message) =>
         SidChatEvent(0x13, 0,0, "", message)
       case UserErrorArray(messages) =>

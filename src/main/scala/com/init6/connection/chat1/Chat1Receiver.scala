@@ -14,7 +14,7 @@ import com.init6.coders.binary.hash.BSHA1
 import com.init6.coders.chat1.Chat1Encoder
 import com.init6.connection._
 import com.init6.db.{CreateAccount, DAO, DAOCreatedAck}
-import com.init6.users.{Add, Chat1Protocol, PingSent, UsersUserAdded}
+import com.init6.users._
 
 import scala.concurrent.Await
 import scala.util.Random
@@ -75,7 +75,8 @@ class Chat1Handler(clientAddress: InetSocketAddress, connection: ActorRef) exten
           keepAlive(loggedInUser.actor, () => {
             sendPing(loggedInUser.actor)
           })
-          loggedInUser.actor ! Received(ByteString(s"/j ${loggedInUser.userCredentials.home}"))
+          loggedInUser.actor ! JoinChannelFromConnection("Chat")
+          loggedInUser.actor ! JoinChannelFromConnection(loggedInUser.userCredentials.home)
           stay()
         case _ =>
           stop()

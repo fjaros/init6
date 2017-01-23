@@ -34,6 +34,7 @@ object UserActor {
   })
 }
 
+case class JoinChannelFromConnection(channel: String)
 case class UserUpdated(user: User) extends ChatEvent
 case class PingSent(time: Long, cookie: String) extends Command
 case class UpdatePing(ping: Int) extends Command
@@ -55,14 +56,6 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
 
   context.watch(connection)
 
-  override def preStart() = {
-    super.preStart()
-
-    if (user.client == "TAHC") {
-      joinChannel("Chat")
-    }
-  }
-
   def checkSquelched(user: User) = {
     if (squelchedUsers.contains(user.name)) {
       Flags.squelch(user)
@@ -76,6 +69,9 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
   }
 
   override def loggedReceive: Receive = {
+    case JoinChannelFromConnection(channel) =>
+      joinChannel(channel)
+
     case ChannelToUserPing =>
       sender() ! UserToChannelPing
 
@@ -187,7 +183,7 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
                 * A command being sent to the user's channel can be done via actor selection, since we can guarantee the
                 * channel exists.
                 */
-              case c@JoinUserCommand(fromUser, channel) =>
+              case c @ JoinUserCommand(fromUser, channel) =>
                 if (ChannelJoinValidator(user.inChannel, channel)) {
                   joinChannel(channel)
                 }

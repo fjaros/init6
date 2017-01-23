@@ -39,9 +39,9 @@ object TelnetEncoder extends Encoder {
       case UserInfo(message) =>
         s"1018 INFO ${'"'}$message${'"'}"
       case UserInfoArray(messages) =>
-        messages
-          .map(message => encode(s"1018 INFO ${'"'}$message${'"'}"))
-          .reduceLeft(_ ++ _)
+        encodeUserInfoArray(messages)
+      case ServerTopicArray(messages) =>
+        encodeUserInfoArray(messages)
       case UserError(message) =>
         s"1019 ERROR ${'"'}$message${'"'}"
       case UserErrorArray(messages) =>
@@ -59,6 +59,12 @@ object TelnetEncoder extends Encoder {
       case _ =>
         None
     }
+  }
+
+  private def encodeUserInfoArray(messages: Array[String]) = {
+    messages
+      .map(message => encode(s"1018 INFO ${'"'}$message${'"'}"))
+      .reduceLeft(_ ++ _)
   }
 
   private def encodeClient(client: String): String = {
