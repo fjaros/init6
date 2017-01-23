@@ -29,8 +29,6 @@ case object UnauthenticatedUser extends Data
 case class UnauthenticatedUser(user: String) extends Data
 case class AuthenticatedUser(user: User, actor: ActorRef) extends Data
 
-case object JustLoggedIn extends ChatEvent
-
 /**
  * Created by filip on 9/19/15.
  */
@@ -105,7 +103,10 @@ class TelnetMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
           if (BSHA1(data.toArray).sameElements(dbUser.passwordHash)) {
             val u = User(clientAddress.getAddress.getHostAddress, buffer.user, dbUser.flags | Flags.UDP, 0, client = "TAHC")
             Await.result(usersActor ? Add(connection, u, TelnetProtocol), timeout.duration) match {
-              case UsersUserAdded(actor, user) => goto(LoggedIn) using AuthenticatedUser(user, actor)
+              case UsersUserAdded(actor, user) =>
+                val authenticatedUser = AuthenticatedUser(user, actor)
+                handleLoggedIn(authenticatedUser)
+                goto(LoggedIn) using authenticatedUser
               case x => stop()
             }
           } else {
@@ -117,15 +118,6 @@ class TelnetMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
   }
 
   when (LoggedIn) {
-    case Event(JustLoggedIn, buffer: AuthenticatedUser) =>
-      connection ! WriteOut(TelnetEncoder(TELNET_CONNECTED(clientAddress)))
-      connection ! WriteOut(TelnetEncoder(UserName(buffer.user.name)).get)
-      Await.result(connection ? WriteOut(TelnetEncoder(UserInfoArray(Config().motd)).get), timeout.duration) match {
-        case WrittenOut =>
-          buffer.actor ! JoinChannelFromConnection("Chat")
-          stay()
-        case _ => stop()
-      }
     case Event(Received(data), buffer: AuthenticatedUser) =>
       keptAlive = 0
       buffer.actor ! Received(data)
@@ -136,14 +128,14 @@ class TelnetMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
     case _ => stay()
   }
 
-//  whenUnhandled {
-//    case x =>
-//      //log.error(s"Unhandled Event $x")
-//      stop()
-//  }
-
-  onTransition {
-    case ExpectingPassword -> LoggedIn =>
-      self ! JustLoggedIn
+  def handleLoggedIn(buffer: AuthenticatedUser) = {
+    connection ! WriteOut(TelnetEncoder(TELNET_CONNECTED(clientAddress)))
+    connection ! WriteOut(TelnetEncoder(UserName(buffer.user.name)).get)
+    Await.result(connection ? WriteOut(TelnetEncoder(UserInfoArray(Config().motd)).get), timeout.duration) match {
+      case WrittenOut =>
+        buffer.actor ! JoinChannelFromConnection("Chat")
+        stay()
+      case _ => stop()
+    }
   }
 }
