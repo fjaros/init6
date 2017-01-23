@@ -44,6 +44,10 @@ object Chat1Encoder extends Encoder {
         s"SERVER INFO    $message"
       case UserInfoArray(messages) =>
         messages
+          .map(message => encode(s"SERVER INFO    $message"))
+          .reduceLeft(_ ++ _)
+      case ServerTopicArray(messages) =>
+        messages
           .map(message => encode(s"SERVER TOPIC    $message"))
           .reduceLeft(_ ++ _)
       case UserError(message) =>

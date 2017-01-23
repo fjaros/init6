@@ -42,7 +42,7 @@ sealed class BannedMap(limit: Int) extends mutable.HashMap[ActorRef, mutable.Lin
   def ++=(bannedMap: Seq[(ActorRef, Seq[String])]) = {
     bannedMap.foreach {
       case (actor, bannedSeq) =>
-        bannedSeq.foreach(banned => +=(actor -> banned.toLowerCase))
+        bannedSeq.foreach(banned => +=(actor -> banned))
     }
   }
 
@@ -54,10 +54,6 @@ sealed class BannedMap(limit: Int) extends mutable.HashMap[ActorRef, mutable.Lin
   def -=(value: String) = {
     val lCaseValue = value.toLowerCase
     values.foreach(_ -= lCaseValue)
-  }
-
-  def --=(key: ActorRef) = {
-    this -= key
   }
 
   def toImmutable: Seq[(ActorRef, Seq[String])] = {

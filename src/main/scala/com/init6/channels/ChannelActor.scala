@@ -170,7 +170,7 @@ trait ChannelActor extends Init6RemotingActor {
       log.info("#RMOD " + currentUser + " -> " + user)
       users += remoteUserActor -> user
       if (currentUser.flags != user.flags) {
-        sendUserUpdate(user)
+        sendUserUpdate(remoteUserActor, user)
       }
     })
   }
@@ -266,22 +266,28 @@ trait ChannelActor extends Init6RemotingActor {
       //println("Unhandled ChannelActor " + event)
   }
 
-  def sendUserUpdate(user: User) = {
+  def sendUserUpdate(actor: ActorRef, user: User) = {
+    if (isLocal(actor)) {
+      actor ! UserUpdated(user)
+    }
     localUsers ! UserFlags(user)
   }
 
   def whoCommand(actor: ActorRef, user: User) = {
     if (users.nonEmpty) {
       log.debug("#WHO USERS " + users + "\n#WHO LOCALUSERS: " + localUsers + "\n#WHO REMOTEUSERSEMAP " + remoteUsersMap)
-      val usernames = users
+      val (ops, noOps) = users
         .values
-        .map(user => {
-          if (Flags.isOp(user)) {
-            s"[${user.name.toUpperCase}]"
-          } else {
-            user.name
-          }
-        })
+        .foldLeft((Seq.empty[String], Seq.empty[String])) {
+          case ((ops, noOps), user) =>
+            if (Flags.isOp(user)) {
+              (ops :+ s"[${user.name.toUpperCase}]", noOps)
+            } else {
+              (ops, noOps :+ user.name)
+            }
+        }
+
+      val usernames = (ops ++ noOps)
         .grouped(2)
         .map(_.mkString(", "))
         .toSeq

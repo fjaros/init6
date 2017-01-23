@@ -15,6 +15,7 @@ object ProtocolHandler {
 
 case object Ack extends Event
 case class WriteOut(data: ByteString)
+case object WrittenOut
 
 sealed trait ProtocolState
 case object Uninitialized extends ProtocolState
@@ -87,6 +88,7 @@ class ProtocolHandler(clientAddress: InetSocketAddress, client: ActorRef) extend
     case Event(WriteOut(data), protocolData: ConnectionProtocolData) =>
       ////log.error(s"### WriteOut1: $client ${data.utf8String}")
       client ! Write(data, Ack)
+      sender() ! WrittenOut
       goto (InitializedBuffering)
     case Event(x, protocolData: ConnectionProtocolData) =>
       ////log.error(s"### RECEIVE3 connection $client message $x")
@@ -105,6 +107,7 @@ class ProtocolHandler(clientAddress: InetSocketAddress, client: ActorRef) extend
     case Event(WriteOut(data), _) =>
      // //log.error(s"### WriteOut2: $client ${data.utf8String}")
       buffer :+= data
+      sender() ! WrittenOut
       stay()
     case Event(Ack, _) =>
       ////log.error(s"### Ack: $client ${buffer.size}")

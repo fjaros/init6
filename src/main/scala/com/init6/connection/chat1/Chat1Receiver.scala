@@ -40,7 +40,7 @@ case object JustLoggedInChat1
 
 sealed trait Chat1Data
 case class UserCredentials(username: String = "", alias: String = "", password: String = "", home: String = "") extends Chat1Data
-case class LoggedInUser(actor: ActorRef, username: String) extends Chat1Data
+case class LoggedInUser(actor: ActorRef, userCredentials: UserCredentials) extends Chat1Data
 
 class Chat1Handler(clientAddress: InetSocketAddress, connection: ActorRef) extends Init6KeepAliveActor with FSM[Chat1State, Chat1Data] {
 
@@ -67,12 +67,19 @@ class Chat1Handler(clientAddress: InetSocketAddress, connection: ActorRef) exten
   when (LoggedInChat1State) {
     case Event(JustLoggedInChat1, loggedInUser: LoggedInUser) =>
       log.debug(">> {} Chat1 LoggedInChat1State", connection)
+      connection ! WriteOut(Chat1Encoder(LoginOK).get)
       connection ! WriteOut(Chat1Encoder(UserInfo(TELNET_CONNECTED(clientAddress))).get)
-      connection ! WriteOut(Chat1Encoder(UserInfoArray(Config().motd)).get)
-      keepAlive(loggedInUser.actor, () => {
-        sendPing(loggedInUser.actor)
-      })
-      stay()
+      Await.result(connection ? WriteOut(Chat1Encoder(ServerTopicArray(Config().motd)).get), timeout.duration) match {
+        case WrittenOut =>
+          sendPing(loggedInUser.actor)
+          keepAlive(loggedInUser.actor, () => {
+            sendPing(loggedInUser.actor)
+          })
+          loggedInUser.actor ! Received(ByteString(s"/j ${loggedInUser.userCredentials.home}"))
+          stay()
+        case _ =>
+          stop()
+      }
     case Event(Received(data), loggedInUser: LoggedInUser) =>
       keptAlive = 0
       loggedInUser.actor ! Received(data)
@@ -100,11 +107,9 @@ class Chat1Handler(clientAddress: InetSocketAddress, connection: ActorRef) exten
             val u = User(clientAddress.getAddress.getHostAddress, userCredentials.username, dbUser.flags | Flags.UDP, 0, client = "TAHC")
             Await.result(usersActor ? Add(connection, u, Chat1Protocol), timeout.duration) match {
               case UsersUserAdded(actor, user) =>
-                connection ! WriteOut(Chat1Encoder(LoginOK).get)
-                sendPing(actor)
-                actor ! Received(ByteString(s"/j ${userCredentials.home}"))
-                goto(LoggedInChat1State) using LoggedInUser(actor, userCredentials.username)
-              case _ => stop()
+                goto(LoggedInChat1State) using LoggedInUser(actor, userCredentials)
+              case _ =>
+                stop()
             }
           } else {
             connection ! WriteOut(Chat1Encoder(LoginFailed(TELNET_INCORRECT_PASSWORD)).get)

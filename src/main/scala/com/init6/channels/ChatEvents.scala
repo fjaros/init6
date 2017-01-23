@@ -44,5 +44,7 @@ case class UserSwitchedChat(actor: ActorRef, user: User, channel: String) extend
 case class UserLeftChat(user: User) extends ChatEvent
 case object UserFlooded extends ChatEvent
 
+// CHAT1 Specific
 case object LoginOK extends ChatEvent
 case class LoginFailed(reason: String) extends ChatEvent
+case class ServerTopicArray(message: Array[String]) extends ChatEvent with ReturnableCommand
