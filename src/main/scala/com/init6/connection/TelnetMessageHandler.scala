@@ -133,11 +133,11 @@ class TelnetMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
     case _ => stay()
   }
 
-  whenUnhandled {
-    case x =>
-      //log.error(s"Unhandled Event $x")
-      stop()
-  }
+//  whenUnhandled {
+//    case x =>
+//      //log.error(s"Unhandled Event $x")
+//      stop()
+//  }
 
   onTransition {
     case ExpectingPassword -> LoggedIn =>
