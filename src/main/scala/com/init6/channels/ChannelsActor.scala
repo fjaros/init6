@@ -188,9 +188,9 @@ class ChannelsActor extends Init6RemotingActor {
           }
         })
 
-    case WhoCommand(user, channel) =>
+    case WhoCommand(user, channel, opsOnly) =>
       getChannel(channel).fold(sender() ! UserErrorArray(CHANNEL_NOT_EXIST))(actor => {
-        actor ! WhoCommandToChannel(sender(), user)
+        actor ! WhoCommandToChannel(sender(), user, opsOnly)
       })
 
     // Need to get rid of this in the future. Puts too much strain on the outbound queue

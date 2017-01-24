@@ -59,6 +59,7 @@ object CommandDecoder {
         case "makeaccount" | "createaccount" => MakeAccountCommand(message)
         case "servermotd" | "motd" => MotdCommand()
         case "null" => EmptyCommand
+        case "ops" => OneCommand(WhoCommand(user, message, opsOnly = true), WhoCommand(user, user.inChannel, opsOnly = true))
         case "place" => PlaceCommand(user, message)
         case "pong" => PongCommand(message)
         case "rejoin" | "rj" => RejoinCommand
@@ -84,7 +85,7 @@ object CommandDecoder {
         case "whisper" | "w" | "msg" | "m" => WhisperMessage(user, message)
         case "whoami" => WhoamiCommand(user)
         case "whois" | "whereis" => OneCommand(WhoisCommand(user, message), UserError(USER_NOT_LOGGED_ON), WhoamiCommand(user))
-        case "who" => OneCommand(WhoCommand(user, message), WhoCommand(user, user.inChannel))
+        case "who" => OneCommand(WhoCommand(user, message, opsOnly = false), WhoCommand(user, user.inChannel, opsOnly = false))
         //case "!bl!zzme!" => BlizzMe(user)
         case _ => UserError()
       }

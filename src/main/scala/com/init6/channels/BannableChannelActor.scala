@@ -142,9 +142,9 @@ trait BannableChannelActor extends ChannelActor {
     }
   }
 
-  override def whoCommand(actor: ActorRef, user: User) = {
+  override def whoCommand(actor: ActorRef, user: User, opsOnly: Boolean) = {
     if (!bannedUsers(user.name)) {
-      super.whoCommand(actor, user)
+      super.whoCommand(actor, user, opsOnly)
     } else {
       actor ! WhoCommandError(NOT_ALLOWED_TO_VIEW)
     }

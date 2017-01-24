@@ -23,9 +23,9 @@ sealed class AdminChannelActor(override val name: String)
     }
   }
 
-  override def whoCommand(actor: ActorRef, user: User) = {
+  override def whoCommand(actor: ActorRef, user: User, opsOnly: Boolean) = {
     if (Flags.isAdmin(user)) {
-      super.whoCommand(actor, user)
+      super.whoCommand(actor, user, opsOnly)
     } else {
       actor ! WhoCommandError(NOT_ALLOWED_TO_VIEW)
     }

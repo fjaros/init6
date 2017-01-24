@@ -85,7 +85,7 @@ class Chat1Handler(clientAddress: InetSocketAddress, connection: ActorRef) exten
       keptAlive = 0
       loggedInUser.actor ! Received(data)
       stay()
-    case x => println(x) ; stay()
+    case x => stay()
   }
 
   def login(userCredentials: UserCredentials) = {

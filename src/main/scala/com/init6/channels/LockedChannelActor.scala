@@ -18,7 +18,7 @@ sealed class LockedChannelActor(override val name: String, lockedMessage: String
     user
   }
 
-  override def whoCommand(actor: ActorRef, user: User) = {
+  override def whoCommand(actor: ActorRef, user: User, opsOnly: Boolean) = {
     actor ! WhoCommandError(NOT_ALLOWED_TO_VIEW)
   }
 }

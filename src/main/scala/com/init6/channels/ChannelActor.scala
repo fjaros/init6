@@ -251,7 +251,7 @@ trait ChannelActor extends Init6RemotingActor {
     case RemUser(actor) => rem(actor)
     case CheckSize => sender() ! ChannelSize(self, name, users.size)
     case ChannelsCommand => sender() ! ChannelInfo(name, users.size, topicExchange.topic, creationTime)
-    case c@ WhoCommandToChannel(actor, user) => whoCommand(actor, user)
+    case c@ WhoCommandToChannel(actor, user, opsOnly) => whoCommand(actor, user, opsOnly)
     case UpdatePing(ping) =>
       val userActor = sender()
       users.get(userActor).foreach(user => {
@@ -273,28 +273,51 @@ trait ChannelActor extends Init6RemotingActor {
     localUsers ! UserFlags(user)
   }
 
-  def whoCommand(actor: ActorRef, user: User) = {
-    if (users.nonEmpty) {
-      log.debug("#WHO USERS " + users + "\n#WHO LOCALUSERS: " + localUsers + "\n#WHO REMOTEUSERSEMAP " + remoteUsersMap)
-      val (ops, noOps) = users
-        .values
-        .foldLeft((Seq.empty[String], Seq.empty[String])) {
-          case ((ops, noOps), user) =>
-            if (Flags.isOp(user)) {
-              (ops :+ s"[${user.name.toUpperCase}]", noOps)
-            } else {
-              (ops, noOps :+ user.name)
-            }
+  def whoCommand(actor: ActorRef, user: User, opsOnly: Boolean) = {
+    actor !
+      (if (users.nonEmpty) {
+        log.debug("#WHO USERS " + users + "\n#WHO LOCALUSERS: " + localUsers + "\n#WHO REMOTEUSERSEMAP " + remoteUsersMap)
+        if (opsOnly) {
+          handleOpsCommand()
+        } else {
+          handleWhoCommand()
         }
+      } else {
+        WhoCommandResponse(None, Seq.empty)
+      })
+  }
 
-      val usernames = (ops ++ noOps)
-        .grouped(2)
-        .map(_.mkString(", "))
-        .toSeq
+  private def handleOpsCommand() = {
+    val ops = users
+      .values
+      .filter(Flags.isOp)
 
-      actor ! WhoCommandResponse(Some(WHO_CHANNEL(name, users.size)), usernames)
-    } else {
-      actor ! WhoCommandResponse(None, Seq.empty)
-    }
+    val usernames = ops
+      .map(user => s"[${user.name.toUpperCase}]")
+      .grouped(2)
+      .map(_.mkString(", "))
+      .toSeq
+
+    WhoCommandResponse(Some(OPS_CHANNEL(name, ops.size)), usernames)
+  }
+
+  private def handleWhoCommand() = {
+    val (ops, noOps) = users
+      .values
+      .foldLeft((Seq.empty[String], Seq.empty[String])) {
+        case ((ops, noOps), user) =>
+          if (Flags.isOp(user)) {
+            (ops :+ s"[${user.name.toUpperCase}]", noOps)
+          } else {
+            (ops, noOps :+ user.name)
+          }
+      }
+
+    val usernames = (ops ++ noOps)
+      .grouped(2)
+      .map(_.mkString(", "))
+      .toSeq
+
+    WhoCommandResponse(Some(WHO_CHANNEL(name, users.size)), usernames)
   }
 }

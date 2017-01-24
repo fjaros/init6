@@ -15,7 +15,7 @@ sealed class VoidedChannelActor(override val name: String)
   extends NonOperableChannelActor {
 
   override def receiveEvent = ({
-    case WhoCommandToChannel(_, _) | UpdatePing(_) => // No-op
+    case WhoCommandToChannel(_, _, _) | UpdatePing(_) => // No-op
     case GetUsers => sender() ! UserInfo(NO_CHAT_PRIVILEGES)
     case ChannelsCommand => sender() ! ChannelInfo(name, 0, topicExchange.topic, creationTime)
     case EmoteCommand(_, message) =>
