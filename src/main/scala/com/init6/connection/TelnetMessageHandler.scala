@@ -76,7 +76,7 @@ object TelnetMessageHandler {
 
 class TelnetMessageHandler(clientAddress: InetSocketAddress, connection: ActorRef) extends Init6KeepAliveActor with FSM[State, Data] {
 
-  implicit val timeout = Timeout(1, TimeUnit.MINUTES)
+  implicit val timeout = Timeout(250, TimeUnit.MILLISECONDS)
 
   startWith(ExpectingUsername, UnauthenticatedUser)
   context.watch(connection)

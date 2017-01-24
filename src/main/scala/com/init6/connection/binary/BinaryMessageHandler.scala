@@ -50,7 +50,7 @@ object BinaryMessageHandler {
 
 class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRef) extends Init6KeepAliveActor with FSM[BinaryState, ActorRef] {
 
-  implicit val timeout = Timeout(1, TimeUnit.MINUTES)
+  implicit val timeout = Timeout(500, TimeUnit.MILLISECONDS)
 
   val ALLOWED_PRODUCTS = Set("D2DV", "D2XP", "DRTL", "DSHR", "JSTR", "SEXP", "SSHR", "STAR", "W2BN")
 

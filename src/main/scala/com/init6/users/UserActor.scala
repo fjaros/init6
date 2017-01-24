@@ -314,7 +314,7 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
   }
 
   private def joinChannel(channel: String) = {
-    implicit val timeout = Timeout(5, TimeUnit.SECONDS)
+    implicit val timeout = Timeout(2, TimeUnit.SECONDS)
     //println(user.name + " - " + self + " - SENDING JOIN")
     Await.result(channelsActor ? UserSwitchedChat(self, user, channel), timeout.duration) match {
       case ChannelJoinResponse(event) =>

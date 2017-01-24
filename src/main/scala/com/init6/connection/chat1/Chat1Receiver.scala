@@ -44,7 +44,7 @@ case class LoggedInUser(actor: ActorRef, userCredentials: UserCredentials) exten
 
 class Chat1Handler(clientAddress: InetSocketAddress, connection: ActorRef) extends Init6KeepAliveActor with FSM[Chat1State, Chat1Data] {
 
-  implicit val timeout = Timeout(1, TimeUnit.MINUTES)
+  implicit val timeout = Timeout(250, TimeUnit.MILLISECONDS)
 
   startWith(LoggingInChat1State, UserCredentials())
 
