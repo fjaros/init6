@@ -83,6 +83,8 @@ class ProtocolHandler(clientAddress: InetSocketAddress, client: ActorRef) extend
   when(Initialized) {
     case Event(Received(data), protocolData: ConnectionProtocolData) =>
       protocolData.messageHandler ! Received(data)
+      stay()
+    case Event(ResumeReading, _) =>
       client ! ResumeReading
       stay()
     case Event(WriteOut(data), protocolData: ConnectionProtocolData) =>
@@ -102,15 +104,15 @@ class ProtocolHandler(clientAddress: InetSocketAddress, client: ActorRef) extend
   when(InitializedBuffering) {
     case Event(Received(data), protocolData: ConnectionProtocolData) =>
       protocolData.messageHandler ! Received(data)
+      stay()
+    case Event(ResumeReading, _) =>
       client ! ResumeReading
       stay()
     case Event(WriteOut(data), _) =>
-     // //log.error(s"### WriteOut2: $client ${data.utf8String}")
       buffer :+= data
       sender() ! WrittenOut
       stay()
     case Event(Ack, _) =>
-      ////log.error(s"### Ack: $client ${buffer.size}")
       buffer
         .headOption
         .fold(goto(Initialized))(data => {

@@ -1,12 +1,10 @@
 package com.init6.connection.chat1
 
 import java.net.InetSocketAddress
-import java.util.concurrent.TimeUnit
 
 import akka.actor.{ActorRef, FSM, Props}
-import akka.io.Tcp.Received
-import akka.pattern.ask
-import akka.util.{ByteString, Timeout}
+import akka.io.Tcp.{Received, ResumeReading}
+import akka.util.ByteString
 import com.init6.Config
 import com.init6.Constants._
 import com.init6.channels._
@@ -16,7 +14,7 @@ import com.init6.connection._
 import com.init6.db.{CreateAccount, DAO, DAOCreatedAck}
 import com.init6.users._
 
-import scala.concurrent.Await
+import scala.collection.mutable
 import scala.util.Random
 
 /**
@@ -33,20 +31,20 @@ class Chat1Receiver(clientAddress: InetSocketAddress, override val connection: A
 
 sealed trait Chat1State
 case object LoggingInChat1State extends Chat1State
-case object BlockedInChat1State extends Chat1State
 case object ExpectingCreateAccountResponse extends Chat1State
 case object LoggedInChat1State extends Chat1State
 case object JustLoggedInChat1
+case object ExpectingAckOfLoginMessages extends Chat1State
+case object StoreExtraData extends Chat1State
 
 sealed trait Chat1Data
-case class UserCredentials(username: String = "", alias: String = "", password: String = "", home: String = "") extends Chat1Data
+case class UserCredentials(username: String = "", alias: String = "", password: String = "", home: String = "", packetsToProcess: mutable.Buffer[ByteString] = mutable.Buffer.empty) extends Chat1Data
 case class LoggedInUser(actor: ActorRef, userCredentials: UserCredentials) extends Chat1Data
 
 class Chat1Handler(clientAddress: InetSocketAddress, connection: ActorRef) extends Init6KeepAliveActor with FSM[Chat1State, Chat1Data] {
 
-  implicit val timeout = Timeout(250, TimeUnit.MILLISECONDS)
-
   startWith(LoggingInChat1State, UserCredentials())
+  connection ! ResumeReading
 
   when (LoggingInChat1State) {
     case Event(Received(data), userCredentials: UserCredentials) =>
@@ -54,6 +52,7 @@ class Chat1Handler(clientAddress: InetSocketAddress, connection: ActorRef) exten
       val splt = data.utf8String.split(" ", 2)
       val (command, value) = (splt.head, splt.last)
 
+      connection ! ResumeReading
       command match {
         case "ACCT" => stay using userCredentials.copy(username = value)
         case "AS" => stay using userCredentials.copy(alias = value)
@@ -65,25 +64,10 @@ class Chat1Handler(clientAddress: InetSocketAddress, connection: ActorRef) exten
   }
 
   when (LoggedInChat1State) {
-    case Event(JustLoggedInChat1, loggedInUser: LoggedInUser) =>
-      log.debug(">> {} Chat1 LoggedInChat1State", connection)
-      connection ! WriteOut(Chat1Encoder(LoginOK).get)
-      connection ! WriteOut(Chat1Encoder(UserInfo(TELNET_CONNECTED(clientAddress))).get)
-      Await.result(connection ? WriteOut(Chat1Encoder(ServerTopicArray(Config().motd)).get), timeout.duration) match {
-        case WrittenOut =>
-          sendPing(loggedInUser.actor)
-          keepAlive(loggedInUser.actor, () => {
-            sendPing(loggedInUser.actor)
-          })
-          loggedInUser.actor ! JoinChannelFromConnection("Chat")
-          loggedInUser.actor ! JoinChannelFromConnection(loggedInUser.userCredentials.home)
-          stay()
-        case _ =>
-          stop()
-      }
     case Event(Received(data), loggedInUser: LoggedInUser) =>
       keptAlive = 0
       loggedInUser.actor ! Received(data)
+      connection ! ResumeReading
       stay()
     case x => stay()
   }
@@ -102,19 +86,15 @@ class Chat1Handler(clientAddress: InetSocketAddress, connection: ActorRef) exten
       })(dbUser => {
         if (dbUser.closed) {
           connection ! WriteOut(Chat1Encoder(LoginFailed(ACCOUNT_CLOSED(userCredentials.username, dbUser.closedReason))).get)
-          goto(BlockedInChat1State)
+          stop()
         } else {
           if (BSHA1(userCredentials.password).sameElements(dbUser.passwordHash)) {
             val u = User(clientAddress.getAddress.getHostAddress, userCredentials.username, dbUser.flags | Flags.UDP, 0, client = "TAHC")
-            Await.result(usersActor ? Add(connection, u, Chat1Protocol), timeout.duration) match {
-              case UsersUserAdded(actor, user) =>
-                goto(LoggedInChat1State) using LoggedInUser(actor, userCredentials)
-              case _ =>
-                stop()
-            }
+            usersActor ! Add(connection, u, Chat1Protocol)
+            goto(StoreExtraData) using userCredentials
           } else {
             connection ! WriteOut(Chat1Encoder(LoginFailed(TELNET_INCORRECT_PASSWORD)).get)
-            goto(BlockedInChat1State)
+            stop()
           }
         }
       })
@@ -129,6 +109,30 @@ class Chat1Handler(clientAddress: InetSocketAddress, connection: ActorRef) exten
     case x =>
       log.debug(">> {} Unhandled in ExpectingCreateAccountResponse {}", connection, x)
       stop()
+  }
+
+  when (ExpectingAckOfLoginMessages) {
+    case Event(WrittenOut, loggedInUser: LoggedInUser) =>
+      sendPing(loggedInUser.actor)
+      keepAlive(loggedInUser.actor, () => {
+        sendPing(loggedInUser.actor)
+      })
+      loggedInUser.actor ! JoinChannelFromConnection(loggedInUser.userCredentials.home)
+      loggedInUser.userCredentials.packetsToProcess.foreach(loggedInUser.actor ! Received(_))
+      connection ! ResumeReading
+      goto(LoggedInChat1State) using loggedInUser
+  }
+
+  when (StoreExtraData) {
+    case Event(Received(data), buffer: UserCredentials) =>
+      buffer.packetsToProcess += data
+      stay()
+    case Event(UsersUserAdded(actor, user), buffer: UserCredentials) =>
+      val loggedInUser = LoggedInUser(actor, buffer)
+      connection ! WriteOut(Chat1Encoder(LoginOK).get)
+      connection ! WriteOut(Chat1Encoder(UserInfo(TELNET_CONNECTED(clientAddress))).get)
+      connection ! WriteOut(Chat1Encoder(ServerTopicArray(Config().motd)).get)
+      goto(ExpectingAckOfLoginMessages) using loggedInUser
   }
 
   def createAccount(userCredentials: UserCredentials): State = {
@@ -163,12 +167,5 @@ class Chat1Handler(clientAddress: InetSocketAddress, connection: ActorRef) exten
 
     connection ! WriteOut(Chat1Encoder(UserPing(pingCookie)).get)
     userActor ! PingSent(System.currentTimeMillis(), pingCookie)
-  }
-
-  onTransition {
-    case LoggingInChat1State -> LoggedInChat1State =>
-      self ! JustLoggedInChat1
-    case x =>
-      log.error("{} Chat1 onTransition unexpected state: {}", connection, x)
   }
 }

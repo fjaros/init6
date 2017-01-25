@@ -5,7 +5,7 @@ import java.util.concurrent.TimeUnit
 import akka.actor.{ActorRef, PoisonPill, Props, Terminated}
 import akka.io.Tcp.Received
 import akka.pattern.ask
-import akka.util.{ByteString, Timeout}
+import akka.util.Timeout
 import com.init6.Constants._
 import com.init6.coders.chat1.Chat1Encoder
 import com.init6.coders.commands._
