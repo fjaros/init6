@@ -60,6 +60,8 @@ class TelnetMessageReceiver(clientAddress: InetSocketAddress, connection: ActorR
       val restOfData = data.drop(readData.length).dropWhile(b => b == '\r' || b == '\n')
       if (restOfData.nonEmpty) {
         receive(Received(restOfData))
+      } else {
+        connection ! ResumeReading
       }
     case x =>
       //println(s"Received $x and closing handler.")
