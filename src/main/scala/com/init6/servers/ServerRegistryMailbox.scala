@@ -10,7 +10,7 @@ import com.typesafe.config.Config
 class ServerRegistryMailbox(settings: ActorSystem.Settings, config: Config)
   extends UnboundedPriorityMailbox(
     PriorityGenerator {
-      case Identify | ActorIdentity => 1
+      case Identify(_) | ActorIdentity(_, _) | IAmHere | AreYouThere => 1
       case _ => 2
     }
   )

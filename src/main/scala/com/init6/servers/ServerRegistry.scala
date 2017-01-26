@@ -4,11 +4,11 @@ import java.util.concurrent.TimeUnit
 
 import akka.actor.{ActorRef, Address, Props, Terminated}
 import com.init6.Constants._
+import com.init6.coders.commands.Command
 import com.init6.{Config, Init6Actor, Init6Component}
 
 import scala.collection.mutable
 import scala.concurrent.duration.Duration
-import scala.util.{Failure, Success}
 
 /**
   * This is a registry actor, responsible for replacing the "clustering" functionality of Akka.
@@ -35,12 +35,17 @@ case object UnsubscribeAck
 case class ServerAlive(address: Address)
 case class ServerDead(address: Address)
 
+// Internal
+case object AreYouThere extends Command
+case object IAmHere extends Command
+case object CheckKeepAlives
+case class ServerPinged(actor: ActorRef)
 
 class ServerRegistry extends Init6Actor {
 
   val remoteServerPaths =
     Config().Server.nodes
-      .map(node => s"akka://$INIT6@$node/user/$INIT6_SERVER_REGISTRY_PATH")
+      .map(node => system.actorSelection(s"akka://$INIT6@$node/user/$INIT6_SERVER_REGISTRY_PATH"))
 
   val subscribers = mutable.HashSet[ActorRef]()
   val keepAlives = mutable.HashMap[ActorRef, Long]()
@@ -48,44 +53,55 @@ class ServerRegistry extends Init6Actor {
   var isSplit = false
 
   override def preStart() = {
-    import system.dispatcher
+    super.preStart()
 
+    import system.dispatcher
     val initialDelay = Duration(Config().Server.Registry.initialDelay, TimeUnit.MILLISECONDS)
     val pingDelay = Duration(Config().Server.Registry.pingDelay, TimeUnit.MILLISECONDS)
     system.scheduler.schedule(
       initialDelay,
       pingDelay
     )({
-      // Prune keepAlives. Anything >= 30 seconds shall be deemed dead
+      self ! CheckKeepAlives
+
+      // TIMING OUT?
+      // Weird handling in akka of .resolveOne, use custom messages here.
+      log.debug("#SR Scheduler " + remoteServerPaths)
+      remoteServerPaths.foreach(_.tell(AreYouThere, self))
+    })
+  }
+
+  override def receive = {
+    case AreYouThere =>
+      log.debug("#SR AreYouThere {}", sender())
+      sender() ! IAmHere
+
+    // Internal
+    case c @ IAmHere =>
+      val actor = sender()
+      log.debug("#SR {}", c)
+      if (!keepAlives.contains(actor)) {
+        val serverAlive = ServerAlive(actor.path.address)
+        subscribers.foreach(_ ! serverAlive)
+      }
+      keepAlives += actor -> System.currentTimeMillis()
+
+    case c @ CheckKeepAlives =>
+      log.debug("#SR {}", c)
+      // Prune keepAlives. Anything >= dropAfter milliseconds shall be deemed dead
       val now = System.currentTimeMillis()
-      keepAlives.foreach {
+      keepAlives.toSeq.foreach {
         case (actor, time) =>
+          log.debug("#SR Checking " + actor + " - " + (now - time))
           if (now - time >= Config().Server.Registry.dropAfter) {
             // this actor is dead
+            log.debug("#SR Removing actor " + actor)
             keepAlives -= actor
             val serverDead = ServerDead(actor.path.address)
             subscribers.foreach(_ ! serverDead)
           }
       }
 
-      // TIMING OUT?
-      remoteServerPaths
-        .map(system.actorSelection(_).resolveOne(pingDelay))
-        .foreach(_.onComplete {
-          case Success(actor) =>
-            if (!keepAlives.contains(actor)) {
-              val serverAlive = ServerAlive(actor.path.address)
-              subscribers.foreach(_ ! serverAlive)
-            }
-            keepAlives += actor -> System.currentTimeMillis()
-
-          case Failure(ex) =>
-            log.error("Failed to contact remote server: {}", ex.getMessage)
-        })
-    })
-  }
-
-  override def receive = {
     // From local actors subscribing
     case Subscribe(subscriber) =>
       subscribe(subscriber)

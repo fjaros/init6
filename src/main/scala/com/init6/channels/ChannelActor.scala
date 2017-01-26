@@ -5,7 +5,7 @@ import java.util.concurrent.TimeUnit
 import akka.actor.{ActorRef, Address, Props}
 import akka.util.Timeout
 import com.init6.Constants._
-import com.init6.{Init6RemotingActor, SystemContext}
+import com.init6.Init6RemotingActor
 import com.init6.channels.utils.{LocalUsersSet, RemoteMultiMap}
 import com.init6.coders.Base64
 import com.init6.coders.commands._
@@ -54,8 +54,6 @@ case class TopicExchange(
 
 case class AddUser(actor: ActorRef, user: User) extends Command
 case class RemUser(actor: ActorRef) extends Command with Remotable
-case object IsEmpty
-case object NonEmpty
 case class UserAddedToChannel(user: User, channelName: String, channelActor: ActorRef, topicExchange: TopicExchange)
 case object CheckSize extends Command
 case class ChannelSize(actor: ActorRef, name: String, size: Int) extends Command
