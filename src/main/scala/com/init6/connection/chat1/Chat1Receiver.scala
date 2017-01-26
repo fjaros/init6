@@ -3,7 +3,7 @@ package com.init6.connection.chat1
 import java.net.InetSocketAddress
 
 import akka.actor.{ActorRef, FSM, Props}
-import akka.io.Tcp.{Received, ResumeReading}
+import akka.io.Tcp.Received
 import akka.util.ByteString
 import com.init6.Config
 import com.init6.Constants._
@@ -44,7 +44,6 @@ case class LoggedInUser(actor: ActorRef, userCredentials: UserCredentials) exten
 class Chat1Handler(clientAddress: InetSocketAddress, connection: ActorRef) extends Init6KeepAliveActor with FSM[Chat1State, Chat1Data] {
 
   startWith(LoggingInChat1State, UserCredentials())
-  connection ! ResumeReading
 
   when (LoggingInChat1State) {
     case Event(Received(data), userCredentials: UserCredentials) =>
@@ -52,7 +51,6 @@ class Chat1Handler(clientAddress: InetSocketAddress, connection: ActorRef) exten
       val splt = data.utf8String.split(" ", 2)
       val (command, value) = (splt.head, splt.last)
 
-      connection ! ResumeReading
       command match {
         case "ACCT" => stay using userCredentials.copy(username = value)
         case "AS" => stay using userCredentials.copy(alias = value)
@@ -67,7 +65,6 @@ class Chat1Handler(clientAddress: InetSocketAddress, connection: ActorRef) exten
     case Event(Received(data), loggedInUser: LoggedInUser) =>
       keptAlive = 0
       loggedInUser.actor ! Received(data)
-      connection ! ResumeReading
       stay()
     case x => stay()
   }
@@ -119,7 +116,6 @@ class Chat1Handler(clientAddress: InetSocketAddress, connection: ActorRef) exten
       })
       loggedInUser.actor ! JoinChannelFromConnection(loggedInUser.userCredentials.home)
       loggedInUser.userCredentials.packetsToProcess.foreach(loggedInUser.actor ! Received(_))
-      connection ! ResumeReading
       goto(LoggedInChat1State) using loggedInUser
   }
 

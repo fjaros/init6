@@ -4,7 +4,7 @@ import java.net.InetSocketAddress
 import java.util.concurrent.TimeUnit
 
 import akka.actor.{ActorRef, FSM, Props}
-import akka.io.Tcp.{Received, ResumeReading}
+import akka.io.Tcp.Received
 import akka.util.ByteString
 import com.init6.connection.binary.{BinaryMessageHandler, BinaryPacket}
 import com.init6.Init6Actor
@@ -43,7 +43,6 @@ class BinaryMessageReceiver(clientAddress: InetSocketAddress, connection: ActorR
     case Event(Received(data), ReceivingData(buffer)) =>
       @tailrec
       def constructPackets(data: Array[Byte]): State = {
-        connection ! ResumeReading
         val dataLen = data.length
         if (dataLen >= HEADER_SIZE) {
           val fullData: Array[Byte] = data

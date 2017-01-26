@@ -1,17 +1,11 @@
 package com.init6.connection
 
 import java.net.InetSocketAddress
-import java.util.concurrent.TimeUnit
 
-import akka.actor.{ActorRef, Props}
-import akka.pattern.ask
-import akka.io.Tcp.{Abort, Bind, Bound, Register, ResumeAccepting}
+import akka.actor.{ActorRef, FSM, Props}
+import akka.io.Tcp.{Abort, Bind, Register, ResumeAccepting}
 import akka.io.{IO, Tcp}
-import akka.util.Timeout
 import com.init6.{Init6Actor, Init6Component}
-
-import scala.concurrent.Await
-import scala.util.Try
 
 /**
  * Created by filip on 9/19/15.
@@ -20,46 +14,55 @@ object ConnectionHandler extends Init6Component {
   def apply(host: String, port: Int) = system.actorOf(Props(classOf[ConnectionHandler], host, port))
 }
 
-class ConnectionHandler(host: String, port: Int) extends Init6Actor {
+sealed trait ConnectionHandlerState
+case object Unbound extends ConnectionHandlerState
+case object Bound extends ConnectionHandlerState
 
-  implicit val timeout = Timeout(200, TimeUnit.MILLISECONDS)
+class ConnectionHandler(host: String, port: Int)
+  extends Init6Actor with FSM[ConnectionHandlerState, ActorRef] {
 
   override def preStart() = {
     super.preStart()
+
+    startWith(Unbound, ActorRef.noSender)
 
     val bindAddress = new InetSocketAddress(host, port)
     IO(Tcp) ! Bind(self, bindAddress, pullMode = true)
   }
 
-  override def receive: Receive = {
-    case Bound(local) =>
-      log.error("Local address {} bound", local)
-      sender ! ResumeAccepting(1)
-      setAcceptingUptime()
-      context.become(accept(sender()))
-  }
+  when(Unbound) {
+    case Event(Tcp.Bound(localAddress), _) =>
+      log.debug("Local address {} bound", localAddress)
+      val listener = sender()
 
-  def accept(listener: ActorRef): Receive = {
-    case Tcp.Connected(remote, _) =>
-      val remoteInetAddress = remote.getAddress
-      log.debug("Address {} connected", remoteInetAddress.getHostAddress)
-      Try {
-        Await.result(ipLimiterActor ? Connected(remoteInetAddress), timeout.duration) match {
-          case Allowed => allowed(remote)
-          case _ => disallowed(remote)
-        }
-      }.getOrElse(disallowed(remote))
       listener ! ResumeAccepting(1)
+      setAcceptingUptime()
+      goto(Bound) using listener
   }
 
-  def allowed(remote: InetSocketAddress) = {
+  when(Bound) {
+    case Event(Tcp.Connected(remote, _), _) =>
+      log.debug("Address {} connected", remote.getAddress.getHostAddress)
+      ipLimiterActor ! Connected(sender(), remote)
+      stay()
+    case Event(Allowed(connectingActor, address), listener: ActorRef) =>
+      allowed(connectingActor, address)
+      listener ! ResumeAccepting(1)
+      stay()
+    case Event(NotAllowed(connectingActor, address), listener: ActorRef) =>
+      notAllowed(connectingActor, address)
+      listener ! ResumeAccepting(1)
+      stay()
+  }
+
+  def allowed(connectingActor: ActorRef, remote: InetSocketAddress) = {
     log.debug("Address {} allowed", remote.getAddress)
-    sender() ! Register(context.actorOf(ProtocolHandler(remote, sender())), keepOpenOnPeerClosed = true)
-    sender() ! Tcp.SO.KeepAlive(on = true)
+    connectingActor ! Register(context.actorOf(ProtocolHandler(remote, connectingActor)), keepOpenOnPeerClosed = true)
+    connectingActor ! Tcp.SO.KeepAlive(on = true)
   }
 
-  def disallowed(remote: InetSocketAddress) = {
+  def notAllowed(connectingActor: ActorRef, remote: InetSocketAddress) = {
     log.debug("Address {} disallowed", remote.getAddress)
-    sender() ! Abort
+    connectingActor ! Abort
   }
 }

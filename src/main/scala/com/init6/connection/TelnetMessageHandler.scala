@@ -3,7 +3,7 @@ package com.init6.connection
 import java.net.InetSocketAddress
 
 import akka.actor.{ActorRef, FSM, Props}
-import akka.io.Tcp.{Close, Received, ResumeReading}
+import akka.io.Tcp.{Close, Received}
 import akka.util.ByteString
 import com.init6.Constants._
 import com.init6.coders.binary.hash.BSHA1
@@ -60,8 +60,6 @@ class TelnetMessageReceiver(clientAddress: InetSocketAddress, connection: ActorR
       val restOfData = data.drop(readData.length).dropWhile(b => b == '\r' || b == '\n')
       if (restOfData.nonEmpty) {
         receive(Received(restOfData))
-      } else {
-        connection ! ResumeReading
       }
     case x =>
       //println(s"Received $x and closing handler.")
@@ -124,7 +122,6 @@ class TelnetMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
     case Event(Received(data), buffer: AuthenticatedUser) =>
       keptAlive = 0
       buffer.actor ! Received(data)
-      connection ! ResumeReading
       stay()
   }
 
@@ -132,7 +129,6 @@ class TelnetMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
     case Event(WrittenOut, buffer: AuthenticatedUser) =>
       buffer.actor ! JoinChannelFromConnection("Chat")
       buffer.packetsToProcess.foreach(buffer.actor ! Received(_))
-      connection ! ResumeReading
       goto(LoggedIn)
   }
 

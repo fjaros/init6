@@ -92,7 +92,7 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
     case PongCommand(cookie) =>
       handlePingResponse(cookie)
 
-    case c@ ChannelJoinResponse(event) =>
+    case ChannelJoinResponse(event) =>
       event match {
         case UserChannel(newUser, channel, channelActor) =>
           user = newUser
@@ -314,19 +314,20 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
   }
 
   private def joinChannel(channel: String) = {
-    implicit val timeout = Timeout(2, TimeUnit.SECONDS)
+    //implicit val timeout = Timeout(2, TimeUnit.SECONDS)
     //println(user.name + " - " + self + " - SENDING JOIN")
-    Await.result(channelsActor ? UserSwitchedChat(self, user, channel), timeout.duration) match {
-      case ChannelJoinResponse(event) =>
-        //println(user.name + " - " + self + " - RECEIVED JOIN")
-        event match {
-          case UserChannel(newUser, channel, channelActor) =>
-            user = newUser
-            this.channelActor = channelActor
-            channelActor ! GetUsers
-          case _ =>
-        }
-        encodeAndSend(event)
-    }
+    channelsActor ! UserSwitchedChat(self, user, channel)
+//    Await.result(channelsActor ? UserSwitchedChat(self, user, channel), timeout.duration) match {
+//      case ChannelJoinResponse(event) =>
+//        //println(user.name + " - " + self + " - RECEIVED JOIN")
+//        event match {
+//          case UserChannel(newUser, channel, channelActor) =>
+//            user = newUser
+//            this.channelActor = channelActor
+//            channelActor ! GetUsers
+//          case _ =>
+//        }
+//        encodeAndSend(event)
+//    }
   }
 }

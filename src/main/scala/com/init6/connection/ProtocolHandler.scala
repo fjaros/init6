@@ -83,8 +83,6 @@ class ProtocolHandler(clientAddress: InetSocketAddress, client: ActorRef) extend
   when(Initialized) {
     case Event(Received(data), protocolData: ConnectionProtocolData) =>
       protocolData.messageHandler ! Received(data)
-      stay()
-    case Event(ResumeReading, _) =>
       client ! ResumeReading
       stay()
     case Event(WriteOut(data), protocolData: ConnectionProtocolData) =>
@@ -104,8 +102,6 @@ class ProtocolHandler(clientAddress: InetSocketAddress, client: ActorRef) extend
   when(InitializedBuffering) {
     case Event(Received(data), protocolData: ConnectionProtocolData) =>
       protocolData.messageHandler ! Received(data)
-      stay()
-    case Event(ResumeReading, _) =>
       client ! ResumeReading
       stay()
     case Event(WriteOut(data), _) =>
@@ -168,6 +164,6 @@ class ProtocolHandler(clientAddress: InetSocketAddress, client: ActorRef) extend
     case x =>
       log.debug("{} ProtocolHandled terminated", clientAddress.getAddress.getHostAddress)
       client ! Close
-      ipLimiterActor ! Disconnected(clientAddress.getAddress)
+      ipLimiterActor ! Disconnected(clientAddress)
   }
 }
