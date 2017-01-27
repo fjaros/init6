@@ -3,7 +3,7 @@ package com.init6.users
 import java.util.concurrent.TimeUnit
 
 import akka.actor.{ActorRef, PoisonPill, Props, Terminated}
-import akka.io.Tcp.Received
+import akka.io.Tcp.{Abort, Received}
 import akka.pattern.ask
 import akka.util.Timeout
 import com.init6.Constants._
@@ -18,7 +18,7 @@ import com.init6.coders.binary.BinaryChatEncoder
 import com.init6.coders.telnet._
 import com.init6.db._
 import com.init6.servers.{SendBirth, ServerOnline, SplitMe}
-import com.init6.utils.CaseInsensitiveHashSet
+import com.init6.utils.{CaseInsensitiveHashSet, ChatValidator}
 
 import scala.concurrent.Await
 
@@ -165,8 +165,12 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
 
     // THIS SHIT NEEDS TO BE REFACTORED!
     case Received(data) =>
-      // Handle AntiFlood
-      if (Config().AntiFlood.enabled && floodState(data.length)) {
+      // sanity check
+      if (!ChatValidator(data)) {
+        connection ! Abort
+        self ! KillConnection
+      } else if (Config().AntiFlood.enabled && floodState(data.length)) {
+        // Handle AntiFlood
         encodeAndSend(UserFlooded)
         self ! KillConnection
       } else {

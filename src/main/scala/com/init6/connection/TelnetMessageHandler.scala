@@ -36,35 +36,9 @@ object TelnetMessageReceiver {
     Props(classOf[TelnetMessageReceiver], clientAddress, connection)
 }
 
-class TelnetMessageReceiver(clientAddress: InetSocketAddress, connection: ActorRef) extends Init6Actor {
+class TelnetMessageReceiver(clientAddress: InetSocketAddress, override val connection: ActorRef) extends ChatReceiver {
 
-  val handler = context.actorOf(TelnetMessageHandler(clientAddress, connection))
-  val buffer = ArrayBuffer[Byte]()
-
-
-  override def receive: Receive = {
-    case Received(data) =>
-      val readData = data.takeWhile(b => b != '\r' && b != '\n')
-      if (data.length == readData.length) {
-        // Split packet
-        buffer ++= readData
-      } else {
-        // End of packet found
-        if (buffer.nonEmpty) {
-          handler ! Received(ByteString(buffer.toArray[Byte] ++ readData.toArray[Byte]))
-          buffer.clear()
-        } else if (readData.nonEmpty) {
-          handler ! Received(readData)
-        }
-      }
-      val restOfData = data.drop(readData.length).dropWhile(b => b == '\r' || b == '\n')
-      if (restOfData.nonEmpty) {
-        receive(Received(restOfData))
-      }
-    case x =>
-      //println(s"Received $x and closing handler.")
-      connection ! Close
-  }
+  override val handler = context.actorOf(TelnetMessageHandler(clientAddress, connection))
 }
 
 object TelnetMessageHandler {

@@ -1,9 +1,10 @@
 package com.init6.connection
 
-import akka.actor.ActorRef
-import akka.io.Tcp.{Close, Received}
+import akka.actor.{ActorRef, FSM}
+import akka.io.Tcp.{Abort, Close, Received}
 import akka.util.ByteString
 import com.init6.Init6Actor
+import com.init6.utils.ChatValidator
 
 import scala.annotation.tailrec
 import scala.collection.mutable.ArrayBuffer
@@ -24,6 +25,13 @@ trait ChatReceiver extends Init6Actor {
       @tailrec
       def parsePacket(data: ByteString): Unit = {
         val readData = data.takeWhile(b => b != '\r' && b != '\n')
+        // sanity check
+        if (!ChatValidator(readData)) {
+          connection ! Abort
+          context.stop(self)
+          return
+        }
+
         if (data.length == readData.length) {
           // Split packet
           buffer ++= readData
@@ -42,8 +50,5 @@ trait ChatReceiver extends Init6Actor {
         }
       }
       parsePacket(data)
-    case x =>
-      //println(s"Received $x and closing handler.")
-      connection ! Close
   }
 }

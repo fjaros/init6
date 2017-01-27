@@ -162,7 +162,7 @@ class ProtocolHandler(clientAddress: InetSocketAddress, client: ActorRef) extend
 
   onTermination {
     case x =>
-      log.debug("{} ProtocolHandled terminated", clientAddress.getAddress.getHostAddress)
+      log.error("{} ProtocolHandled terminated", clientAddress.getAddress.getHostAddress)
       client ! Close
       ipLimiterActor ! Disconnected(clientAddress)
   }
