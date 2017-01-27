@@ -72,6 +72,8 @@ sealed class Config(filePath: String) {
 
     val p = root.getConfig("accounts")
 
+    val ipLimit = p.getInt("ip-limit")
+
     val allowedCharacters =
       s"abcdefghijklmnopqrstuvwxyz0123456789${p.getString("allowed-illegal-characters")}".toSet
 
