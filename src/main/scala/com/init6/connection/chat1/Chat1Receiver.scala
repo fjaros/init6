@@ -2,7 +2,7 @@ package com.init6.connection.chat1
 
 import java.net.InetSocketAddress
 
-import akka.actor.{ActorRef, FSM, Props}
+import akka.actor.{ActorRef, FSM, PoisonPill, Props}
 import akka.io.Tcp.Received
 import akka.util.ByteString
 import com.init6.Config
@@ -109,6 +109,9 @@ class Chat1Handler(clientAddress: InetSocketAddress, connection: ActorRef) exten
   }
 
   when (ExpectingAckOfLoginMessages) {
+    case Event(Received(data), loggedInUser: LoggedInUser) =>
+      loggedInUser.userCredentials.packetsToProcess += data
+      stay()
     case Event(WrittenOut, loggedInUser: LoggedInUser) =>
       sendPing(loggedInUser.actor)
       keepAlive(loggedInUser.actor, () => {
@@ -163,5 +166,10 @@ class Chat1Handler(clientAddress: InetSocketAddress, connection: ActorRef) exten
 
     connection ! WriteOut(Chat1Encoder(UserPing(pingCookie)).get)
     userActor ! PingSent(System.currentTimeMillis(), pingCookie)
+  }
+
+  onTermination {
+    case terminated =>
+      connection ! PoisonPill
   }
 }

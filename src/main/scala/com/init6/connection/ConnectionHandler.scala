@@ -3,7 +3,7 @@ package com.init6.connection
 import java.net.InetSocketAddress
 
 import akka.actor.{ActorRef, FSM, Props}
-import akka.io.Tcp.{Abort, Bind, Register, ResumeAccepting}
+import akka.io.Tcp.{Abort, Bind, ConnectionClosed, Register, ResumeAccepting}
 import akka.io.{IO, Tcp}
 import com.init6.{Init6Actor, Init6Component}
 
@@ -52,6 +52,9 @@ class ConnectionHandler(host: String, port: Int)
     case Event(NotAllowed(connectingActor, address), listener: ActorRef) =>
       notAllowed(connectingActor, address)
       listener ! ResumeAccepting(1)
+      stay()
+    case Event(_: ConnectionClosed, _) =>
+      ipLimiterActor ! Disconnected(sender())
       stay()
   }
 

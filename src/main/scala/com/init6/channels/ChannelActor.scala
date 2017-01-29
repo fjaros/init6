@@ -11,6 +11,7 @@ import com.init6.coders.Base64
 import com.init6.coders.commands._
 import com.init6.servers.{Remotable, ServerOnline, SplitMe}
 import com.init6.users.{GetUsers, UpdatePing, UserChannelChanged, UserUpdated}
+import com.init6.utils.CaseInsensitiveHashMap
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.collection.mutable
@@ -77,6 +78,7 @@ trait ChannelActor extends Init6RemotingActor {
 
   // Map of actor -> user. Actor can be local or remote.
   val users = mutable.LinkedHashMap[ActorRef, User]()
+  val reverseUsernames = CaseInsensitiveHashMap[ActorRef]()
   val remoteUsersMap = RemoteMultiMap[Address, ActorRef]()
 
   var isSplit = false
@@ -103,8 +105,8 @@ trait ChannelActor extends Init6RemotingActor {
 
   def add(actor: ActorRef, user: User): User = {
     // just in case
-    //println("#ADD " + actor + " - " + user + " - " + sender())
     rem(actor)
+    rem(user)
 
     if (isLocal(actor)) {
       if (creationTime == 0) {
@@ -124,6 +126,7 @@ trait ChannelActor extends Init6RemotingActor {
 
     log.info("#ADD " + actor + " - " + newUser)
     users += actor -> newUser
+    reverseUsernames += newUser.name -> actor
 
     if (isLocal()) {
       //println("sender " + sender())
@@ -131,6 +134,15 @@ trait ChannelActor extends Init6RemotingActor {
       topCommandActor ! UserChannelChanged(actor, newUser)
     }
     newUser
+  }
+
+  def rem(user: User): Unit = {
+    reverseUsernames
+      .get(user.name)
+      .foreach(actor => {
+        rem(actor)
+        reverseUsernames -= user.name
+      })
   }
 
   def rem(actor: ActorRef): Option[User] = {
@@ -143,6 +155,7 @@ trait ChannelActor extends Init6RemotingActor {
     userOpt.foreach(user => {
       log.info("#REM " + actor + " - " + userOpt + " - " + sender() + " - " + user.channelTimestamp)
       users -= actor
+      reverseUsernames -= user.name
     })
 
     // clear topic if applicable
@@ -156,13 +169,16 @@ trait ChannelActor extends Init6RemotingActor {
 
   def remoteIn(remoteUserActor: ActorRef, user: User) = {
     //println("#REMOTEIN " + remoteChannelActor + " - " + remoteUserActor + " - " + user + " - " + users.contains(remoteUserActor))
-    users.get(remoteUserActor).fold({
+    users.get(remoteUserActor).fold[Unit]({
+      // Should refactor this. Use add!
       // new user
       log.info("#RADD " + remoteUserActor + " - " + user)
-      users += remoteUserActor -> user
-
-      remoteUsersMap += remoteUserActor.path.address -> remoteUserActor
-      localUsers ! UserIn(user)
+      add(remoteUserActor, user)
+//      users += remoteUserActor -> user
+//      reverseUsernames += user.name -> remoteUserActor
+//
+//      remoteUsersMap += remoteUserActor.path.address -> remoteUserActor
+//      localUsers ! UserIn(user)
     })(currentUser => {
       // existing but have to honor the flags of remote
       log.info("#RMOD " + currentUser + " -> " + user)
@@ -241,9 +257,10 @@ trait ChannelActor extends Init6RemotingActor {
     case GetUsers =>
       //println("RECEIVED GetUsers from " + sender())
       //println(users + " - " + userJoinTimes)
+      val userActor = sender()
       users
         .values
-        .foreach(sender() ! UserIn(_))
+        .foreach(userActor ! UserIn(_))
 
     case c@ AddUser(actor, user) => add(actor, user)
     case RemUser(actor) => rem(actor)

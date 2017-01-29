@@ -85,6 +85,8 @@ class ProtocolHandler(clientAddress: InetSocketAddress, client: ActorRef) extend
       protocolData.messageHandler ! Received(data)
       client ! ResumeReading
       stay()
+    case Event(_: ConnectionClosed, _) =>
+      stop()
     case Event(WriteOut(data), protocolData: ConnectionProtocolData) =>
       ////log.error(s"### WriteOut1: $client ${data.utf8String}")
       client ! Write(data, Ack)
@@ -104,6 +106,8 @@ class ProtocolHandler(clientAddress: InetSocketAddress, client: ActorRef) extend
       protocolData.messageHandler ! Received(data)
       client ! ResumeReading
       stay()
+    case Event(_: ConnectionClosed, _) =>
+      stop()
     case Event(WriteOut(data), _) =>
       buffer :+= data
       sender() ! WrittenOut
@@ -161,9 +165,7 @@ class ProtocolHandler(clientAddress: InetSocketAddress, client: ActorRef) extend
   }
 
   onTermination {
-    case x =>
-      log.error("{} ProtocolHandled terminated", clientAddress.getAddress.getHostAddress)
-      client ! Close
-      ipLimiterActor ! Disconnected(clientAddress)
+    case terminated =>
+      ipLimiterActor ! Disconnected(client)
   }
 }

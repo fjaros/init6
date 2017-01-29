@@ -16,13 +16,14 @@ object IpLimitActor extends Init6Component {
 }
 
 case class Connected(connectingActor: ActorRef, address: InetSocketAddress)
-case class Disconnected(address: InetSocketAddress)
+case class Disconnected(connectingActor: ActorRef)
 case class Allowed(connectingActor: ActorRef, address: InetSocketAddress)
 case class NotAllowed(connectingActor: ActorRef, address: InetSocketAddress)
 
 class IpLimitActor(limit: Int) extends Init6Actor {
 
-  val ips = mutable.HashMap[Int, Int]()
+  val actorToIp = mutable.HashMap.empty[ActorRef, Int]
+  val ipCount = mutable.HashMap.empty[Int, Int]
 
   private def toDword(ip: Array[Byte]) = ip(3) << 24 | ip(2) << 16 | ip(1) << 8 | ip.head
 
@@ -37,20 +38,26 @@ class IpLimitActor(limit: Int) extends Init6Actor {
       }
 
       val addressInt = toDword(address.getAddress.getAddress)
-      val current = ips.getOrElse(addressInt, 0)
+      val current = ipCount.getOrElse(addressInt, 0)
 
       if (limit > current) {
+        actorToIp += connectingActor -> addressInt
+        ipCount += addressInt -> (current + 1)
         sender() ! Allowed(connectingActor, address)
-        ips += addressInt -> (current + 1)
       } else {
         sender() ! NotAllowed(connectingActor, address)
       }
 
-    case Disconnected(address) =>
-      val addressInt = toDword(address.getAddress.getAddress)
-      val current = ips.getOrElse(addressInt, 0)
-      if (current > 0) { // Should always get through the if though...
-        ips += addressInt -> (current - 1)
-      }
+    case Disconnected(connectingActor) =>
+      actorToIp
+        .get(connectingActor)
+        .foreach(addressInt => {
+          val current = ipCount.getOrElse(addressInt, 0)
+          if (current > 0) {
+            // Should always get through the if though...
+            ipCount += addressInt -> (current - 1)
+          }
+          actorToIp -= connectingActor
+        })
   }
 }

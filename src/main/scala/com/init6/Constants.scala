@@ -165,7 +165,7 @@ object Constants {
         decimalFormat.format(truncated) + "ms"
       }
     } else {
-      "---"
+      "   ---"
     }
   }
 }

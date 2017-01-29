@@ -9,8 +9,6 @@ import com.init6.servers._
 
 import scala.collection.mutable
 import scala.concurrent.Await
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.util.{Failure, Success}
 
 /**
   * Created by filip on 1/3/17.
@@ -61,28 +59,6 @@ private[init6] trait Init6RemotingActor extends Init6Actor {
 
         case _ =>
       }
-    }
-  }
-
-  protected def resolveRemote(address: Address, actorPath: String, onSuccess: => Unit): Unit = {
-    val resolvedPath = s"akka://${address.hostPort}/user/$actorPath"
-
-    val failedRunnable = new Runnable {
-      override def run() = resolveRemote(address, actorPath, onSuccess)
-    }
-
-    resolveRemote(resolvedPath, onSuccess, failedRunnable)
-  }
-
-  // Internal recursive for resolving in case of failure
-  private def resolveRemote(resolvedPath: String, successFunc: => Unit, failedRunnable: Runnable) = {
-    system.actorSelection(resolvedPath)
-      .resolveOne(Timeout(2, TimeUnit.SECONDS).duration).onComplete {
-      case Success(_) =>
-        successFunc
-
-      case Failure(ex) =>
-        system.scheduler.scheduleOnce(Timeout(500, TimeUnit.MILLISECONDS).duration, failedRunnable)
     }
   }
 

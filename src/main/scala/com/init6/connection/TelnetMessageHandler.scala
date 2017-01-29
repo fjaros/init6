@@ -2,19 +2,18 @@ package com.init6.connection
 
 import java.net.InetSocketAddress
 
-import akka.actor.{ActorRef, FSM, Props}
-import akka.io.Tcp.{Close, Received}
+import akka.actor.{ActorRef, FSM, PoisonPill, Props}
+import akka.io.Tcp.Received
 import akka.util.ByteString
 import com.init6.Constants._
 import com.init6.coders.binary.hash.BSHA1
 import com.init6.db.DAO
-import com.init6.{Config, Init6Actor}
+import com.init6.Config
 import com.init6.channels._
 import com.init6.coders.telnet.TelnetEncoder
 import com.init6.users.{Add, JoinChannelFromConnection, TelnetProtocol, UsersUserAdded}
 
 import scala.collection.mutable
-import scala.collection.mutable.ArrayBuffer
 
 sealed trait State
 case object ExpectingUsername extends State
@@ -46,10 +45,15 @@ object TelnetMessageHandler {
     Props(classOf[TelnetMessageHandler], clientAddress, connection)
 }
 
-class TelnetMessageHandler(clientAddress: InetSocketAddress, connection: ActorRef) extends Init6KeepAliveActor with FSM[State, Data] {
+class TelnetMessageHandler(clientAddress: InetSocketAddress, connection: ActorRef)
+  extends Init6KeepAliveActor with FSM[State, Data] {
 
-  startWith(ExpectingUsername, UnauthenticatedUser)
-  context.watch(connection)
+  override def preStart() = {
+    super.preStart()
+
+    context.watch(connection)
+    startWith(ExpectingUsername, UnauthenticatedUser)
+  }
 
   def sendNull() = {
     connection ! WriteOut(TelnetEncoder(UserNull).get)
@@ -100,6 +104,9 @@ class TelnetMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
   }
 
   when (ExpectingAckOfLoginMessages) {
+    case Event(Received(data), buffer: AuthenticatedUser) =>
+      buffer.packetsToProcess += data
+      stay()
     case Event(WrittenOut, buffer: AuthenticatedUser) =>
       buffer.actor ! JoinChannelFromConnection("Chat")
       buffer.packetsToProcess.foreach(buffer.actor ! Received(_))
@@ -110,5 +117,10 @@ class TelnetMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
     connection ! WriteOut(TelnetEncoder(TELNET_CONNECTED(clientAddress)))
     connection ! WriteOut(TelnetEncoder(UserName(buffer.user.name)).get)
     connection ! WriteOut(TelnetEncoder(UserInfoArray(Config().motd)).get)
+  }
+
+  onTermination {
+    case terminated =>
+      connection ! PoisonPill
   }
 }
