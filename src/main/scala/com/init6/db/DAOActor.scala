@@ -23,6 +23,8 @@ case class DAOUpdatedPasswordAck(username: String, passwordHash: Array[Byte]) ex
 case class DAOClosedAccountAck(username: String, reason: String) extends Command
 case class DAOOpenedAccountAck(username: String) extends Command
 
+case class DAOAliasCommand(aliasFrom: String, aliasTo: String) extends Command
+
 class DAOActor extends Init6RemotingActor {
 
   override val actorPath = INIT6_DAO_PATH
@@ -35,21 +37,34 @@ class DAOActor extends Init6RemotingActor {
       }
 
     case UpdateAccountPassword(username, passwordHash) =>
-      DAO.updateUser(username, passwordHash)
+      DAO.updateUser(username, password_hash = Some(passwordHash))
       if (isLocal()) {
         sender() ! DAOUpdatedPasswordAck(username, passwordHash)
       }
 
     case CloseAccount(username, reason) =>
-      DAO.updateUser(username, closed = Some(true), closedReason = Some(reason))
+      DAO.updateUser(username, closed = Some(true), closed_reason = Some(reason))
       if (isLocal()) {
         sender() ! DAOClosedAccountAck(username, reason)
       }
 
     case OpenAccount(username) =>
-      DAO.updateUser(username, closed = Some(false), closedReason = Some(""))
+      DAO.updateUser(username, closed = Some(false), closed_reason = Some(""))
       if (isLocal()) {
         sender() ! DAOOpenedAccountAck(username)
       }
+
+    case channelJoin: DbChannelJoin =>
+      DAO.saveChannelJoin(channelJoin)
+
+    case DAOAliasCommand(aliasFrom, aliasTo) =>
+      DAO.getUser(aliasFrom)
+        .foreach(dbUser => {
+          DAO.updateUser(
+            username = aliasTo,
+            account_id =
+          )
+
+        })
   }
 }

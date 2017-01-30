@@ -71,11 +71,14 @@ class TelnetMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
         stop()
       })(dbUser => {
         if (dbUser.closed) {
-          connection ! WriteOut(TelnetEncoder(ACCOUNT_CLOSED(buffer.user, dbUser.closedReason)))
+          connection ! WriteOut(TelnetEncoder(ACCOUNT_CLOSED(buffer.user, dbUser.closed_reason)))
           stop()
         } else {
-          if (BSHA1(data.toArray).sameElements(dbUser.passwordHash)) {
-            val u = User(clientAddress.getAddress.getHostAddress, buffer.user, dbUser.flags | Flags.UDP, 0, client = "TAHC")
+          if (BSHA1(data.toArray).sameElements(dbUser.password_hash)) {
+            val u = User(
+              dbUser.id, clientAddress.getAddress.getHostAddress, buffer.user,
+              dbUser.account_id, dbUser.flags | Flags.UDP, 0, client = "TAHC"
+            )
             usersActor ! Add(connection, u, TelnetProtocol)
             goto(StoreExtraData)
           } else {

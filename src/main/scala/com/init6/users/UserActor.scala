@@ -216,6 +216,8 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
                 daoActor ! CreateAccount(username, passwordHash)
               case ChangePasswordCommand(newPassword) =>
                 daoActor ! UpdateAccountPassword(user.name, newPassword)
+              case AliasCommand(alias) =>
+                daoActor ! DAOAliasCommand(user.id, alias)
 
               //ADMIN
               case SplitMe =>

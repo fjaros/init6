@@ -100,6 +100,8 @@ object Constants {
   val TELNET_INCORRECT_PASSWORD = "Incorrect password."
   val TELNET_INCORRECT_USERNAME = "Incorrect username."
 
+  val ACCOUNT_NOT_EXIST = (name: String) => s"Account $name does not exist."
+  val ACCOUNT_INCORRECT_PASSWORD = (name: String) => s"Password for account $name is incorrect."
   val ACCOUNT_ALREADY_EXISTS = (name: String) => s"Account $name already exists."
   val ACCOUNT_TOO_SHORT = s"Account is too short."
   val ACCOUNT_TOO_LONG = s"Account is too long."

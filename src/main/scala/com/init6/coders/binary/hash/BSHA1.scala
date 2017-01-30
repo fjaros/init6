@@ -62,6 +62,10 @@ object BSHA1 {
     calcHashBuffer(intToByteArray(clientToken) ++ intToByteArray(serverToken) ++ data :+ 0.toByte)
   }
 
+  def apply(data: String, dataToMatch: Array[Byte]) = {
+    apply(data).sameElements(dataToMatch)
+  }
+
   /**
     * Calculates the 20 byte hash based on the passed in byte[] data.
     *

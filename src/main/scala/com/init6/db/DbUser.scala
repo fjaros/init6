@@ -5,9 +5,21 @@ package com.init6.db
   */
 case class DbUser(
   id: Long = 0,
+  account_id: Option[Long] = None,
   username: String,
-  passwordHash: Array[Byte],
+  password_hash: Array[Byte],
   flags: Int = 0,
   closed: Boolean = false,
-  closedReason: String = ""
+  closed_reason: String = ""
+)
+
+
+case class DbChannelJoin(
+  id: Long = 0,
+  user_id: Long,
+  channel: String,
+  server_accepting_time: Long,
+  channel_created_time: Long,
+  joined_time: Long,
+  joined_place: Int
 )

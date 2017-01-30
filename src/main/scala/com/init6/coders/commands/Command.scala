@@ -23,5 +23,3 @@ trait UserToChannelCommand extends Command {
 }
 trait OperableCommand extends Command
 trait ReturnableCommand extends Command
-
-case class BlizzMe(fromUser: User) extends ChannelCommand

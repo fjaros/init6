@@ -350,8 +350,11 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
         send(SidLogonResponse(SidLogonResponse.RESULT_INVALID_PASSWORD))
         goto(ExpectingSidLogonResponse)
       } else {
-        if (BSHA1(clientToken, serverToken, dbUser.passwordHash).sameElements(passwordHash)) {
-          val u = User(clientAddress.getAddress.getHostAddress, oldUsername, dbUser.flags, ping, client = productId)
+        if (BSHA1(clientToken, serverToken, dbUser.password_hash).sameElements(passwordHash)) {
+          val u = User(
+            dbUser.id, clientAddress.getAddress.getHostAddress, oldUsername,
+            dbUser.account_id, dbUser.flags, ping, client = productId
+          )
           usersActor ! Add(connection, u, BinaryProtocol)
           goto(ExpectingLogonHandled)
         } else {
@@ -369,11 +372,14 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
       goto(ExpectingSidLogonResponse)
     })(dbUser => {
       if (dbUser.closed) {
-        send(SidLogonResponse2(SidLogonResponse2.RESULT_ACCOUNT_CLOSED, dbUser.closedReason))
+        send(SidLogonResponse2(SidLogonResponse2.RESULT_ACCOUNT_CLOSED, dbUser.closed_reason))
         goto(ExpectingSidLogonResponse)
       } else {
-        if (BSHA1(clientToken, serverToken, dbUser.passwordHash).sameElements(passwordHash)) {
-          val u = User(clientAddress.getAddress.getHostAddress, oldUsername, dbUser.flags, ping, client = productId)
+        if (BSHA1(clientToken, serverToken, dbUser.password_hash).sameElements(passwordHash)) {
+          val u = User(
+            dbUser.id, clientAddress.getAddress.getHostAddress, oldUsername,
+            dbUser.account_id, dbUser.flags, ping, client = productId
+          )
           usersActor ! Add(connection, u, BinaryProtocol)
           goto(ExpectingLogon2Handled)
         } else {
@@ -389,7 +395,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
       send(SidChangePassword(SidChangePassword.RESULT_FAILED))
       goto(ExpectingSidLogonResponse)
     })(dbUser => {
-      if (BSHA1(clientToken, serverToken, dbUser.passwordHash).sameElements(oldPasswordHash)) {
+      if (BSHA1(clientToken, serverToken, dbUser.password_hash).sameElements(oldPasswordHash)) {
         daoActor ! UpdateAccountPassword(username, newPasswordHash)
         goto(ExpectingChangePasswordHandled)
       } else {

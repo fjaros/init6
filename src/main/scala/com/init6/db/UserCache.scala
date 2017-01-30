@@ -46,9 +46,9 @@ private object UserCache {
 
   def get(username: String) = cache.get(username)
 
-  def insert(username: String, passwordHash: Array[Byte]) = {
+  def insert(username: String, password_hash: Array[Byte]) = {
     val newUser = username.toLowerCase
-    cache += newUser -> DbUser(username = newUser, passwordHash = passwordHash)
+    cache += newUser -> DbUser(username = newUser, password_hash = password_hash)
     inserted += username.toLowerCase
   }
 

@@ -30,11 +30,12 @@ object DAO {
 
     def apply(rs: WrappedResultSet) = new DbUser(
       rs.long(1),
-      rs.string(2),
-      rs.get[Array[Byte]](3),
+      rs.longOpt(2),
+      rs.string(3),
       rs.get[Array[Byte]](4),
-      rs.boolean(5),
-      rs.string(6)
+      rs.get[Array[Byte]](5),
+      rs.boolean(6),
+      rs.string(7)
     )
   }
 
@@ -42,17 +43,19 @@ object DAO {
 
   private[db] def updateUser(
     username: String,
-    passwordHash: Array[Byte] = Array[Byte](),
-    flags: Int = -1,
+    account_id: Option[Long] = None,
+    password_hash: Option[Array[Byte]] = None,
+    flags: Option[Int] = None,
     closed: Option[Boolean] = None,
-    closedReason: Option[String] = None
+    closed_reason: Option[String] = None
   ) = {
     getUser(username).foreach(dbUser => {
       UserCache.update(username, dbUser.copy(
-        passwordHash = if (passwordHash.nonEmpty) passwordHash else dbUser.passwordHash,
-        flags = if (flags != -1) flags else dbUser.flags,
+        account_id = if (account_id.isDefined) account_id else dbUser.account_id,
+        password_hash = password_hash.getOrElse(dbUser.password_hash),
+        flags = flags.getOrElse(dbUser.flags),
         closed = closed.getOrElse(dbUser.closed),
-        closedReason = closedReason.getOrElse(dbUser.closedReason)
+        closed_reason = closed_reason.getOrElse(dbUser.closed_reason)
       ))
     })
   }
@@ -66,13 +69,15 @@ object DAO {
           InsertSQLBuilder(sqls"insert ignore into ${DbUser.table}")
             .namedValues(
               DbUser.column.username -> sqls.?,
-              DbUser.column.passwordHash -> sqls.?,
+              DbUser.column.account_id -> sqls.?,
+              DbUser.column.password_hash -> sqls.?,
               DbUser.column.flags -> sqls.?
             )
         }.batch(inserted.map(
           dbUser => Seq(
             dbUser.username,
-            dbUser.passwordHash,
+            dbUser.account_id,
+            dbUser.password_hash,
             dbUser.flags
           )
         ).toSeq: _*)
@@ -88,25 +93,58 @@ object DAO {
           update(DbUser)
             .set(
               DbUser.column.username -> sqls.?,
-              DbUser.column.passwordHash -> sqls.?,
+              DbUser.column.password_hash -> sqls.?,
               DbUser.column.flags -> sqls.?,
               DbUser.column.closed -> sqls.?,
-              DbUser.column.closedReason -> sqls.?
+              DbUser.column.closed_reason -> sqls.?
             )
               .where.eq(DbUser.column.column("id"), sqls.?) // applyDynamic does not support passing a vararg parameter?
         }.batch(
           updated.map(dbUser =>
             Seq(
               dbUser.username,
-              dbUser.passwordHash,
+              dbUser.password_hash,
               dbUser.flags,
               dbUser.closed,
-              dbUser.closedReason,
+              dbUser.closed_reason,
               dbUser.id
             )
           ).toSeq: _*)
             .apply()
       }
+    }
+  }
+
+  object DbChannelJoin extends SQLSyntaxSupport[DbChannelJoin] {
+    override val tableName = "channel_joins"
+
+    def apply(rs: WrappedResultSet) = new DbChannelJoin(
+      rs.long(1),
+      rs.long(2),
+      rs.string(3),
+      rs.long(4),
+      rs.long(5),
+      rs.long(6),
+      rs.int(7)
+    )
+  }
+
+  private[db] def saveChannelJoin(channelJoin: DbChannelJoin) = {
+    DB localTx { implicit session =>
+      withSQL {
+        insertInto(DbChannelJoin)
+          .values(
+            None,
+            channelJoin.user_id,
+            channelJoin.channel,
+            channelJoin.server_accepting_time,
+            channelJoin.channel_created_time,
+            channelJoin.joined_time,
+            channelJoin.joined_place
+          )
+      }
+      .update()
+      .apply()
     }
   }
 }

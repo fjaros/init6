@@ -42,7 +42,8 @@ private object SystemContext {
 
   val system = ActorSystem(Constants.INIT6, Config.load("akka.conf"))
 
-  val start = System.nanoTime()
+  val startMillis = System.currentTimeMillis()
+  private val start = System.nanoTime()
   def getUptime = Duration(System.nanoTime() - start, TimeUnit.NANOSECONDS)
 
   var startAccepting: Long = 0

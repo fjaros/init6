@@ -5,10 +5,11 @@ import java.util.concurrent.TimeUnit
 import akka.actor.{ActorRef, Address, Props}
 import akka.util.Timeout
 import com.init6.Constants._
-import com.init6.Init6RemotingActor
+import com.init6.{Init6RemotingActor, SystemContext}
 import com.init6.channels.utils.{LocalUsersSet, RemoteMultiMap}
 import com.init6.coders.Base64
 import com.init6.coders.commands._
+import com.init6.db.DbChannelJoin
 import com.init6.servers.{Remotable, ServerOnline, SplitMe}
 import com.init6.users.{GetUsers, UpdatePing, UserChannelChanged, UserUpdated}
 import com.init6.utils.CaseInsensitiveHashMap
@@ -36,8 +37,10 @@ object ChannelActor {
 
 case class User(
   // Static variables
+  id: Long,
   ipAddress: String,
   name: String,
+  accountId: Option[Long],
   flags: Long = 0,
   ping: Long = 0,
   client: String = "CHAT",
@@ -86,6 +89,7 @@ trait ChannelActor extends Init6RemotingActor {
   // Settable topic by operator
   var topicExchange = TopicExchange()
   var creationTime: Long = _
+  var joinedUsers: Int = 1
 
 
   private def sendGetChannelUsers(address: Address): Unit = {
@@ -108,9 +112,13 @@ trait ChannelActor extends Init6RemotingActor {
     rem(actor)
     rem(user)
 
+    var joinedTime: Long = 0
     if (isLocal(actor)) {
       if (creationTime == 0) {
         creationTime = getAcceptingUptime.toNanos
+        joinedTime = creationTime
+      } else {
+        joinedTime = getAcceptingUptime.toNanos
       }
       localUsers += actor
     } else {
@@ -129,9 +137,17 @@ trait ChannelActor extends Init6RemotingActor {
     reverseUsernames += newUser.name -> actor
 
     if (isLocal()) {
-      //println("sender " + sender())
       sender() ! UserAddedToChannel(newUser, name, self, topicExchange)
       topCommandActor ! UserChannelChanged(actor, newUser)
+      daoActor ! DbChannelJoin(
+        user_id = newUser.id,
+        channel = name.toLowerCase,
+        server_accepting_time = SystemContext.startMillis,
+        channel_created_time = creationTime,
+        joined_time = joinedTime,
+        joined_place = joinedUsers
+      )
+      joinedUsers += 1
     }
     newUser
   }
