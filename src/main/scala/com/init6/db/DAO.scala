@@ -43,7 +43,7 @@ object DAO {
 
   private[db] def updateUser(
     username: String,
-    account_id: Option[Long] = None,
+    alias_id: Option[Long] = None,
     password_hash: Option[Array[Byte]] = None,
     flags: Option[Int] = None,
     closed: Option[Boolean] = None,
@@ -51,7 +51,7 @@ object DAO {
   ) = {
     getUser(username).foreach(dbUser => {
       UserCache.update(username, dbUser.copy(
-        account_id = if (account_id.isDefined) account_id else dbUser.account_id,
+        alias_id = if (alias_id.isDefined) alias_id else dbUser.alias_id,
         password_hash = password_hash.getOrElse(dbUser.password_hash),
         flags = flags.getOrElse(dbUser.flags),
         closed = closed.getOrElse(dbUser.closed),
@@ -69,14 +69,14 @@ object DAO {
           InsertSQLBuilder(sqls"insert ignore into ${DbUser.table}")
             .namedValues(
               DbUser.column.username -> sqls.?,
-              DbUser.column.account_id -> sqls.?,
+              DbUser.column.alias_id -> sqls.?,
               DbUser.column.password_hash -> sqls.?,
               DbUser.column.flags -> sqls.?
             )
         }.batch(inserted.map(
           dbUser => Seq(
             dbUser.username,
-            dbUser.account_id,
+            dbUser.alias_id,
             dbUser.password_hash,
             dbUser.flags
           )
@@ -93,6 +93,7 @@ object DAO {
           update(DbUser)
             .set(
               DbUser.column.username -> sqls.?,
+              DbUser.column.alias_id -> sqls.?,
               DbUser.column.password_hash -> sqls.?,
               DbUser.column.flags -> sqls.?,
               DbUser.column.closed -> sqls.?,
@@ -103,6 +104,7 @@ object DAO {
           updated.map(dbUser =>
             Seq(
               dbUser.username,
+              dbUser.alias_id,
               dbUser.password_hash,
               dbUser.flags,
               dbUser.closed,
@@ -121,11 +123,12 @@ object DAO {
     def apply(rs: WrappedResultSet) = new DbChannelJoin(
       rs.long(1),
       rs.long(2),
-      rs.string(3),
-      rs.long(4),
+      rs.longOpt(3),
+      rs.string(4),
       rs.long(5),
       rs.long(6),
-      rs.int(7)
+      rs.long(7),
+      rs.int(8)
     )
   }
 
@@ -136,6 +139,7 @@ object DAO {
           .values(
             None,
             channelJoin.user_id,
+            channelJoin.alias_id,
             channelJoin.channel,
             channelJoin.server_accepting_time,
             channelJoin.channel_created_time,

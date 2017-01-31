@@ -5,7 +5,7 @@ package com.init6.db
   */
 case class DbUser(
   id: Long = 0,
-  account_id: Option[Long] = None,
+  alias_id: Option[Long] = None,
   username: String,
   password_hash: Array[Byte],
   flags: Int = 0,
@@ -17,6 +17,7 @@ case class DbUser(
 case class DbChannelJoin(
   id: Long = 0,
   user_id: Long,
+  alias_id: Option[Long],
   channel: String,
   server_accepting_time: Long,
   channel_created_time: Long,

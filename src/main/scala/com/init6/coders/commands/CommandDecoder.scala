@@ -46,7 +46,7 @@ object CommandDecoder {
     if (byteString.head == '/') {
       val (command, message) = spanBySpace(byteString.tail)
       val userCommand = command.toLowerCase match {
-        case "alias" => AliasCommand(message)
+        case "alias" => AliasCommand(user, message)
         case "away" => AwayCommand(message)
         case "ban" => OneCommand(BanCommand(message), UserError(USER_NOT_LOGGED_ON))
         case "changepassword" | "chpass" => ChangePasswordCommand(message)

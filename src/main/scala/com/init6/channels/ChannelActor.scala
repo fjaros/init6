@@ -38,9 +38,9 @@ object ChannelActor {
 case class User(
   // Static variables
   id: Long,
+  aliasId: Option[Long],
   ipAddress: String,
   name: String,
-  accountId: Option[Long],
   flags: Long = 0,
   ping: Long = 0,
   client: String = "CHAT",
@@ -141,6 +141,7 @@ trait ChannelActor extends Init6RemotingActor {
       topCommandActor ! UserChannelChanged(actor, newUser)
       daoActor ! DbChannelJoin(
         user_id = newUser.id,
+        alias_id = newUser.aliasId,
         channel = name.toLowerCase,
         server_accepting_time = SystemContext.startMillis,
         channel_created_time = creationTime,

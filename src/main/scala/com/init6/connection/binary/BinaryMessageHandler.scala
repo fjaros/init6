@@ -352,8 +352,8 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
       } else {
         if (BSHA1(clientToken, serverToken, dbUser.password_hash).sameElements(passwordHash)) {
           val u = User(
-            dbUser.id, clientAddress.getAddress.getHostAddress, oldUsername,
-            dbUser.account_id, dbUser.flags, ping, client = productId
+            dbUser.id, dbUser.alias_id, clientAddress.getAddress.getHostAddress, oldUsername,
+            dbUser.flags, ping, client = productId
           )
           usersActor ! Add(connection, u, BinaryProtocol)
           goto(ExpectingLogonHandled)
@@ -377,8 +377,8 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
       } else {
         if (BSHA1(clientToken, serverToken, dbUser.password_hash).sameElements(passwordHash)) {
           val u = User(
-            dbUser.id, clientAddress.getAddress.getHostAddress, oldUsername,
-            dbUser.account_id, dbUser.flags, ping, client = productId
+            dbUser.id, dbUser.alias_id, clientAddress.getAddress.getHostAddress, oldUsername,
+            dbUser.flags, ping, client = productId
           )
           usersActor ! Add(connection, u, BinaryProtocol)
           goto(ExpectingLogon2Handled)
@@ -471,6 +471,8 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
           }
         case _ => handleRest(BinaryPacket(packetId, data))
       }
+    case Event(WrittenOut, _) =>
+      stay()
   }
 
   onTermination {

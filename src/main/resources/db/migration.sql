@@ -1,3 +1,4 @@
 
-ALTER TABLE users ADD COLUMN closed BOOLEAN DEFAULT FALSE;
-ALTER TABLE users ADD COLUMN closed_reason VARCHAR(255);
+alter table users add column alias_id int(11) after id;
+update users set alias_id=id;
+

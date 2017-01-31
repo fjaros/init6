@@ -87,8 +87,8 @@ class Chat1Handler(clientAddress: InetSocketAddress, connection: ActorRef) exten
         } else {
           if (BSHA1(userCredentials.password).sameElements(dbUser.password_hash)) {
             val u = User(
-              dbUser.id, clientAddress.getAddress.getHostAddress, userCredentials.username,
-              dbUser.account_id, dbUser.flags | Flags.UDP, 0, client = "TAHC"
+              dbUser.id, dbUser.alias_id, clientAddress.getAddress.getHostAddress, userCredentials.username,
+              dbUser.flags | Flags.UDP, 0, client = "TAHC"
             )
             usersActor ! Add(connection, u, Chat1Protocol)
             goto(StoreExtraData) using userCredentials

@@ -163,6 +163,9 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
     case DAOOpenedAccountAck(username) =>
       self ! UserInfo(ACCOUNT_OPENED(username))
 
+    case DAOAliasCommandAck(aliasTo) =>
+      self ! UserInfo(ACCOUNT_ALIASED(aliasTo))
+
     // THIS SHIT NEEDS TO BE REFACTORED!
     case Received(data) =>
       // sanity check
@@ -217,7 +220,7 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
               case ChangePasswordCommand(newPassword) =>
                 daoActor ! UpdateAccountPassword(user.name, newPassword)
               case AliasCommand(alias) =>
-                daoActor ! DAOAliasCommand(user.id, alias)
+                daoActor ! DAOAliasCommand(user, alias)
 
               //ADMIN
               case SplitMe =>

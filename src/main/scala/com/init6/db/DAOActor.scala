@@ -2,6 +2,7 @@ package com.init6.db
 
 import akka.actor.Props
 import com.init6.Constants._
+import com.init6.channels.User
 import com.init6.{Init6Component, Init6RemotingActor}
 import com.init6.coders.commands.Command
 import com.init6.servers.Remotable
@@ -23,7 +24,8 @@ case class DAOUpdatedPasswordAck(username: String, passwordHash: Array[Byte]) ex
 case class DAOClosedAccountAck(username: String, reason: String) extends Command
 case class DAOOpenedAccountAck(username: String) extends Command
 
-case class DAOAliasCommand(aliasFrom: String, aliasTo: String) extends Command
+case class DAOAliasCommand(aliasToUser: User, aliasFrom: String) extends Command
+case class DAOAliasCommandAck(aliasTo: String) extends Command
 
 class DAOActor extends Init6RemotingActor {
 
@@ -57,14 +59,14 @@ class DAOActor extends Init6RemotingActor {
     case channelJoin: DbChannelJoin =>
       DAO.saveChannelJoin(channelJoin)
 
-    case DAOAliasCommand(aliasFrom, aliasTo) =>
+    case DAOAliasCommand(aliasToUser, aliasFrom) =>
       DAO.getUser(aliasFrom)
-        .foreach(dbUser => {
+        .foreach(aliasFromUser => {
           DAO.updateUser(
-            username = aliasTo,
-            account_id =
+            username = aliasFromUser.username,
+            alias_id = Some(aliasToUser.id)
           )
-
+          sender() ! DAOAliasCommandAck(aliasFrom)
         })
   }
 }

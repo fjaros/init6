@@ -62,7 +62,7 @@ object BSHA1 {
     calcHashBuffer(intToByteArray(clientToken) ++ intToByteArray(serverToken) ++ data :+ 0.toByte)
   }
 
-  def apply(data: String, dataToMatch: Array[Byte]) = {
+  def apply(data: String, dataToMatch: Array[Byte]): Boolean = {
     apply(data).sameElements(dataToMatch)
   }
 
