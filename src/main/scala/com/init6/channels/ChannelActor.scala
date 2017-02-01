@@ -135,7 +135,8 @@ trait ChannelActor extends Init6RemotingActor {
           server_accepting_time = SystemContext.startMillis,
           channel_created_time = creationTime,
           joined_time = joinedTime,
-          joined_place = joinedUsers
+          joined_place = joinedUsers,
+          is_operator = Flags.isOp(user)
         )
         joinedUsers += 1
 

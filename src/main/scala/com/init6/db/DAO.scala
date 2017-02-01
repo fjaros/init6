@@ -129,7 +129,8 @@ object DAO {
       rs.long(6),
       rs.long(7),
       rs.long(8),
-      rs.int(9)
+      rs.int(9),
+      rs.boolean(10)
     )
   }
 
@@ -146,7 +147,8 @@ object DAO {
             channelJoin.server_accepting_time,
             channelJoin.channel_created_time,
             channelJoin.joined_time,
-            channelJoin.joined_place
+            channelJoin.joined_place,
+            channelJoin.is_operator
           )
       }
       .update()

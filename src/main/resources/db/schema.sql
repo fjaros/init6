@@ -28,5 +28,6 @@ CREATE TABLE IF NOT EXISTS channel_joins (
     channel_created_time BIGINT NOT NULL,
     joined_time BIGINT NOT NULL,
     joined_place INT NOT NULL,
+    is_operator BOOLEAN NOT NULL,
     PRIMARY KEY(id)
 );

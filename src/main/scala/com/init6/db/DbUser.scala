@@ -23,5 +23,6 @@ case class DbChannelJoin(
   server_accepting_time: Long,
   channel_created_time: Long,
   joined_time: Long,
-  joined_place: Int
+  joined_place: Int,
+  is_operator: Boolean
 )
