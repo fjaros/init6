@@ -122,13 +122,14 @@ object DAO {
 
     def apply(rs: WrappedResultSet) = new DbChannelJoin(
       rs.long(1),
-      rs.long(2),
-      rs.longOpt(3),
-      rs.string(4),
-      rs.long(5),
+      rs.int(2),
+      rs.long(3),
+      rs.longOpt(4),
+      rs.string(5),
       rs.long(6),
       rs.long(7),
-      rs.int(8)
+      rs.long(8),
+      rs.int(9)
     )
   }
 
@@ -138,6 +139,7 @@ object DAO {
         insertInto(DbChannelJoin)
           .values(
             None,
+            channelJoin.server_id,
             channelJoin.user_id,
             channelJoin.alias_id,
             channelJoin.channel,

@@ -49,6 +49,7 @@ sealed class Config(filePath: String) {
 
     val p = root.getConfig("server")
 
+    val serverId = p.getInt("server-id")
     val host = p.getString("host")
     val ports = p.getIntList("ports").asScala
 

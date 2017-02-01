@@ -16,6 +16,7 @@ case class DbUser(
 
 case class DbChannelJoin(
   id: Long = 0,
+  server_id: Int,
   user_id: Long,
   alias_id: Option[Long],
   channel: String,

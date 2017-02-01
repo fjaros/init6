@@ -5,7 +5,7 @@ import java.util.concurrent.TimeUnit
 import akka.actor.{ActorRef, Address, Props}
 import akka.util.Timeout
 import com.init6.Constants._
-import com.init6.{Init6RemotingActor, SystemContext}
+import com.init6.{Config, Init6RemotingActor, SystemContext}
 import com.init6.channels.utils.{LocalUsersSet, RemoteMultiMap}
 import com.init6.coders.Base64
 import com.init6.coders.commands._
@@ -127,6 +127,18 @@ trait ChannelActor extends Init6RemotingActor {
 
     val newUser =
       if (isLocal(actor)) {
+        daoActor ! DbChannelJoin(
+          server_id = Config().Server.serverId,
+          user_id = user.id,
+          alias_id = user.aliasId,
+          channel = name.toLowerCase,
+          server_accepting_time = SystemContext.startMillis,
+          channel_created_time = creationTime,
+          joined_time = joinedTime,
+          joined_place = joinedUsers
+        )
+        joinedUsers += 1
+
         user.copy(inChannel = name, channelTimestamp = System.currentTimeMillis)
       } else {
         user.copy(inChannel = name)
@@ -139,16 +151,6 @@ trait ChannelActor extends Init6RemotingActor {
     if (isLocal()) {
       sender() ! UserAddedToChannel(newUser, name, self, topicExchange)
       topCommandActor ! UserChannelChanged(actor, newUser)
-      daoActor ! DbChannelJoin(
-        user_id = newUser.id,
-        alias_id = newUser.aliasId,
-        channel = name.toLowerCase,
-        server_accepting_time = SystemContext.startMillis,
-        channel_created_time = creationTime,
-        joined_time = joinedTime,
-        joined_place = joinedUsers
-      )
-      joinedUsers += 1
     }
     newUser
   }

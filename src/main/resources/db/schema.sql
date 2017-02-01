@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS users (
 
 CREATE TABLE IF NOT EXISTS channel_joins (
     id INT(11) NOT NULL AUTO_INCREMENT,
+    server_id TINYINT NOT NULL,
     user_id INT(11) NOT NULL,
     alias_id INT(11),
     channel VARCHAR(255) NOT NULL,
