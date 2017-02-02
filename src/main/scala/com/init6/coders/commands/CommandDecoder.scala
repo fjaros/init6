@@ -40,6 +40,33 @@ object OneCommand {
   }
 }
 
+object OneOperableCommand {
+
+  def apply(user: User, command: MessageCommand, errorCommand: Command) = {
+    if (Flags.canBan(user)) {
+      OneCommand(command, errorCommand)
+    } else {
+      UserError(NOT_OPERATOR)
+    }
+  }
+
+  def apply(user: User, command: UserToChannelCommand, errorCommand: Command) = {
+    if (Flags.canBan(user)) {
+      OneCommand(command, errorCommand)
+    } else {
+      UserError(NOT_OPERATOR)
+    }
+  }
+
+  def apply(user: User, command: UserCommand, errorCommand: Command, ifEqualErrorCommand: Command) = {
+    if (Flags.canBan(user)) {
+      OneCommand(command, errorCommand, ifEqualErrorCommand)
+    } else {
+      UserError(NOT_OPERATOR)
+    }
+  }
+}
+
 object CommandDecoder {
 
   def apply(user: User, byteString: ByteString) = {
@@ -48,15 +75,15 @@ object CommandDecoder {
       val userCommand = command.toLowerCase match {
         case "alias" => AliasCommand(user, message)
         case "away" => AwayCommand(message)
-        case "ban" => OneCommand(BanCommand(message), UserError(USER_NOT_LOGGED_ON))
+        case "ban" => OneOperableCommand(user, BanCommand(message), UserError(USER_NOT_LOGGED_ON))
         case "changepassword" | "chpass" => ChangePasswordCommand(message)
         case "channel" | "join" | "j" => OneCommand(JoinUserCommand(user, message), UserError(NO_CHANNEL_INPUT))
         case "channels" | "chs" | "list" => ChannelsCommand
-        case "designate" => OneCommand(DesignateCommand(user, message), UserError(INVALID_USER), UserError(ALREADY_OPERATOR))
+        case "designate" => OneOperableCommand(user, DesignateCommand(user, message), UserError(INVALID_USER), UserError(ALREADY_OPERATOR))
         case "dnd" => DndCommand(message)
         case "emote" | "me" => OneCommand(EmoteCommand(user, message), EmptyCommand)
         case "help" | "?" => HelpCommand()
-        case "kick" => OneCommand(KickCommand(message), UserError(USER_NOT_LOGGED_ON))
+        case "kick" => OneOperableCommand(user, KickCommand(message), UserError(USER_NOT_LOGGED_ON))
         case "makeaccount" | "createaccount" => MakeAccountCommand(message)
         case "servermotd" | "motd" => MotdCommand()
         case "null" => EmptyCommand
