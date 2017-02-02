@@ -101,6 +101,8 @@ object CommandDecoder {
           //case "splitme" => SplitMe
           //case "recon" => SendBirth
           case "reloadconfig" | "configreload" => ReloadConfig
+          case "showchannelbans" => ShowChannelBans(message)
+          case "showuserbans" => ShowUserBans(message)
           case "usermute" | "muteuser" => UserMute(message)
           case "userunmute" | "unmuteuser" => UserUnmute(message)
           case _ => userCommand

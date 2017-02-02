@@ -3,12 +3,14 @@ package com.init6.channels
 import akka.actor.{ActorRef, Address}
 import com.init6.Constants._
 import com.init6.channels.utils.BannedMap
-import com.init6.coders.commands.{BanCommand, KickCommand, UnbanCommand}
+import com.init6.coders.commands._
 import com.init6.users.UserToChannelCommandAck
 
 /**
   * Created by filip on 11/24/15.
   */
+case class ShowBansResponse(chatEvent: ChatEvent) extends Command
+
 trait BannableChannelActor extends ChannelActor {
 
   // Banned users
@@ -38,26 +40,20 @@ trait BannableChannelActor extends ChannelActor {
 
     case command: UserToChannelCommandAck =>
       users.get(sender()).foreach(user => {
-//        if (Flags.canBan(user)) {
-          command.command match {
-            case KickCommand(kicked, message) =>
-              kickAction(sender(), command.userActor, message)
-            case BanCommand(banned, message) =>
-              banAction(sender(), command.userActor, command.realUsername, message)
-            case UnbanCommand(unbanned) =>
-              unbanAction(sender(), command.realUsername)
-            case _ => super.receiveEvent(command)
-          }
-//        } else {
-//          command.command match {
-//            case _: OperableCommand =>
-//              if (isLocal()) {
-//                sender() ! UserError(NOT_OPERATOR)
-//              }
-//            case _ => super.receiveEvent(command)
-//          }
-//        }
+        command.command match {
+          case KickCommand(kicked, message) =>
+            kickAction(sender(), command.userActor, message)
+          case BanCommand(banned, message) =>
+            banAction(sender(), command.userActor, command.realUsername, message)
+          case UnbanCommand(unbanned) =>
+            unbanAction(sender(), command.realUsername)
+          case ShowUserBans(username) =>
+            showBans(command.userActor, command.realUsername)
+          case _ => super.receiveEvent(command)
+        }
       })
+    case ShowChannelBans(channel) =>
+      showChannelBans()
   }: Receive)
     .orElse(super.receiveEvent)
 
@@ -140,6 +136,25 @@ trait BannableChannelActor extends ChannelActor {
         unbanningActor ! UserError(NOT_BANNED)
       }
     }
+  }
+
+  def showChannelBans() = {
+    if (bannedUsers.isEmpty) {
+      sender() ! ShowBansResponse(UserInfo(s"Nobody is banned in $name."))
+    } else {
+      sender() ! ShowBansResponse(UserInfoArray(bannedUsers.map {
+        case (actor, bannedUsers) =>
+          users.get(actor).map(_.name).getOrElse(actor.toString) + ": " + bannedUsers.mkString(", ")
+      }.toArray))
+    }
+  }
+
+  def showBans(banningActor: ActorRef, banning: String) = {
+    sender() ! ShowBansResponse(UserInfo(
+      bannedUsers.get(banningActor).fold(banning + " has not banned anybody.")(banned => {
+        banning + " has banned: " + banned.mkString(", ")
+      }))
+    )
   }
 
   override def whoCommand(actor: ActorRef, user: User, opsOnly: Boolean) = {

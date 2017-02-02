@@ -81,7 +81,7 @@ object Constants {
   val USER_UNSQUELCHED = (unsquelched: String) => s"$unsquelched has been unsquelched."
   val USERS_TOTAL = (allUsersCount: Int, serverIp: String) => s"There ${if (allUsersCount != 1) s"are $allUsersCount users" else s"is $allUsersCount user"} on init 6. You are on server $serverIp."
   val USERS = (localUsersCount: Int, serverIp: String) =>
-    String.format("%1$-13s| %2$-5s", serverIp, localUsersCount.toString)
+    String.format("%1$-14s| %2$-5s", serverIp, localUsersCount.toString)
 
   val YOU_KICKED = (kicking: String) => s"$kicking kicked you out of the channel!"
   val YOU_BANNED = "You are banned from that channel."

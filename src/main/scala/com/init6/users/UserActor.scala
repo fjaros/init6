@@ -143,13 +143,16 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
     case WhoCommandError(errorMessage) =>
       encodeAndSend(UserError(errorMessage))
 
-    case c@ BanCommand(kicking, message) =>
+    case ShowBansResponse(chatEvent: ChatEvent) =>
+      encodeAndSend(chatEvent)
+
+    case BanCommand(kicking, message) =>
       self ! UserInfo(YOU_KICKED(kicking))
-      channelsActor ! UserSwitchedChat(self, user, THE_VOID)
+      joinChannel(THE_VOID)
 
     case KickCommand(kicking, message) =>
       self ! UserInfo(YOU_KICKED(kicking))
-      channelsActor ! UserSwitchedChat(self, user, THE_VOID)
+      joinChannel(THE_VOID)
 
     case DAOCreatedAck(username, passwordHash) =>
       self ! UserInfo(ACCOUNT_CREATED(username, passwordHash))
@@ -201,6 +204,7 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
                   channelActor ! command
                 }
               case ChannelsCommand => channelsActor ! ChannelsCommand
+              case command: ShowChannelBans => channelsActor ! command
               case command: WhoCommand => channelsActor ! command
               case command: OperableCommand =>
                 if (Flags.canBan(user)) {

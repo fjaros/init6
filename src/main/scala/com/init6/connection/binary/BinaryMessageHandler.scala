@@ -7,7 +7,7 @@ import akka.actor.{ActorRef, FSM, Props}
 import akka.io.Tcp.Received
 import akka.util.{ByteString, Timeout}
 import com.init6.Constants._
-import com.init6.channels.{User, UserInfoArray, UserLeftChat}
+import com.init6.channels.{User, UserInfoArray}
 import com.init6.coders.binary.BinaryChatEncoder
 import com.init6.coders.binary.hash.BSHA1
 import com.init6.coders.binary.packets._

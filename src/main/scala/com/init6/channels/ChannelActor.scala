@@ -190,15 +190,8 @@ trait ChannelActor extends Init6RemotingActor {
   def remoteIn(remoteUserActor: ActorRef, user: User) = {
     //println("#REMOTEIN " + remoteChannelActor + " - " + remoteUserActor + " - " + user + " - " + users.contains(remoteUserActor))
     users.get(remoteUserActor).fold[Unit]({
-      // Should refactor this. Use add!
-      // new user
       log.info("#RADD " + remoteUserActor + " - " + user)
       add(remoteUserActor, user)
-//      users += remoteUserActor -> user
-//      reverseUsernames += user.name -> remoteUserActor
-//
-//      remoteUsersMap += remoteUserActor.path.address -> remoteUserActor
-//      localUsers ! UserIn(user)
     })(currentUser => {
       // existing but have to honor the flags of remote
       log.info("#RMOD " + currentUser + " -> " + user)

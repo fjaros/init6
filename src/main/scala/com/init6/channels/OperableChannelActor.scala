@@ -24,21 +24,12 @@ trait OperableChannelActor extends ChannelActor {
 
     case command: UserToChannelCommandAck =>
       val userActor = sender()
-//      users.get(userActor).foreach(user => {
-//        if (Flags.canBan(user)) {
-          command.command match {
-            case DesignateCommand(_, _) =>
-              designate(userActor, command.userActor)
-            case _ =>
-          }
-//        } else {
-//          command.command match {
-//            case _: OperableCommand => sender() ! UserError(NOT_OPERATOR)
-//            case _ => super.receiveEvent(command)
-//          }
-//        }
-        super.receiveEvent(command)
-//      })
+      command.command match {
+        case DesignateCommand(_, _) =>
+          designate(userActor, command.userActor)
+        case _ =>
+      }
+      super.receiveEvent(command)
   }: Receive)
     .orElse(super.receiveEvent)
 
