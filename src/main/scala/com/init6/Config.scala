@@ -47,7 +47,7 @@ sealed class Config(filePath: String) {
 
   object Server {
 
-    val p = root.getConfig("server")
+    private val p = root.getConfig("server")
 
     val serverId = p.getInt("server-id")
     val host = p.getString("host")
@@ -59,7 +59,8 @@ sealed class Config(filePath: String) {
       .filterNot(_ == s"$akka_host:$akka_port")
 
     object Registry {
-      val pA = p.getConfig("registry")
+
+      private val pA = p.getConfig("registry")
 
       val initialDelay = pA.getInt("initial-delay")
       val pingDelay = pA.getInt("ping-delay")
@@ -67,11 +68,19 @@ sealed class Config(filePath: String) {
     }
 
     val reconThreshold = p.getInt("recon-threshold")
+
+    object Chat {
+
+      private val pA = p.getConfig("chat")
+
+      val enabled = Try(p.getBoolean("enabled")).getOrElse(false)
+      val channels = Try(p.getStringList("channels").asScala.toSet).getOrElse(Set.empty)
+    }
   }
 
   object Accounts {
 
-    val p = root.getConfig("accounts")
+    private val p = root.getConfig("accounts")
 
     val ipLimit = p.getInt("ip-limit")
 
@@ -89,7 +98,7 @@ sealed class Config(filePath: String) {
 
   object Database {
 
-    val p = root.getConfig("database")
+    private val p = root.getConfig("database")
 
     val host = p.getString("host")
     val port = p.getInt("port")
@@ -101,7 +110,7 @@ sealed class Config(filePath: String) {
 
   object AntiFlood {
 
-    val p = root.getConfig("anti-flood")
+    private val p = root.getConfig("anti-flood")
 
     val enabled = p.getBoolean("enabled")
     val maxCredits = p.getInt("max-credits")

@@ -111,7 +111,13 @@ class TelnetMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
       buffer.packetsToProcess += data
       stay()
     case Event(WrittenOut, buffer: AuthenticatedUser) =>
-      buffer.actor ! JoinChannelFromConnection("Chat")
+      buffer.actor ! JoinChannelFromConnection({
+        if (Config().Server.Chat.enabled) {
+          THE_VOID
+        } else {
+          "Chat"
+        }
+      })
       buffer.packetsToProcess.foreach(buffer.actor ! Received(_))
       goto(LoggedIn)
   }
