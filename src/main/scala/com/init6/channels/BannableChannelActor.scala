@@ -36,10 +36,14 @@ trait BannableChannelActor extends ChannelActor {
       super.receiveEvent(command)
 
     case ReceivedBannedUsers(names) =>
+      // Prune received bans. Remove local dead actors
       bannedUsers ++= names
+        .filter {
+          case (operator, _) => isRemote(operator) || localUsers.contains(operator)
+        }
 
     case command: UserToChannelCommandAck =>
-      users.get(sender()).foreach(user => {
+      if (isRemote() || users.contains(sender())) {
         command.command match {
           case KickCommand(kicked, message) =>
             kickAction(sender(), command.userActor, message)
@@ -51,14 +55,14 @@ trait BannableChannelActor extends ChannelActor {
             showBans(command.userActor, command.realUsername)
           case _ => super.receiveEvent(command)
         }
-      })
+      }
     case ShowChannelBans(channel) =>
       showChannelBans()
   }: Receive)
     .orElse(super.receiveEvent)
 
   override def add(actor: ActorRef, user: User): User = {
-    if (bannedUsers(user.name)) {
+    if (isLocal(actor) && bannedUsers(user.name)) {
       if (isLocal()) {
         sender() ! UserError(YOU_BANNED)
       }

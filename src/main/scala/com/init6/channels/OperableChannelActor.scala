@@ -35,7 +35,7 @@ trait OperableChannelActor extends ChannelActor {
 
   override def add(actor: ActorRef, user: User): User = {
     val newUser =
-      if (isLocal(actor) && users.isEmpty) {
+      if (shouldReceiveOps(actor, user)) {
         Flags.op(user)
       } else {
         user
@@ -89,7 +89,12 @@ trait OperableChannelActor extends ChannelActor {
     })
   }
 
-  def existsOperator(): Boolean = {
+  // In case of /rejoin as only channel member
+  def shouldReceiveOps(actor: ActorRef, user: User) = {
+    isLocal(actor) && (users.isEmpty || (users.size == 1 && users.head._1 == actor))
+  }
+
+  def existsOperator() = {
     // O(n) sadface
     !users.values.forall(!Flags.isOp(_))
   }

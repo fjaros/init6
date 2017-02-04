@@ -15,7 +15,7 @@ sealed class AdminChannelActor(override val name: String)
   with NonOperableChannelActor {
 
   override def add(actor: ActorRef, user: User) = {
-    if (Flags.isAdmin(user)) {
+    if (isRemote(actor) || Flags.isAdmin(user)) {
       super.add(actor, user)
     } else {
       sender() ! UserError(CHANNEL_RESTRICTED)
