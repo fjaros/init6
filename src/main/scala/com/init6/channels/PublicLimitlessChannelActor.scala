@@ -10,4 +10,7 @@ object PublicLimitlessChannelActor {
 class PublicLimitlessChannelActor(override val name: String)
   extends ChattableChannelActor
     with BannableChannelActor
-    with NonOperableChannelActor
+    with NonOperableChannelActor {
+
+  override val flags = 0x01
+}

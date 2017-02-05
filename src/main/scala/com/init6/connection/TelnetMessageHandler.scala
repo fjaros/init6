@@ -117,7 +117,7 @@ class TelnetMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
         } else {
           "Chat"
         }
-      })
+      }, false)
       buffer.packetsToProcess.foreach(buffer.actor ! Received(_))
       goto(LoggedIn)
   }

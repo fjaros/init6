@@ -120,7 +120,7 @@ class Chat1Handler(clientAddress: InetSocketAddress, connection: ActorRef) exten
       keepAlive(loggedInUser.actor, () => {
         sendPing(loggedInUser.actor)
       })
-      loggedInUser.actor ! JoinChannelFromConnection(loggedInUser.userCredentials.home)
+      loggedInUser.actor ! JoinChannelFromConnection(loggedInUser.userCredentials.home, forceJoin = true)
       loggedInUser.userCredentials.packetsToProcess.foreach(loggedInUser.actor ! Received(_))
       goto(LoggedInChat1State) using loggedInUser
   }

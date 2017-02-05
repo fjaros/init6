@@ -58,7 +58,7 @@ case class TopicExchange(
 
 case class AddUser(actor: ActorRef, user: User) extends Command
 case class RemUser(actor: ActorRef) extends Command with Remotable
-case class UserAddedToChannel(user: User, channelName: String, channelActor: ActorRef, topicExchange: TopicExchange)
+case class UserAddedToChannel(user: User, channelName: String, channelFlags: Long, channelActor: ActorRef, topicExchange: TopicExchange)
 case object CheckSize extends Command
 case class ChannelSize(actor: ActorRef, name: String, size: Int) extends Command
 case object ChannelToUserPing extends Command
@@ -71,6 +71,7 @@ case class WhoCommandError(errorMessage: String) extends Command
 trait ChannelActor extends Init6RemotingActor {
 
   val name: String
+  val flags: Long = 0x00
 
   override val actorPath = s"$INIT6_CHANNELS_PATH/${Base64(name.toLowerCase)}"
 
@@ -127,17 +128,20 @@ trait ChannelActor extends Init6RemotingActor {
 
     val newUser =
       if (isLocal(actor)) {
-        daoActor ! DbChannelJoin(
-          server_id = Config().Server.serverId,
-          user_id = user.id,
-          alias_id = user.aliasId,
-          channel = name.toLowerCase,
-          server_accepting_time = SystemContext.startMillis,
-          channel_created_time = creationTime,
-          joined_time = joinedTime,
-          joined_place = joinedUsers,
-          is_operator = Flags.isOp(user)
-        )
+        // later
+        if (joinedTime - creationTime < 1000000000) {
+          daoActor ! DbChannelJoin(
+            server_id = Config().Server.serverId,
+            user_id = user.id,
+            alias_id = user.aliasId,
+            channel = name.toLowerCase,
+            server_accepting_time = SystemContext.startMillis,
+            channel_created_time = creationTime,
+            joined_time = joinedTime,
+            joined_place = joinedUsers,
+            is_operator = Flags.isOp(user)
+          )
+        }
         joinedUsers += 1
 
         user.copy(inChannel = name, channelTimestamp = System.currentTimeMillis)
@@ -150,7 +154,7 @@ trait ChannelActor extends Init6RemotingActor {
     reverseUsernames += newUser.name -> actor
 
     if (isLocal()) {
-      sender() ! UserAddedToChannel(newUser, name, self, topicExchange)
+      sender() ! UserAddedToChannel(newUser, name, flags, self, topicExchange)
       topCommandActor ! UserChannelChanged(actor, newUser)
     }
     newUser
@@ -326,7 +330,13 @@ trait ChannelActor extends Init6RemotingActor {
       .map(_.mkString(", "))
       .toSeq
 
-    WhoCommandResponse(Some(OPS_CHANNEL(name, ops.size)), usernames)
+    WhoCommandResponse(Some({
+      if (usernames.nonEmpty) {
+        OPS_CHANNEL(name, ops.size)
+      } else {
+        OPS_NOT_EXIST(name)
+      }
+    }), usernames)
   }
 
   private def handleWhoCommand() = {

@@ -14,6 +14,8 @@ object VoidedChannelActor {
 sealed class VoidedChannelActor(override val name: String)
   extends NonOperableChannelActor {
 
+  override val flags = 0x01 | 0x08
+
   override def receiveEvent = ({
     case WhoCommandToChannel(_, _, _) | UpdatePing(_) => // No-op
     case GetUsers => sender() ! UserInfo(NO_CHAT_PRIVILEGES)

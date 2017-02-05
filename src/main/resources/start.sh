@@ -19,11 +19,11 @@ config=init6.conf
 
 # in minutes
 min_wait=120
-max_wait=180
+max_wait=360
 
 # in seconds
-min_between_drops=18
-max_between_drops=34
+min_between_drops=20
+max_between_drops=32
 
 restart_if_killed=true
 check_proc_interval=5

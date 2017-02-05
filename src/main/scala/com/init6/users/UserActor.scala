@@ -34,7 +34,7 @@ object UserActor {
   })
 }
 
-case class JoinChannelFromConnection(channel: String)
+case class JoinChannelFromConnection(channel: String, forceJoin: Boolean)
 case class UserUpdated(user: User) extends ChatEvent
 case class PingSent(time: Long, cookie: String) extends Command
 case class UpdatePing(ping: Int) extends Command
@@ -69,8 +69,8 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
   }
 
   override def loggedReceive: Receive = {
-    case JoinChannelFromConnection(channel) =>
-      joinChannel(channel)
+    case JoinChannelFromConnection(channel, forceJoin) =>
+      joinChannel(channel, forceJoin)
 
     case ChannelToUserPing =>
       sender() ! UserToChannelPing
@@ -94,7 +94,7 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
 
     case ChannelJoinResponse(event) =>
       event match {
-        case UserChannel(newUser, channel, channelActor) =>
+        case UserChannel(newUser, channel, flags, channelActor) =>
           user = newUser
           this.channelActor = channelActor
           channelActor ! GetUsers
@@ -326,7 +326,7 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
     joinChannel(user.inChannel)
   }
 
-  private def joinChannel(channel: String) = {
+  private def joinChannel(channel: String, forceJoin: Boolean = false) = {
     if (!Config().Server.Chat.enabled || Config().Server.Chat.channels.contains(channel.toLowerCase)) {
       implicit val timeout = Timeout(2, TimeUnit.SECONDS)
       //println(user.name + " - " + self + " - SENDING JOIN")
@@ -334,11 +334,14 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
         case ChannelJoinResponse(event) =>
           //println(user.name + " - " + self + " - RECEIVED JOIN")
           event match {
-            case UserChannel(newUser, channel, channelActor) =>
+            case UserChannel(newUser, channel, flags, channelActor) =>
               user = newUser
               this.channelActor = channelActor
               channelActor ! GetUsers
             case _ =>
+              if (forceJoin && !user.inChannel.equalsIgnoreCase(THE_VOID)) {
+                self ! JoinChannelFromConnection(THE_VOID, forceJoin)
+              }
           }
           encodeAndSend(event)
       }

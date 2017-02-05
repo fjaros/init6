@@ -15,7 +15,7 @@ import com.init6.coders.binary.packets.Packets._
 import com.init6.coders.commands.PongCommand
 import com.init6.connection._
 import com.init6.db.{CreateAccount, DAO, DAOCreatedAck, UpdateAccountPassword}
-import com.init6.users.{Add, BinaryProtocol, PingSent, UsersUserAdded}
+import com.init6.users._
 import com.init6.utils.LimitedAction
 import com.init6.Config
 
@@ -96,6 +96,16 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
             }
           case x =>
             log.error(">> {} Unexpected ping packet: {}", connection, x)
+        }
+      case SID_GETCHANNELLIST =>
+        binaryPacket.packet match {
+          case SidGetChannelList(packet) =>
+            send(SidGetChannelList())
+        }
+      case SID_FRIENDSLIST =>
+        binaryPacket.packet match {
+          case SidFriendsList(packet) =>
+            send(SidFriendsList())
         }
 //      case SID_LEAVECHAT =>
 //        binaryPacket.packet match {
@@ -451,14 +461,13 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
             case SidJoinChannel(packet) =>
               // seems this isn't really good for our use case.
               // just always take the channel from packet.
-              /*
+
               packet.joinFlag match {
-                case 0x00 | 0x01 => actor ! Received(ByteString(s"/j ViLe"))
-                case 0x02 | 0x05 => actor ! Received(ByteString(s"/j ${packet.channel}"))
+                case 0x00 => send(SidChatEvent(0x0e, 0, 0, username, packet.channel))
+                case 0x02 => actor ! JoinChannelFromConnection(packet.channel, true)
+                case 0x01 | 0x05 => actor ! JoinChannelFromConnection(packet.channel, false)
                 case _ =>
               }
-              */
-              actor ! Received(ByteString(s"/j ${packet.channel}"))
               stay()
             case _ => stop()
           }
