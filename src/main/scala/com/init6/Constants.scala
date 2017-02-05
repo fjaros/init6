@@ -101,7 +101,8 @@ object Constants {
   val TELNET_INCORRECT_PASSWORD = "Incorrect password."
   val TELNET_INCORRECT_USERNAME = "Incorrect username."
 
-  val ACCOUNT_ALIASED = (name: String) => s"$name has been aliased to your account."
+  val ACCOUNT_ALIASED = (name: String) => s"$name has been registered to your account."
+  val ACCOUNT_ALIASED_TO = (name: String) => s"You are now registered to $name."
   val ACCOUNT_NOT_EXIST = (name: String) => s"Account $name does not exist."
   val ACCOUNT_INCORRECT_PASSWORD = (name: String) => s"Password for account $name is incorrect."
   val ACCOUNT_ALREADY_EXISTS = (name: String) => s"Account $name already exists."

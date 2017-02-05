@@ -11,13 +11,14 @@ import scala.util.Try
 /**
   * Created by filip on 12/13/15.
   */
-private object UserCache {
+private[db] class UserCache(dbUsers: List[DbUser]) {
 
   private val cache = CaseInsensitiveHashMap[DbUser]()
   private val inserted = mutable.HashSet[String]()
   private val updated = mutable.HashSet[String]()
 
   private val executorService = Executors.newSingleThreadScheduledExecutor()
+  private val updateInterval = Config().Database.batchUpdateInterval
 
   private val dbUpdateThread = new Runnable {
     override def run() = {
@@ -32,12 +33,8 @@ private object UserCache {
     }
   }
 
-  def apply(dbUsers: List[DbUser]) = {
-    cache ++= dbUsers.map(dbUser => dbUser.username -> dbUser)
-
-    val updateInterval = Config().Database.batchUpdateInterval
-    executorService.scheduleWithFixedDelay(dbUpdateThread, updateInterval, updateInterval, TimeUnit.SECONDS)
-  }
+  cache ++= dbUsers.map(dbUser => dbUser.username -> dbUser)
+  executorService.scheduleWithFixedDelay(dbUpdateThread, updateInterval, updateInterval, TimeUnit.SECONDS)
 
   def close() = {
     executorService.shutdown()

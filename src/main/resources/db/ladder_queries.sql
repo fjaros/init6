@@ -40,7 +40,6 @@ WHERE server_id = 2
 AND channel_joins.alias_id != channel_joins.user_id
 AND channel_joins.alias_id is not null
 AND channel not in ('chat','init 6','the void')
-AND (joined_time - channel_created_time) < 50000000
 
 GROUP BY accounts.username, channel
 ORDER BY channel;

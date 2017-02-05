@@ -14,7 +14,8 @@ object DAOActor extends Init6Component {
   def apply() = system.actorOf(Props[DAOActor], INIT6_DAO_PATH)
 }
 
-case class GetAccount(username: String) extends Command
+case object ReloadDb extends Command with Remotable
+case object ReloadDbAck extends Command
 case class CreateAccount(username: String, passwordHash: Array[Byte]) extends Remotable
 case class UpdateAccountPassword(username: String, passwordHash: Array[Byte]) extends Remotable
 case class CloseAccount(username: String, reason: String = "") extends Remotable
@@ -26,12 +27,19 @@ case class DAOOpenedAccountAck(username: String) extends Command
 
 case class DAOAliasCommand(aliasToUser: User, aliasFrom: String) extends Command
 case class DAOAliasCommandAck(aliasTo: String) extends Command
+case class DAOAliasToCommand(aliasFromUser: User, aliasTo: String) extends Command
+case class DAOAliasToCommandAck(aliasFrom: String) extends Command
+
 
 class DAOActor extends Init6RemotingActor {
 
   override val actorPath = INIT6_DAO_PATH
 
   override def receive: Receive = {
+    case ReloadDb =>
+      DAO.reloadCache()
+      sender() ! ReloadDbAck
+
     case CreateAccount(username, passwordHash) =>
       DAO.createUser(username, passwordHash)
       if (isLocal()) {
@@ -67,6 +75,16 @@ class DAOActor extends Init6RemotingActor {
             alias_id = Some(aliasToUser.id)
           )
           sender() ! DAOAliasCommandAck(aliasFrom)
+        })
+
+    case DAOAliasToCommand(aliasFromUser, aliasTo) =>
+      DAO.getUser(aliasTo)
+        .foreach(aliasToUser => {
+          DAO.updateUser(
+            username = aliasFromUser.name,
+            alias_id = Some(aliasToUser.id)
+          )
+          sender() ! DAOAliasToCommandAck(aliasTo)
         })
   }
 }

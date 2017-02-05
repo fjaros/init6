@@ -10,6 +10,8 @@ object HelpCommand {
   def apply() = UserInfoArray(
     Array(
       "Available commands:",
+      "/alias, /register",
+      "/aliasto, /registerto",
       "/makeaccount",
       "/changepassword, /chpass",
       "/whisper, /w, /msg, /m",

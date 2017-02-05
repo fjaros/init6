@@ -169,6 +169,12 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
     case DAOAliasCommandAck(aliasTo) =>
       self ! UserInfo(ACCOUNT_ALIASED(aliasTo))
 
+    case DAOAliasToCommandAck(aliasTo) =>
+      self ! UserInfo(ACCOUNT_ALIASED_TO(aliasTo))
+
+    case ReloadDbAck =>
+      self ! UserInfo(s"$INIT6_SPACE database reloaded.")
+
     // THIS SHIT NEEDS TO BE REFACTORED!
     case Received(data) =>
       // sanity check
@@ -225,6 +231,8 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
                 daoActor ! UpdateAccountPassword(user.name, newPassword)
               case AliasCommand(alias) =>
                 daoActor ! DAOAliasCommand(user, alias)
+              case AliasToCommand(alias) =>
+                daoActor ! DAOAliasToCommand(user, alias)
 
               //ADMIN
               case SplitMe =>
@@ -246,6 +254,8 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
               case ReloadConfig =>
                 Config.reload()
                 self ! UserInfo(s"$INIT6_SPACE configuration reloaded.")
+              case ReloadDb =>
+                daoActor ! ReloadDb
               case _ =>
             }
           case x =>

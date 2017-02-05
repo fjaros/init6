@@ -14,14 +14,22 @@ object DAO {
   )
   implicit val session = AutoSession
 
-  val usersCache = UserCache(withSQL {
-    select.from(DbUser as DbUser.syntax("user"))
-  }.map(rs => DbUser(rs)).list().apply())
+  var userCache = reloadCache()
 
   implicit def decodeFlags(flags: Array[Byte]): Int = flags(0) << 24 | flags(1) << 16 | flags(2) << 8 | flags(3)
 
+  def reloadCache(): UserCache = {
+    if (userCache != null) {
+      userCache.close()
+    }
+    userCache = new UserCache(withSQL {
+      select.from(DbUser as DbUser.syntax("user"))
+    }.map(rs => DbUser(rs)).list().apply())
+    userCache
+  }
+
   def close() = {
-    UserCache.close()
+    userCache.close()
     session.close()
   }
 
@@ -39,7 +47,9 @@ object DAO {
     )
   }
 
-  private[db] def createUser(username: String, passwordHash: Array[Byte]) = UserCache.insert(username, passwordHash)
+  private[db] def createUser(username: String, passwordHash: Array[Byte]) = {
+    userCache.insert(username, passwordHash)
+  }
 
   private[db] def updateUser(
     username: String,
@@ -50,7 +60,7 @@ object DAO {
     closed_reason: Option[String] = None
   ) = {
     getUser(username).foreach(dbUser => {
-      UserCache.update(username, dbUser.copy(
+      userCache.update(username, dbUser.copy(
         alias_id = if (alias_id.isDefined) alias_id else dbUser.alias_id,
         password_hash = password_hash.getOrElse(dbUser.password_hash),
         flags = flags.getOrElse(dbUser.flags),
@@ -60,7 +70,7 @@ object DAO {
     })
   }
 
-  def getUser(username: String) = UserCache.get(username)
+  def getUser(username: String) = userCache.get(username)
 
   private[db] def saveInserted(inserted: Iterable[DbUser]) = {
     if (inserted.nonEmpty) {

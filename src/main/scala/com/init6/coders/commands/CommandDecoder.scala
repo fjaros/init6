@@ -4,6 +4,7 @@ import akka.util.ByteString
 import com.init6.Constants._
 import com.init6.ReloadConfig
 import com.init6.channels.{Flags, User, UserError}
+import com.init6.db.ReloadDb
 import com.init6.servers.{SendBirth, SplitMe}
 
 /**
@@ -73,7 +74,8 @@ object CommandDecoder {
     if (byteString.head == '/') {
       val (command, message) = spanBySpace(byteString.tail)
       val userCommand = command.toLowerCase match {
-        case "alias" => AliasCommand(user, message)
+        case "alias" | "register" => AliasCommand(user, message)
+        case "aliasto" | "registerto" => AliasToCommand(user, message)
         case "away" => AwayCommand(message)
         case "ban" => OneOperableCommand(user, BanCommand(message), UserError(USER_NOT_LOGGED_ON))
         case "changepassword" | "chpass" => ChangePasswordCommand(message)
@@ -128,6 +130,7 @@ object CommandDecoder {
           //case "splitme" => SplitMe
           //case "recon" => SendBirth
           case "reloadconfig" | "configreload" => ReloadConfig
+          case "reloaddb" => ReloadDb
           case "showchannelbans" => ShowChannelBans(message)
           case "showuserbans" => ShowUserBans(message)
           case "usermute" | "muteuser" => UserMute(message)
