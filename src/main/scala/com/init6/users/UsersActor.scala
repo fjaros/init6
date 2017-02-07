@@ -11,6 +11,7 @@ import com.init6.servers._
 import com.init6._
 import com.init6.channels._
 import com.init6.Constants._
+import com.init6.coders.IPUtils
 import com.init6.connection._
 import com.init6.utils.RealKeyedCaseInsensitiveHashMap
 
@@ -60,8 +61,6 @@ class UsersActor extends Init6RemotingActor with Init6LoggingActor {
   val remoteUsersMap = RemoteMultiMap[Address, ActorRef]()
 
   val ipLimitMap = mutable.HashMap[Int, Int]()
-
-  private def toDword(ip: Array[Byte]) = ip(3) << 24 | ip(2) << 16 | ip(1) << 8 | ip.head
 
   private def sendGetUsers(address: Address): Unit = {
     remoteActorSelection(address).resolveOne(Timeout(2, TimeUnit.SECONDS).duration).onComplete {
@@ -263,6 +262,14 @@ class UsersActor extends Init6RemotingActor with Init6LoggingActor {
     case DisconnectCommand(user) =>
       rem(user)
 
+    case PrintLoginLimit =>
+      sender() ! UserInfoArray(
+        ipLimitMap.map {
+          case (ipDword, count) =>
+            s"${IPUtils.toString(ipDword)} - $count"
+        }.toArray
+      )
+
     case x =>
       log.error("UsersActor Unhandled Local {}", x)
   }
@@ -286,7 +293,7 @@ class UsersActor extends Init6RemotingActor with Init6LoggingActor {
   }
 
   def addToLimiter(ipAddress: InetSocketAddress) = {
-    val ipDword = toDword(ipAddress.getAddress.getAddress)
+    val ipDword = IPUtils.toDword(ipAddress.getAddress.getAddress)
     val count = ipLimitMap.getOrElse(ipDword, 0)
 
     if (Config().Accounts.loginLimit > count) {
@@ -298,7 +305,7 @@ class UsersActor extends Init6RemotingActor with Init6LoggingActor {
   }
 
   def removeFromLimiter(ipAddress: InetSocketAddress) = {
-    val ipDword = toDword(ipAddress.getAddress.getAddress)
+    val ipDword = IPUtils.toDword(ipAddress.getAddress.getAddress)
 
     ipLimitMap
       .get(ipDword)

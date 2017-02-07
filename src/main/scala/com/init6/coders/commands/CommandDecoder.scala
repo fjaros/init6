@@ -129,6 +129,8 @@ object CommandDecoder {
           case "disconnect" | "dc" => DisconnectCommand(message)
           //case "splitme" => SplitMe
           //case "recon" => SendBirth
+          case "printconnectionlimit" => PrintConnectionLimit
+          case "printloginlimit" => PrintLoginLimit
           case "reloadconfig" | "configreload" => ReloadConfig
           case "reloaddb" => ReloadDb
           case "showchannelbans" => ShowChannelBans(message)

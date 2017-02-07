@@ -98,7 +98,7 @@ class TelnetMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
       handleLoggedIn(authenticatedUser)
       goto(ExpectingAckOfLoginMessages) using authenticatedUser
     case Event(UsersUserNotAdded(), buffer: UnauthenticatedUser) =>
-      connection ! WriteOut(TelnetEncoder(TELNET_TOO_MANY_CONNECTIONS))
+      connection ! WriteOut(TelnetEncoder(TELNET_TOO_MANY_LOGINS))
       stop()
   }
 

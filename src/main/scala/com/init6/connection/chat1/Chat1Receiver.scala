@@ -136,7 +136,7 @@ class Chat1Handler(clientAddress: InetSocketAddress, connection: ActorRef) exten
       connection ! WriteOut(Chat1Encoder(ServerTopicArray(Config().motd)).get)
       goto(ExpectingAckOfLoginMessages) using loggedInUser
     case Event(UsersUserNotAdded(), buffer: UserCredentials) =>
-      connection ! WriteOut(Chat1Encoder(LoginFailed(TELNET_TOO_MANY_CONNECTIONS)).get)
+      connection ! WriteOut(Chat1Encoder(LoginFailed(TELNET_TOO_MANY_LOGINS)).get)
       stop()
   }
 

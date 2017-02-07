@@ -43,3 +43,27 @@ AND server_id in (2)
 
 GROUP BY accounts.username, channel
 ORDER BY channel;
+
+-- sum of grabbed ops
+SELECT
+    CASE
+    WHEN server_id=1 THEN 'montreal'
+    WHEN server_id=2 THEN 'seattle'
+    WHEN server_id=3 THEN 'chicago'
+    WHEN server_id=4 THEN 'dallas'
+    END as server,
+    channel,
+    accounts.username as account,
+    SUM(is_operator)
+
+FROM channel_joins
+JOIN users accounts
+ON channel_joins.alias_id = accounts.id
+
+WHERE channel_joins.alias_id != channel_joins.user_id
+AND channel_joins.alias_id is not null
+AND channel not in ('chat','init 6','the void')
+AND server_id in (1,2,3,4)
+
+GROUP BY accounts.username, channel
+ORDER BY channel;

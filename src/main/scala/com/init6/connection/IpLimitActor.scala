@@ -1,9 +1,12 @@
 package com.init6.connection
 
-import java.net.InetSocketAddress
+import java.net.{InetAddress, InetSocketAddress}
 
 import akka.actor.{ActorRef, Props}
 import com.init6.Constants._
+import com.init6.channels.UserInfoArray
+import com.init6.coders.IPUtils
+import com.init6.coders.commands.PrintConnectionLimit
 import com.init6.{Config, Init6Actor, Init6Component}
 
 import scala.collection.mutable
@@ -25,8 +28,6 @@ class IpLimitActor(limit: Int) extends Init6Actor {
   val actorToIp = mutable.HashMap.empty[ActorRef, Int]
   val ipCount = mutable.HashMap.empty[Int, Int]
 
-  private def toDword(ip: Array[Byte]) = ip(3) << 24 | ip(2) << 16 | ip(1) << 8 | ip.head
-
   override def receive: Receive = {
     case Connected(connectingActor, address) =>
       if (
@@ -37,7 +38,7 @@ class IpLimitActor(limit: Int) extends Init6Actor {
         return receive
       }
 
-      val addressInt = toDword(address.getAddress.getAddress)
+      val addressInt = IPUtils.toDword(address.getAddress.getAddress)
       val current = ipCount.getOrElse(addressInt, 0)
 
       if (limit > current) {
@@ -59,5 +60,13 @@ class IpLimitActor(limit: Int) extends Init6Actor {
           }
           actorToIp -= connectingActor
         })
+
+    case PrintConnectionLimit =>
+      sender() ! UserInfoArray(
+        ipCount.map {
+          case (ipDword, count) =>
+            s"${IPUtils.toString(ipDword)} - $count"
+        }.toArray
+      )
   }
 }

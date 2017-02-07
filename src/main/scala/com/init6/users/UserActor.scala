@@ -259,6 +259,11 @@ class UserActor(ipAddress: InetSocketAddress, connection: ActorRef, var user: Us
                 self ! UserInfo(s"$INIT6_SPACE configuration reloaded.")
               case ReloadDb =>
                 daoActor ! ReloadDb
+
+              case PrintConnectionLimit =>
+                ipLimiterActor ! PrintConnectionLimit
+              case PrintLoginLimit =>
+                usersActor ! PrintLoginLimit
               case _ =>
             }
           case x =>
