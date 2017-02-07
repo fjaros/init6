@@ -26,7 +26,7 @@ class TopCommandActor extends Init6Actor {
   )
 
   override def receive: Receive = {
-    case Add(userActor, user, protocol) =>
+    case Add(ipAddress, userActor, user, protocol) =>
       val topInfo = TopInfo(user, getAcceptingUptime.toNanos)
       topMap(
         protocol match {

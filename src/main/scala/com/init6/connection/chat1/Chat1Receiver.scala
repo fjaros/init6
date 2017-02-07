@@ -90,7 +90,7 @@ class Chat1Handler(clientAddress: InetSocketAddress, connection: ActorRef) exten
               dbUser.id, dbUser.alias_id, clientAddress.getAddress.getHostAddress, userCredentials.username,
               dbUser.flags | Flags.UDP, 0, client = "TAHC"
             )
-            usersActor ! Add(connection, u, Chat1Protocol)
+            usersActor ! Add(clientAddress, connection, u, Chat1Protocol)
             goto(StoreExtraData) using userCredentials
           } else {
             connection ! WriteOut(Chat1Encoder(LoginFailed(TELNET_INCORRECT_PASSWORD)).get)
@@ -135,6 +135,9 @@ class Chat1Handler(clientAddress: InetSocketAddress, connection: ActorRef) exten
       connection ! WriteOut(Chat1Encoder(UserInfo(TELNET_CONNECTED(clientAddress))).get)
       connection ! WriteOut(Chat1Encoder(ServerTopicArray(Config().motd)).get)
       goto(ExpectingAckOfLoginMessages) using loggedInUser
+    case Event(UsersUserNotAdded(), buffer: UserCredentials) =>
+      connection ! WriteOut(Chat1Encoder(LoginFailed(TELNET_TOO_MANY_CONNECTIONS)).get)
+      stop()
   }
 
   def createAccount(userCredentials: UserCredentials): State = {

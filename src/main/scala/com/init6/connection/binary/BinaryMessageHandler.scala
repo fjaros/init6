@@ -3,7 +3,7 @@ package com.init6.connection.binary
 import java.net.InetSocketAddress
 import java.util.concurrent.TimeUnit
 
-import akka.actor.{ActorRef, FSM, Props}
+import akka.actor.{ActorRef, FSM, PoisonPill, Props}
 import akka.io.Tcp.Received
 import akka.util.{ByteString, Timeout}
 import com.init6.Constants._
@@ -279,6 +279,8 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
       this.username = user.name
       send(SidLogonResponse(SidLogonResponse.RESULT_SUCCESS))
       goto(ExpectingSidEnterChat) using userActor
+    case Event(UsersUserNotAdded(), _) =>
+      stop()
     case x =>
       log.debug(">> {} Unhandled in ExpectingLogonHandled {}", connection, x)
       stop()
@@ -290,6 +292,8 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
       this.username = user.name
       send(SidLogonResponse2(SidLogonResponse2.RESULT_SUCCESS))
       goto(ExpectingSidEnterChat) using userActor
+    case Event(UsersUserNotAdded(), _) =>
+      stop()
     case x =>
       log.debug(">> {} Unhandled in ExpectingLogon2Handled {}", connection, x)
       stop()
@@ -365,7 +369,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
             dbUser.id, dbUser.alias_id, clientAddress.getAddress.getHostAddress, oldUsername,
             dbUser.flags, ping, client = productId
           )
-          usersActor ! Add(connection, u, BinaryProtocol)
+          usersActor ! Add(clientAddress, connection, u, BinaryProtocol)
           goto(ExpectingLogonHandled)
         } else {
           send(SidLogonResponse(SidLogonResponse.RESULT_INVALID_PASSWORD))
@@ -390,7 +394,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
             dbUser.id, dbUser.alias_id, clientAddress.getAddress.getHostAddress, oldUsername,
             dbUser.flags, ping, client = productId
           )
-          usersActor ! Add(connection, u, BinaryProtocol)
+          usersActor ! Add(clientAddress, connection, u, BinaryProtocol)
           goto(ExpectingLogon2Handled)
         } else {
           send(SidLogonResponse2(SidLogonResponse2.RESULT_INVALID_PASSWORD))
@@ -487,6 +491,6 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
   onTermination {
     case x =>
       log.debug(">> {} BinaryMessageHandler onTermination: {}", connection, x)
-      context.stop(self)
+      connection ! PoisonPill
   }
 }

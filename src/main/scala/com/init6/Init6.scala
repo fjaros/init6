@@ -22,7 +22,7 @@ object Init6 extends App with Init6Component {
   ServerRegistry()
   DAOActor()
   //ServerPantyDropper(Config().Server.host)
-  IpLimitActor(Config().Accounts.ipLimit)
+  IpLimitActor(Config().Accounts.connectionLimit)
   UsersActor()
   ChannelsActor()
 

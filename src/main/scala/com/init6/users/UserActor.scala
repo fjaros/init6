@@ -1,5 +1,6 @@
 package com.init6.users
 
+import java.net.InetSocketAddress
 import java.util.concurrent.TimeUnit
 
 import akka.actor.{ActorRef, PoisonPill, Props, Terminated}
@@ -26,12 +27,14 @@ import scala.concurrent.Await
  * Created by filip on 9/27/15.
  */
 object UserActor {
-  def apply(connection: ActorRef, user: User, protocol: Protocol) = Props(classOf[UserActor], connection, user,
-    protocol match {
-      case BinaryProtocol => BinaryChatEncoder
-      case TelnetProtocol => TelnetEncoder
-      case Chat1Protocol => Chat1Encoder
-  })
+  def apply(ipAddress: InetSocketAddress, connection: ActorRef, user: User, protocol: Protocol) =
+    Props(classOf[UserActor], ipAddress, connection, user,
+      protocol match {
+        case BinaryProtocol => BinaryChatEncoder
+        case TelnetProtocol => TelnetEncoder
+        case Chat1Protocol => Chat1Encoder
+      }
+    )
 }
 
 case class JoinChannelFromConnection(channel: String, forceJoin: Boolean)
@@ -41,7 +44,7 @@ case class UpdatePing(ping: Int) extends Command
 case object KillConnection extends Command
 
 
-class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
+class UserActor(ipAddress: InetSocketAddress, connection: ActorRef, var user: User, encoder: Encoder)
   extends FloodPreventer with Init6Actor with Init6LoggingActor {
 
   var isTerminated = false
@@ -278,7 +281,7 @@ class UserActor(connection: ActorRef, var user: User, encoder: Encoder)
 //      } else {
         channelsActor ! RemUser(self)
 //      }
-      usersActor ! Rem(self)
+      usersActor ! Rem(ipAddress, self)
       self ! PoisonPill
 
     case KillConnection =>

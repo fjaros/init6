@@ -100,6 +100,7 @@ object Constants {
   val TELNET_CONNECTED = (address: InetSocketAddress) => s"$INIT6_SPACE Telnet Connection from [${address.getAddress.getHostAddress}:${address.getPort}]"
   val TELNET_INCORRECT_PASSWORD = "Incorrect password."
   val TELNET_INCORRECT_USERNAME = "Incorrect username."
+  val TELNET_TOO_MANY_CONNECTIONS = "Too many connections from this IP address."
 
   val ACCOUNT_ALIASED = (name: String) => s"$name has been registered to your account."
   val ACCOUNT_ALIASED_TO = (name: String) => s"You are now registered to $name."

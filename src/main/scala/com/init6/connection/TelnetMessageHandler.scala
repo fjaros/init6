@@ -11,7 +11,7 @@ import com.init6.db.DAO
 import com.init6.Config
 import com.init6.channels._
 import com.init6.coders.telnet.TelnetEncoder
-import com.init6.users.{Add, JoinChannelFromConnection, TelnetProtocol, UsersUserAdded}
+import com.init6.users._
 
 import scala.collection.mutable
 
@@ -79,7 +79,7 @@ class TelnetMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
               dbUser.id, dbUser.alias_id, clientAddress.getAddress.getHostAddress, buffer.user,
               dbUser.flags | Flags.UDP, 0, client = "TAHC"
             )
-            usersActor ! Add(connection, u, TelnetProtocol)
+            usersActor ! Add(clientAddress, connection, u, TelnetProtocol)
             goto(StoreExtraData)
           } else {
             connection ! WriteOut(TelnetEncoder(TELNET_INCORRECT_PASSWORD))
@@ -97,6 +97,9 @@ class TelnetMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
       val authenticatedUser = AuthenticatedUser(actor, user, buffer.packetsToProcess)
       handleLoggedIn(authenticatedUser)
       goto(ExpectingAckOfLoginMessages) using authenticatedUser
+    case Event(UsersUserNotAdded(), buffer: UnauthenticatedUser) =>
+      connection ! WriteOut(TelnetEncoder(TELNET_TOO_MANY_CONNECTIONS))
+      stop()
   }
 
   when (LoggedIn) {

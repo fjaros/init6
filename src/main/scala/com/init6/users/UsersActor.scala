@@ -1,5 +1,6 @@
 package com.init6.users
 
+import java.net.InetSocketAddress
 import java.util.concurrent.TimeUnit
 
 import akka.actor.{ActorRef, Address, Props}
@@ -10,6 +11,7 @@ import com.init6.servers._
 import com.init6._
 import com.init6.channels._
 import com.init6.Constants._
+import com.init6.connection._
 import com.init6.utils.RealKeyedCaseInsensitiveHashMap
 
 import scala.collection.mutable
@@ -19,8 +21,8 @@ import scala.util.{Failure, Success}
 /**
  * Created by filip on 9/28/15.
  */
-case class Add(connection: ActorRef, user: User, protocol: Protocol) extends Command
-case class Rem(userActor: ActorRef) extends Command with Remotable
+case class Add(ipAddress: InetSocketAddress, connection: ActorRef, user: User, protocol: Protocol) extends Command
+case class Rem(ipAddress: InetSocketAddress, userActor: ActorRef) extends Command with Remotable
 case class RemActors(userActors: Set[ActorRef]) extends Command
 
 case class WhisperTo(user: User, username: String, message: String)  extends Command
@@ -42,6 +44,7 @@ case class ReceivedUser(user: (String, ActorRef)) extends Command
 case class ReceivedUsers(users: Seq[(String, ActorRef)]) extends Command
 case class UserToChannelCommandAck(userActor: ActorRef, realUsername: String, command: UserToChannelCommand) extends Command with Remotable
 case class UsersUserAdded(userActor: ActorRef, user: User) extends Command
+case class UsersUserNotAdded() extends Command
 
 class UsersActor extends Init6RemotingActor with Init6LoggingActor {
 
@@ -56,6 +59,10 @@ class UsersActor extends Init6RemotingActor with Init6LoggingActor {
   val localUsers = LocalUsersSet()
   val remoteUsersMap = RemoteMultiMap[Address, ActorRef]()
 
+  val ipLimitMap = mutable.HashMap[Int, Int]()
+
+  private def toDword(ip: Array[Byte]) = ip(3) << 24 | ip(2) << 16 | ip(1) << 8 | ip.head
+
   private def sendGetUsers(address: Address): Unit = {
     remoteActorSelection(address).resolveOne(Timeout(2, TimeUnit.SECONDS).duration).onComplete {
       case Success(actor) =>
@@ -66,7 +73,7 @@ class UsersActor extends Init6RemotingActor with Init6LoggingActor {
     }
   }
 
-  def localAdd(connectionActor: ActorRef, user: User, protocol: Protocol) = {
+  def localAdd(ipAddress: InetSocketAddress, connectionActor: ActorRef, user: User, protocol: Protocol) = {
     val newUser = getRealUser(user).copy(place = placeCounter)
     placeCounter += 1
 
@@ -74,7 +81,7 @@ class UsersActor extends Init6RemotingActor with Init6LoggingActor {
     rem(newUser.name)
 
     // Create new user actor
-    val userActor = context.actorOf(UserActor(connectionActor, newUser, protocol))
+    val userActor = context.actorOf(UserActor(ipAddress, connectionActor, newUser, protocol))
 
     // Add to structures
     //println("#ADD " + userActor + " - " + newUser.name)
@@ -82,13 +89,13 @@ class UsersActor extends Init6RemotingActor with Init6LoggingActor {
     reverseUsers += userActor -> newUser.name
     localUsers += userActor
 
-    remoteActors.foreach(_ ! Add(userActor, user, protocol))
+    remoteActors.foreach(_ ! Add(ipAddress, userActor, user, protocol))
 
     // reply to sender
     sender() ! UsersUserAdded(userActor, newUser)
 
     // place in Top
-    topCommandActor ! Add(userActor, newUser, protocol)
+    topCommandActor ! Add(ipAddress, userActor, newUser, protocol)
   }
 
   def remoteAdd(actor: ActorRef, username: String): Unit = {
@@ -238,11 +245,17 @@ class UsersActor extends Init6RemotingActor with Init6LoggingActor {
         removeAllRemote(sender().path.address)
       }
 
-    case Add(connection, user, protocol) =>
-      localAdd(connection, user, protocol)
+    case Add(ipAddress, connection, user, protocol) =>
+      // Check if limited
+      if (addToLimiter(ipAddress)) {
+        localAdd(ipAddress, connection, user, protocol)
+      } else {
+        sender() ! UsersUserNotAdded()
+      }
 
-    case Rem(userActor) =>
+    case Rem(ipAddress, userActor) =>
       rem(userActor)
+      removeFromLimiter(ipAddress)
 
     case BroadcastCommand(message) =>
       localUsers ! UserError(message)
@@ -255,10 +268,10 @@ class UsersActor extends Init6RemotingActor with Init6LoggingActor {
   }
 
   def handleRemote: Receive = {
-    case Add(userActor, user, _) =>
+    case Add(ipAddress, userActor, user, _) =>
       remoteAdd(userActor, user.name)
 
-    case Rem(userActor) =>
+    case Rem(ipAddress, userActor) =>
       rem(userActor)
 
     case c @ RemActors(userActors) =>
@@ -270,6 +283,30 @@ class UsersActor extends Init6RemotingActor with Init6LoggingActor {
 
     case x =>
       log.error("UsersActor Unhandled Remote {}", x)
+  }
+
+  def addToLimiter(ipAddress: InetSocketAddress) = {
+    val ipDword = toDword(ipAddress.getAddress.getAddress)
+    val count = ipLimitMap.getOrElse(ipDword, 0)
+
+    if (Config().Accounts.loginLimit > count) {
+      ipLimitMap += ipDword -> (count + 1)
+      true
+    } else {
+      false
+    }
+  }
+
+  def removeFromLimiter(ipAddress: InetSocketAddress) = {
+    val ipDword = toDword(ipAddress.getAddress.getAddress)
+
+    ipLimitMap
+      .get(ipDword)
+      .foreach(count => {
+        if (count > 0) {
+          ipLimitMap += ipDword -> (count - 1)
+        }
+      })
   }
 
   def getRealUser(user: User): User = {

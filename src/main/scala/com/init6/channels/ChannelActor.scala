@@ -1,5 +1,6 @@
 package com.init6.channels
 
+import java.net.InetSocketAddress
 import java.util.concurrent.TimeUnit
 
 import akka.actor.{ActorRef, Address, Props}

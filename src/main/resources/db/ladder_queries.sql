@@ -36,10 +36,10 @@ FROM channel_joins
 JOIN users accounts
 ON channel_joins.alias_id = accounts.id
 
-WHERE server_id = 2
-AND channel_joins.alias_id != channel_joins.user_id
+WHERE channel_joins.alias_id != channel_joins.user_id
 AND channel_joins.alias_id is not null
 AND channel not in ('chat','init 6','the void')
+AND server_id in (2)
 
 GROUP BY accounts.username, channel
 ORDER BY channel;
