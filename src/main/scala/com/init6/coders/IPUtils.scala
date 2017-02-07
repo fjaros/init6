@@ -7,7 +7,12 @@ import java.net.InetAddress
   */
 object IPUtils {
 
-  def toDword(ip: Array[Byte]) = ip(3) << 24 | ip(2) << 16 | ip(1) << 8 | ip.head
+  def toDword(ip: Array[Byte]) = {
+    ((ip(3) << 24) & 0xFF000000) |
+    ((ip(2) << 16) & 0x00FF0000) |
+    ((ip(1) << 8) & 0x0000FF00) |
+    (ip(0) & 0x000000FF)
+  }
 
   def toString(ip: Int) = {
     val bytes = new Array[Byte](4)
