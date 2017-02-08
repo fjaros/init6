@@ -1,6 +1,5 @@
 package com.init6.channels
 
-import java.net.InetSocketAddress
 import java.util.concurrent.TimeUnit
 
 import akka.actor.{ActorRef, Address, Props}
@@ -68,6 +67,7 @@ case class InternalChannelUserUpdate(actor: ActorRef, user: User) extends Comman
 case class ChannelJoinResponse(message: ChatEvent) extends Command
 case class WhoCommandResponse(whoResponseMessage: Option[String], userMessages: Seq[String]) extends Command
 case class WhoCommandError(errorMessage: String) extends Command
+case class PrintChannelUsersResponse(chatEvent: ChatEvent) extends Command
 
 trait ChannelActor extends Init6RemotingActor {
 
@@ -251,9 +251,8 @@ trait ChannelActor extends Init6RemotingActor {
 //      usersKeepAlive += sender() -> System.currentTimeMillis()
 
     case GetChannelUsers =>
-      log.info("RECEIVED GetChannelUsers from " + sender())
       if (isRemote()) {
-        log.info("SENDING ReceivedChannelUsers\n" + users.filterKeys(localUsers.contains).toSeq)
+        log.info("SENDING ReceivedChannelUsers: " + users.filterKeys(localUsers.contains).toSeq)
         sender() ! ReceivedChannelUsers(users.filterKeys(localUsers.contains).toSeq, topicExchange)
         if (!remoteActors.contains(remoteActorSelection(sender().path.address))) {
           sender() ! GetChannelUsers
@@ -262,7 +261,7 @@ trait ChannelActor extends Init6RemotingActor {
       }
 
     case ReceivedChannelUsers(remoteUsers, topicExchange) =>
-      log.info("RECEIVED ReceivedChannelUsers from " + sender() + "\nremoteUsers: " + remoteUsers)
+      log.info("RECEIVED ReceivedChannelUsers from " + sender() + ": " + remoteUsers)
       remoteUsers.foreach {
         case (actor, user) =>
           remoteIn(actor, user)
@@ -295,6 +294,15 @@ trait ChannelActor extends Init6RemotingActor {
         // Remove for shitty bnet bots
         //sendUserUpdate(newUser)
       })
+    case PrintChannelUsers(_) =>
+      sender() ! PrintChannelUsersResponse(
+        UserInfoArray(Array(
+          "Users: " + users,
+          "LocalUsers: " + localUsers,
+          "RemoteUsersMap: " + remoteUsersMap,
+          "ReverseUsernames: " + reverseUsernames
+        ))
+      )
     case event =>
       //println("Unhandled ChannelActor " + event)
   }
@@ -309,7 +317,6 @@ trait ChannelActor extends Init6RemotingActor {
   def whoCommand(actor: ActorRef, user: User, opsOnly: Boolean) = {
     actor !
       (if (users.nonEmpty) {
-        log.debug("#WHO USERS " + users + "\n#WHO LOCALUSERS: " + localUsers + "\n#WHO REMOTEUSERSEMAP " + remoteUsersMap)
         if (opsOnly) {
           handleOpsCommand()
         } else {

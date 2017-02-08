@@ -62,7 +62,7 @@ trait BannableChannelActor extends ChannelActor {
     .orElse(super.receiveEvent)
 
   override def add(actor: ActorRef, user: User): User = {
-    if (isLocal(actor) && bannedUsers(user.name)) {
+    if (isLocal(actor) && !Flags.isAdmin(user) && bannedUsers(user.name)) {
       if (isLocal()) {
         sender() ! UserError(YOU_BANNED)
       }
@@ -109,37 +109,41 @@ trait BannableChannelActor extends ChannelActor {
 
   def banAction(banningActor: ActorRef, bannedActor: ActorRef, banned: String, message: String) = {
     log.info("banAction " + banningActor + " - " + bannedActor + " - " + banned + " - " + sender())
-    val banning = users(banningActor).name
-
-    users.get(bannedActor).fold({
-      bannedUsers += banningActor -> banned
-      localUsers ! UserInfo(USER_BANNED(banning, banned, message))
-    })(bannedUser => {
-      if (Flags.canBan(bannedUser)) {
-        if (isLocal(banningActor)) {
-          banningActor ! UserError(CANNOT_BAN_OPERATOR)
-        }
-      } else {
-        bannedUsers += banningActor -> banned
-        if (isLocal(bannedActor)) {
-          bannedActor ! BanCommand(banning)
-        }
-        localUsers ! UserInfo(USER_BANNED(banning, banned, message))
-      }
-    })
+    users.get(banningActor)
+      .map(_.name)
+      .foreach(banning => {
+        users.get(bannedActor).fold({
+          bannedUsers += banningActor -> banned
+          localUsers ! UserInfo(USER_BANNED(banning, banned, message))
+        })(bannedUser => {
+          if (Flags.canBan(bannedUser)) {
+            if (isLocal(banningActor)) {
+              banningActor ! UserError(CANNOT_BAN_OPERATOR)
+            }
+          } else {
+            bannedUsers += banningActor -> banned
+            if (isLocal(bannedActor)) {
+              bannedActor ! BanCommand(banning)
+            }
+            localUsers ! UserInfo(USER_BANNED(banning, banned, message))
+          }
+        })
+      })
   }
 
   def unbanAction(unbanningActor: ActorRef, unbanned: String) = {
-    val unbanning = users(unbanningActor).name
-
-    if (bannedUsers(unbanned)) {
-      bannedUsers -= unbanned
-      localUsers ! UserInfo(USER_UNBANNED(unbanning, unbanned))
-    } else {
-      if (isLocal(unbanningActor)) {
-        unbanningActor ! UserError(NOT_BANNED)
-      }
-    }
+    users.get(unbanningActor)
+      .map(_.name)
+      .foreach(unbanning => {
+        if (bannedUsers(unbanned)) {
+          bannedUsers -= unbanned
+          localUsers ! UserInfo(USER_UNBANNED(unbanning, unbanned))
+        } else {
+          if (isLocal(unbanningActor)) {
+            unbanningActor ! UserError(NOT_BANNED)
+          }
+        }
+      })
   }
 
   def showChannelBans() = {
@@ -162,7 +166,7 @@ trait BannableChannelActor extends ChannelActor {
   }
 
   override def whoCommand(actor: ActorRef, user: User, opsOnly: Boolean) = {
-    if (!bannedUsers(user.name)) {
+    if (Flags.isAdmin(user) || !bannedUsers(user.name)) {
       super.whoCommand(actor, user, opsOnly)
     } else {
       actor ! WhoCommandError(NOT_ALLOWED_TO_VIEW)

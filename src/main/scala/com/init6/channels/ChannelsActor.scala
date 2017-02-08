@@ -196,6 +196,12 @@ class ChannelsActor extends Init6RemotingActor {
         actor.tell(c, sender())
       })
 
+    case c @ PrintChannelUsers(channel) =>
+      println(c)
+      getChannel(channel).fold(sender() ! UserErrorArray(CHANNEL_NOT_EXIST))(actor => {
+        actor.tell(c, sender())
+      })
+
     // Need to get rid of this in the future. Puts too much strain on the outbound queue
     case c @ RemUser(actor) =>
       //println("##RemUser " + c + " - " + sender() + " - " + remoteActors)

@@ -129,6 +129,7 @@ object CommandDecoder {
           case "disconnect" | "dc" => DisconnectCommand(message)
           //case "splitme" => SplitMe
           //case "recon" => SendBirth
+          case "printchannelusers" => OneCommand(PrintChannelUsers(message), PrintChannelUsers(user.inChannel))
           case "printconnectionlimit" => PrintConnectionLimit
           case "printloginlimit" => PrintLoginLimit
           case "reloadconfig" | "configreload" => ReloadConfig

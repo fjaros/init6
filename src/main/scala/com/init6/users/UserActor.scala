@@ -149,6 +149,9 @@ class UserActor(ipAddress: InetSocketAddress, connection: ActorRef, var user: Us
     case ShowBansResponse(chatEvent: ChatEvent) =>
       encodeAndSend(chatEvent)
 
+    case PrintChannelUsersResponse(chatEvent: ChatEvent) =>
+      encodeAndSend(chatEvent)
+
     case BanCommand(kicking, message) =>
       self ! UserInfo(YOU_KICKED(kicking))
       joinChannel(THE_VOID)
@@ -215,6 +218,7 @@ class UserActor(ipAddress: InetSocketAddress, connection: ActorRef, var user: Us
               case ChannelsCommand => channelsActor ! ChannelsCommand
               case command: ShowChannelBans => channelsActor ! command
               case command: WhoCommand => channelsActor ! command
+              case command: PrintChannelUsers => channelsActor ! command
               case command: OperableCommand =>
                 if (Flags.canBan(user)) {
                   usersActor ! command
