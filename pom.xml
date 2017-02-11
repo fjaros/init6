@@ -16,7 +16,7 @@
         <maven.compiler.target>1.8</maven.compiler.target>
         <scala.version.major>2.12</scala.version.major>
         <scala.version>${scala.version.major}.1</scala.version>
-        <akka.version>2.4.16</akka.version>
+        <akka.version>2.4.17</akka.version>
     </properties>
 
     <build>
