@@ -117,6 +117,23 @@ object Constants {
   val NO_ACCOUNT_INPUT = "What account do you want to make?"
   val NO_PASSWORD_INPUT = "You did not enter a password."
 
+  val FRIENDS_ADD_MAXIMUM_REACHED = "You already have the maximum number of friends in your list. You will need to remove some of your friends before adding more."
+  val FRIENDS_ADD_NO_USERNAME = "You need to supply the account name of the friend you wish to add to your list."
+  val FRIENDS_ADD_NO_YOURSELF = "You can't add yourself to your friends list."
+  val FRIENDS_ADDED_FRIEND = (name: String) => s"Added $name to your friends list."
+  val FRIENDS_ALREADY_FRIEND = (name: String) => s"$name is already in your friends list."
+  val FRIENDS_DEMOTE_NO_USERNAME = "You need to supply the account name of the friend you wish to demote."
+  val FRIENDS_FRIEND_ONLINE = (position: Int, name: String, client: String, channel: String, server: String) => s"$position: $name, using $client in the channel $channel on server $server."
+  val FRIENDS_FRIEND_OFFLINE = (position: Int, name: String) => s"$position: $name, offline."
+  val FRIENDS_HEADER = "Your friends are:"
+  val FRIENDS_LIST_NO_FRIENDS = "You don't have any friends in your list. Use /friends add USERNAME to add a friend to your list."
+  val FRIENDS_PROMOTE_NO_USERNAME = "You need to supply the account name of the friend you wish to promote."
+  val FRIENDS_REMOVE_NO_USERNAME = "You need to supply the account name of the friend you wish to remove from your list."
+  val FRIENDS_REMOVE_NOT_ADDED = (name: String) => s"$name was not in your friends list."
+  val FRIENDS_REMOVED_FRIEND = (name: String) => s"Removed $name from your friends list."
+  val FRIENDS_FRIEND_NOT_FOUND = (name: String) => s"$name is not a member of your friends list."
+  val YOUR_FRIENDS = "your friends"
+
   def isChatProtocol(client: String) = {
     client match {
       case "CHAT" | "TAHC" => true

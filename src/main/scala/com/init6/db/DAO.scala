@@ -14,18 +14,26 @@ object DAO {
   )
   implicit val session = AutoSession
 
-  var userCache = reloadCache()
+  var userCache: UserCache = _
+  var friendsCache: FriendsListCache = _
+  reloadCache()
 
   implicit def decodeFlags(flags: Array[Byte]): Int = flags(0) << 24 | flags(1) << 16 | flags(2) << 8 | flags(3)
 
-  def reloadCache(): UserCache = {
+  def reloadCache() = {
     if (userCache != null) {
       userCache.close()
     }
+    val dbUser = DbUser.syntax("user")
+    val dbFriendsList = DbFriendsList.syntax("friend")
+
     userCache = new UserCache(withSQL {
-      select.from(DbUser as DbUser.syntax("user"))
-    }.map(rs => DbUser(rs)).list().apply())
-    userCache
+      select.from(DbUser as dbUser)
+    }.map(DbUser(_)).list().apply())
+
+    friendsCache = new FriendsListCache(withSQL {
+      select.from(DbFriendsList as dbFriendsList)
+    }.map(DbFriendsList(_)).list().apply())
   }
 
   def close() = {
@@ -163,6 +171,62 @@ object DAO {
       }
       .update()
       .apply()
+    }
+  }
+
+  object DbFriendsList extends SQLSyntaxSupport[DbFriend] {
+    override val tableName = "friends_list"
+
+    def apply(rs: WrappedResultSet) = DbFriend(
+      rs.long(1),
+      rs.long(2),
+      rs.int(3),
+      rs.long(4),
+      rs.string(5)
+    )
+  }
+
+  private[db] def saveInsertedFriend(dbFriend: DbFriend) = {
+    DB localTx { implicit session =>
+      withSQL {
+        insertInto(DbFriendsList)
+          .values(
+            None,
+            dbFriend.user_id,
+            dbFriend.friend_position,
+            dbFriend.friend_id,
+            dbFriend.friend_name
+          )
+      }
+        .update()
+        .apply()
+    }
+  }
+
+  private[db] def saveUpdatedFriend(dbFriend: DbFriend) = {
+    DB localTx { implicit session =>
+      withSQL {
+        update(DbFriendsList)
+          .set(
+            DbFriendsList.column.user_id -> dbFriend.user_id,
+            DbFriendsList.column.friend_position -> dbFriend.friend_position,
+            DbFriendsList.column.friend_id -> dbFriend.friend_id,
+            DbFriendsList.column.friend_name -> dbFriend.friend_name
+          ).where.eq(DbFriendsList.column.id, dbFriend.id)
+      }
+        .update()
+        .apply()
+    }
+  }
+
+  private[db] def saveDeletedFriend(dbFriend: DbFriend) = {
+    DB localTx { implicit session =>
+      withSQL {
+        deleteFrom(DbFriendsList)
+          .where.eq(DbFriendsList.column.column("id"), dbFriend.id) // applyDynamic does not support passing a vararg parameter?
+      }
+        .update()
+        .apply()
     }
   }
 }

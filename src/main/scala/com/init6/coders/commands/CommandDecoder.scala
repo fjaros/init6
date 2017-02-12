@@ -84,6 +84,7 @@ object CommandDecoder {
         case "designate" => OneOperableCommand(user, DesignateCommand(user, message), UserError(INVALID_USER), UserError(ALREADY_OPERATOR))
         case "dnd" => DndCommand(message)
         case "emote" | "me" => OneCommand(EmoteCommand(user, message), EmptyCommand)
+        case "friends" | "f" => FriendsCommand(message)
         case "help" | "?" => HelpCommand()
         case "kick" => OneOperableCommand(user, KickCommand(message), UserError(USER_NOT_LOGGED_ON))
         case "makeaccount" | "createaccount" => MakeAccountCommand(message)

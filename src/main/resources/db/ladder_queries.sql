@@ -64,6 +64,8 @@ WHERE channel_joins.alias_id != channel_joins.user_id
 AND channel_joins.alias_id is not null
 AND channel not in ('chat','init 6','the void')
 AND server_id in (1,2,3,4)
+AND server_accepting_time >= 1486713600000
+AND accounts.username in ('lev','s3v3n')
 
 GROUP BY accounts.username, channel
 ORDER BY channel;

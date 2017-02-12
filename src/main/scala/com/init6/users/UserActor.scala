@@ -20,8 +20,10 @@ import com.init6.coders.telnet._
 import com.init6.db._
 import com.init6.servers.{SendBirth, ServerOnline, SplitMe}
 import com.init6.utils.{CaseInsensitiveHashSet, ChatValidator}
+import com.init6.utils.FutureCollector.futureSeqToFutureCollector
 
 import scala.concurrent.Await
+import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
  * Created by filip on 9/27/15.
@@ -50,6 +52,7 @@ class UserActor(ipAddress: InetSocketAddress, connection: ActorRef, var user: Us
   var isTerminated = false
   var channelActor = ActorRef.noSender
   var squelchedUsers = CaseInsensitiveHashSet()
+  var friendsList: Option[Seq[DbFriend]] = None
   val awayAvailablity = AwayAvailablity(user.name)
   val dndAvailablity = DndAvailablity(user.name)
 
@@ -57,7 +60,11 @@ class UserActor(ipAddress: InetSocketAddress, connection: ActorRef, var user: Us
   var pingCookie: String = ""
   val connectedTime = System.currentTimeMillis()
 
-  context.watch(connection)
+  override def preStart() = {
+    super.preStart()
+
+    context.watch(connection)
+  }
 
   def checkSquelched(user: User) = {
     if (squelchedUsers.contains(user.name)) {
@@ -114,7 +121,7 @@ class UserActor(ipAddress: InetSocketAddress, connection: ActorRef, var user: Us
     case chatEvent: ChatEvent =>
       handleChatEvent(chatEvent)
 
-    case (actor: ActorRef, WhisperMessage(fromUser, toUsername, message)) =>
+    case (actor: ActorRef, WhisperMessage(fromUser, toUsername, message, sendNotification)) =>
       encoder(UserWhisperedFrom(fromUser, message))
         .foreach(msg => {
           dndAvailablity
@@ -122,7 +129,9 @@ class UserActor(ipAddress: InetSocketAddress, connection: ActorRef, var user: Us
             .getOrElse({
               connection ! WriteOut(msg)
               awayAvailablity.whisperAction(actor)
-              actor ! UserWhisperedTo(user, message)
+              if (sendNotification) {
+                actor ! UserWhisperedTo(user, message)
+              }
             })
         })
 
@@ -133,6 +142,9 @@ class UserActor(ipAddress: InetSocketAddress, connection: ActorRef, var user: Us
         } else {
           UserInfo(s"${user.name} is using ${encodeClient(user.client)}${if (user.inChannel != "") s" in the channel ${user.inChannel}" else ""} on server ${Config().Server.host}.")
         })
+
+    case (actor: ActorRef, FriendsWhois(position, username)) =>
+      actor ! FriendsWhoisResponse(online = true, position, user.name, user.client, user.inChannel, Config().Server.host)
 
     case (actor: ActorRef, PlaceOfUserCommand(_, _)) =>
       actor ! UserInfo(USER_PLACED(user.name, user.place, Config().Server.host))
@@ -178,8 +190,27 @@ class UserActor(ipAddress: InetSocketAddress, connection: ActorRef, var user: Us
     case DAOAliasToCommandAck(aliasTo) =>
       self ! UserInfo(ACCOUNT_ALIASED_TO(aliasTo))
 
+    case DAOFriendsAddResponse(friendsList, friend) =>
+      this.friendsList = Some(friendsList)
+      self ! UserInfo(FRIENDS_ADDED_FRIEND(friend.friend_name))
+
+    case DAOFriendsListToListResponse(friendsList) =>
+      this.friendsList = Some(friendsList)
+      sendFriendsList(friendsList)
+
+    case DAOFriendsListToMsgResponse(friendsList, msg) =>
+      this.friendsList = Some(friendsList)
+      sendFriendsMsg(friendsList, msg)
+
+    case DAOFriendsRemoveResponse(friendsList, friend) =>
+      this.friendsList = Some(friendsList)
+      self ! UserInfo(FRIENDS_REMOVED_FRIEND(friend.friend_name))
+
     case ReloadDbAck =>
       self ! UserInfo(s"$INIT6_SPACE database reloaded.")
+
+    case command: FriendsCommand =>
+      handleFriendsCommand(command)
 
     // THIS SHIT NEEDS TO BE REFACTORED!
     case Received(data) =>
@@ -240,6 +271,9 @@ class UserActor(ipAddress: InetSocketAddress, connection: ActorRef, var user: Us
                 daoActor ! DAOAliasCommand(user, alias)
               case AliasToCommand(alias) =>
                 daoActor ! DAOAliasToCommand(user, alias)
+
+              case command: FriendsCommand =>
+                handleFriendsCommand(command)
 
               //ADMIN
               case SplitMe =>
@@ -327,6 +361,57 @@ class UserActor(ipAddress: InetSocketAddress, connection: ActorRef, var user: Us
           encodeAndSend(chatEvent)
       }
     }
+  }
+
+  private def handleFriendsCommand(friendsCommand: FriendsCommand) = {
+    friendsCommand match {
+      case FriendsAdd(who) =>
+        if (user.name.equalsIgnoreCase(who)) {
+          encodeAndSend(UserError(FRIENDS_ADD_NO_YOURSELF))
+        } else {
+          daoActor ! DAOFriendsAdd(user.id, who)
+        }
+      case FriendsDemote(who) =>
+        encodeAndSend(UserError("/friends demote is not yet implemented."))
+      case FriendsList() =>
+        friendsList.fold(daoActor ! DAOFriendsListToList(user.id))(sendFriendsList)
+      case FriendsMsg(msg) =>
+        friendsList.fold(daoActor ! DAOFriendsListToMsg(user.id, msg))(friendsList => sendFriendsMsg(friendsList, msg))
+      case FriendsPromote(who) =>
+        encodeAndSend(UserError("/friends promote is not yet implemented."))
+      case FriendsRemove(who) =>
+        daoActor ! DAOFriendsRemove(user.id, who)
+    }
+  }
+
+  private def sendFriendsList(friendsList: Seq[DbFriend]) = {
+    if (friendsList.nonEmpty) {
+      implicit val timeout = Timeout(1000, TimeUnit.MILLISECONDS)
+      friendsList
+        .map(friend => usersActor ? FriendsWhois(friend.friend_position, friend.friend_name)).collectResults {
+        case c: FriendsWhoisResponse => Some(c)
+      }
+        .foreach(friendResponses => {
+          val sortedFriends = friendResponses.sortBy(_.position)
+
+          val replies = FRIENDS_HEADER +: sortedFriends.map(response => {
+            if (response.online) {
+              FRIENDS_FRIEND_ONLINE(response.position, response.username, encodeClient(response.client), response.channel, response.server)
+            } else {
+              FRIENDS_FRIEND_OFFLINE(response.position, response.username)
+            }
+          })
+            .toArray
+
+          encodeAndSend(UserInfoArray(replies))
+        })
+    } else {
+      encodeAndSend(UserError(FRIENDS_LIST_NO_FRIENDS))
+    }
+  }
+
+  private def sendFriendsMsg(friendsList: Seq[DbFriend], msg: String) = {
+    usersActor ! WhisperToFriendsMessage(user, friendsList.map(_.friend_name), msg)
   }
 
   private def handlePingResponse(cookie: String) = {

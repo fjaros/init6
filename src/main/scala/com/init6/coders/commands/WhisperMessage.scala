@@ -13,7 +13,7 @@ object WhisperMessage {
 
     if (toUsername.nonEmpty) {
       if (message.nonEmpty) {
-        WhisperMessage(fromUser, toUsername, message)
+        WhisperMessage(fromUser, toUsername, message, sendNotification = true)
       } else {
         UserError(NO_MESSAGE_INPUT)
       }
@@ -23,4 +23,5 @@ object WhisperMessage {
   }
 }
 
-case class WhisperMessage(override val fromUser: User, toUsername: String, override val message: String) extends UserCommand with MessageCommand
+case class WhisperMessage(override val fromUser: User, toUsername: String, override val message: String, sendNotification: Boolean) extends UserCommand with MessageCommand
+case class WhisperToFriendsMessage(fromUser: User, toFriends: Seq[String], message: String) extends Command

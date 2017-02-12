@@ -27,6 +27,8 @@ object HelpCommand {
       "/away",
       "/dnd",
 
+      "/friends add, /friends list, /friends msg, /friends remove",
+
       "/ban",
       "/unban",
       "/kick",

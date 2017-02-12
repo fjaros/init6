@@ -31,3 +31,12 @@ CREATE TABLE IF NOT EXISTS channel_joins (
     is_operator BOOLEAN NOT NULL,
     PRIMARY KEY(id)
 );
+
+CREATE TABLE IF NOT EXISTS friends_list (
+    id INT(11) NOT NULL AUTO_INCREMENT,
+    user_id INT(11) NOT NULL,
+    friend_position INT(3) NOT NULL,
+    friend_id INT(11) NOT NULL,
+    friend_name VARCHAR(16) NOT NULL,
+    PRIMARY KEY(id)
+);

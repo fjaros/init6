@@ -196,6 +196,23 @@ class UsersActor extends Init6RemotingActor with Init6LoggingActor {
             actor ! (sender(), command)
           }
 
+    case command @ FriendsWhois(position, who) =>
+      users.get(who)
+        .fold(sender() ! FriendsWhoisResponse(online = false, position, who, "", "", "")) {
+          case (_, actor) =>
+            actor ! (sender(), command)
+        }
+
+    case command @ WhisperToFriendsMessage(fromUser, toFriends, message) =>
+      toFriends.foreach(friend => {
+        users.get(friend)
+          .foreach {
+            case (_, actor) =>
+              actor ! (sender(), WhisperMessage(fromUser, friend, message, sendNotification = false))
+          }
+      })
+      sender() ! UserWhisperedTo(fromUser.copy(name = YOUR_FRIENDS), message)
+
     case UsersCommand =>
       println("=== LOCALUSERS " + localUsers.size)
       println(localUsers)

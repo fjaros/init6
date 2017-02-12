@@ -1,7 +1,7 @@
 package com.init6.connection
 
-import akka.actor.{ActorRef, FSM}
-import akka.io.Tcp.{Abort, Close, Received}
+import akka.actor.ActorRef
+import akka.io.Tcp.{Abort, Received}
 import akka.util.ByteString
 import com.init6.Init6Actor
 import com.init6.utils.ChatValidator

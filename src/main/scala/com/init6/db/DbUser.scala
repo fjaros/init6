@@ -26,3 +26,11 @@ case class DbChannelJoin(
   joined_place: Int,
   is_operator: Boolean
 )
+
+case class DbFriend(
+  id: Long = 0,
+  user_id: Long,
+  friend_position: Int,
+  friend_id: Long,
+  friend_name: String
+)

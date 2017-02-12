@@ -12,7 +12,7 @@ import com.init6.coders.binary.BinaryChatEncoder
 import com.init6.coders.binary.hash.BSHA1
 import com.init6.coders.binary.packets._
 import com.init6.coders.binary.packets.Packets._
-import com.init6.coders.commands.PongCommand
+import com.init6.coders.commands.{FriendsList, PongCommand}
 import com.init6.connection._
 import com.init6.db.{CreateAccount, DAO, DAOCreatedAck, UpdateAccountPassword}
 import com.init6.users._
@@ -105,7 +105,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
       case SID_FRIENDSLIST =>
         binaryPacket.packet match {
           case SidFriendsList(packet) =>
-            send(SidFriendsList())
+            actor ! FriendsList()
         }
 //      case SID_LEAVECHAT =>
 //        binaryPacket.packet match {
