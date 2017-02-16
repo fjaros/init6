@@ -27,6 +27,8 @@ max_between_drops=32
 
 restart_if_killed=true
 check_proc_interval=5
+check_proc_accepting_interval=30
+accepting_ip=127.0.0.1
 
 # ---------------------
 # CONFIG VARS OVERRIDES
@@ -95,7 +97,7 @@ trap shutdown_hook INT TERM
 
 function shutdown_hook() {
     echo "Script received terminate. Killing init6."
-    if [ -n "$pid" ] && [ -e "/proc/$pid" ]; then
+    if [ -n "$pid" ] && ps -p "$pid" > /dev/null; then
         kill "$pid"
         wait "$pid"
     fi
@@ -156,10 +158,25 @@ while :; do
     let "wait_time *= 60"
 
     waited_time=0
+    waited_nc_time=0
     while [ "$waited_time" -lt "$wait_time" ]; do
         if ps -p "$pid" > /dev/null; then
             sleep "$check_proc_interval"
             let "waited_time += check_proc_interval"
+            let "waited_nc_time += check_proc_interval"
+
+            if [ $((waited_nc_time / check_proc_accepting_interval)) -gt 0 ]; then
+                waited_nc_time=0
+
+                nc -z "$accepting_ip" 6112 &> /dev/null
+                if [ $? -ne 0 ]; then
+                    echo "init6 dropped outside of drop script. Restarting..."
+                    kill "$pid"
+                    wait "$pid"
+                    pid=""
+                    break
+                fi
+            fi
 
             if [ "$waited_time" -ge "$wait_time" ]; then
                 echo "Wait time elapsed. Dropping init6..."
