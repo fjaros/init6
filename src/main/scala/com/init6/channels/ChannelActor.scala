@@ -76,7 +76,7 @@ trait ChannelActor extends Init6RemotingActor {
 
   override val actorPath = s"$INIT6_CHANNELS_PATH/${Base64(name.toLowerCase)}"
 
-  val limit = 200
+  val limit = Config().Channels.limit
 
   // Set of users in this channel on this server
   val localUsers = LocalUsersSet()

@@ -78,6 +78,13 @@ sealed class Config(filePath: String) {
     }
   }
 
+  object Channels {
+
+    private val p = root.getConfig("channels")
+
+    val limit = p.getInt("limit")
+  }
+
   object Accounts {
 
     private val p = root.getConfig("accounts")
