@@ -50,6 +50,16 @@ class ChannelsActor extends Init6RemotingActor {
 //    Timeout(1, TimeUnit.SECONDS).duration, Timeout(1, TimeUnit.SECONDS).duration, self, MrCleanChannelEraser
 //  )
 
+  override def preStart() = {
+    super.preStart()
+
+    getOrCreate("Deckard Cain")
+    getOrCreate("Andariel")
+    getOrCreate("Duriel")
+    getOrCreate("Belial")
+    getOrCreate("Azmodan")
+  }
+
   private def sendGetChannels(address: Address): Unit = {
     remoteActorSelection(address).resolveOne(Timeout(2, TimeUnit.SECONDS).duration).onComplete {
       case Success(actor) =>
@@ -206,6 +216,12 @@ class ChannelsActor extends Init6RemotingActor {
     case c @ RemUser(actor) =>
       //println("##RemUser " + c + " - " + sender() + " - " + remoteActors)
       channels.values.map(_._2).foreach(_ ! c)
+
+    case StartRP =>
+      channels.values.map(_._2).foreach(_ ! StartRP)
+
+    case EndRP =>
+      channels.values.map(_._2).foreach(_ ! EndRP)
   }
 
   def getChannel(name: String): Option[ActorRef] = {

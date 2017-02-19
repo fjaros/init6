@@ -276,6 +276,9 @@ class UsersActor extends Init6RemotingActor with Init6LoggingActor {
     case BroadcastCommand(message) =>
       localUsers ! UserError(message)
 
+    case BroadcastCommandToLocal(message) =>
+      localUsers ! UserError(message)
+
     case DisconnectCommand(user) =>
       rem(user)
 

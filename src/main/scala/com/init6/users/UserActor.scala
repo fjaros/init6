@@ -311,6 +311,10 @@ class UserActor(ipAddress: InetSocketAddress, connection: ActorRef, var user: Us
           ipLimiterActor ! PrintConnectionLimit
         case PrintLoginLimit =>
           usersActor ! PrintLoginLimit
+        case StartRP =>
+          channelsActor ! StartRP
+        case EndRP =>
+          channelsActor ! EndRP
         case _ =>
       }
 

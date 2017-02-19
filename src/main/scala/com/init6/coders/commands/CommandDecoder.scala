@@ -3,7 +3,7 @@ package com.init6.coders.commands
 import akka.util.ByteString
 import com.init6.Constants._
 import com.init6.ReloadConfig
-import com.init6.channels.{Flags, User, UserError}
+import com.init6.channels._
 import com.init6.db.ReloadDb
 import com.init6.servers.{SendBirth, SplitMe}
 
@@ -115,6 +115,8 @@ object CommandDecoder {
         command.toLowerCase match {
           // Admin commands
           case "broadcast" | "bcast" => BroadcastCommand(message)
+          case "diabot" => StartRP
+          case "quitdiabot" => EndRP
           case "closeaccount" => CloseAccountCommand(user, message)
           case "openaccount" => OpenAccountCommand(user, message)
           case "disconnect" | "dc" => DisconnectCommand(message)

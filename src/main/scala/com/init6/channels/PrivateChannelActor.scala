@@ -9,7 +9,7 @@ object PrivateChannelActor {
   def apply(name: String) = new PrivateChannelActor(name)
 }
 
-sealed class PrivateChannelActor(override val name: String)
+class PrivateChannelActor(override val name: String)
   extends ChattableChannelActor
   with BannableChannelActor
   with OperableChannelActor

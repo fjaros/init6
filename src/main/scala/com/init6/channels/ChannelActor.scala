@@ -30,6 +30,9 @@ object ChannelActor {
       case "the void" => VoidedChannelActor("The Void")
       case "init 6" => PublicChannelActor("init 6")
       case "chat" => PublicLimitlessChannelActor("Chat")
+      case "dark" => new DiabOTChannelActor(name)
+      case "andariel" | "duriel" | "belial" | "azmodan" => new LesserEvilChannelActor(name)
+      case "deckard cain" => new DeckardCainChannelActor("Deckard Cain")
       case _ => PrivateChannelActor(name)
     }
   })
@@ -145,9 +148,9 @@ trait ChannelActor extends Init6RemotingActor {
         }
         joinedUsers += 1
 
-        user.copy(inChannel = name, channelTimestamp = System.currentTimeMillis)
+        Flags.deSpecialOp(user.copy(inChannel = name, channelTimestamp = System.currentTimeMillis))
       } else {
-        user.copy(inChannel = name)
+        Flags.deSpecialOp(user.copy(inChannel = name))
       }
 
     log.info("#ADD " + actor + " - " + newUser)
