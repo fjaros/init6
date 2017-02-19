@@ -2,7 +2,7 @@ package com.init6.users
 
 import akka.actor.{ActorRef, Props}
 import com.init6.Constants._
-import com.init6.{Init6Actor, Init6Component, SystemContext}
+import com.init6.{Config, Init6Actor, Init6Component, SystemContext}
 import com.init6.channels.{User, UserInfo}
 import com.init6.coders.commands.TopCommand
 import com.init6.utils.FiniteLinkedHashMap
@@ -61,9 +61,9 @@ class TopCommandActor extends Init6Actor {
           }
         })
 
-    case TopCommand(which) =>
+    case TopCommand(_, which) =>
       val topList = topMap(which)
-      sender() ! UserInfo(TOP_INFO(topList.getInitialSize, which))
+      sender() ! UserInfo(TOP_INFO(topList.getInitialSize, which, Config().Server.host))
       topList
         .values
         .zipWithIndex

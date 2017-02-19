@@ -55,8 +55,8 @@ sealed class Config(filePath: String) {
 
     val akka_host = Try(p.getString("akka_host")).getOrElse(host)
     val akka_port = p.getInt("akka_port")
-    val nodes = p.getStringList("nodes").asScala
-      .filterNot(_ == s"$akka_host:$akka_port")
+    val allNodes = p.getStringList("nodes").asScala
+    val remoteNodes = allNodes.filterNot(_ == s"$akka_host:$akka_port")
 
     object Registry {
 

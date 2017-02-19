@@ -43,9 +43,8 @@ case class ServerPinged(actor: ActorRef)
 
 class ServerRegistry extends Init6Actor {
 
-  val remoteServerPaths =
-    Config().Server.nodes
-      .map(node => system.actorSelection(s"akka://$INIT6@$node/user/$INIT6_SERVER_REGISTRY_PATH"))
+  val remoteServerPaths = Config().Server.remoteNodes
+    .map(node => system.actorSelection(remoteAddress(node, INIT6_SERVER_REGISTRY_PATH)))
 
   val subscribers = mutable.HashSet[ActorRef]()
   val keepAlives = mutable.HashMap[ActorRef, Long]()

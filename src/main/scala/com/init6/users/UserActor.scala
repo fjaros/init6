@@ -260,7 +260,12 @@ class UserActor(ipAddress: InetSocketAddress, connection: ActorRef, var user: Us
               case command: UserCommand => usersActor ! command
               case command: ReturnableCommand => encoder(command).foreach(connection ! WriteOut(_))
               case command@UsersCommand => usersActor ! command
-              case command: TopCommand => topCommandActor ! command
+              case command: TopCommand =>
+                if (command.serverIp != Config().Server.host) {
+                  system.actorSelection(remoteAddress(command.serverIp, INIT6_TOP_COMMAND_ACTOR)) ! command
+                } else {
+                  topCommandActor ! command
+                }
               case AwayCommand(message) => awayAvailablity.enableAction(message)
               case DndCommand(message) => dndAvailablity.enableAction(message)
               case AccountMade(username, passwordHash) =>

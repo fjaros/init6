@@ -21,6 +21,8 @@ private[init6] trait Init6Component {
   val topCommandActor = system.actorSelection(s"/user/$INIT6_TOP_COMMAND_ACTOR")
   val serverRegistry = system.actorSelection(s"/user/$INIT6_SERVER_REGISTRY_PATH")
 
+  val remoteAddress = (node: String, path: String) => s"akka://$INIT6@$node/user/$path"
+
   def getAcceptingUptime = {
     Duration(System.nanoTime() - SystemContext.startAccepting, TimeUnit.NANOSECONDS)
   }
