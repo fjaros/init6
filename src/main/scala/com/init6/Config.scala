@@ -126,6 +126,8 @@ sealed class Config(filePath: String) {
     val packetMaxCost = p.getInt("packet-max-cost")
     val costPerByte = p.getInt("cost-per-byte")
     val creditsReturnedPerSecond = p.getInt("credits-returned-per-second")
+
+    val whitelist = p.getStringList("whitelist").asScala.toSet
   }
 
   val motd = root.getStringList("motd")

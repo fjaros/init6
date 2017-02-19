@@ -70,7 +70,7 @@ object OneOperableCommand {
 
 object CommandDecoder {
 
-  def apply(user: User, byteString: ByteString) = {
+  def apply(user: User, byteString: ByteString): Command = {
     if (byteString.head == '/') {
       val (command, message) = spanBySpace(byteString.tail)
       val userCommand = command.toLowerCase match {

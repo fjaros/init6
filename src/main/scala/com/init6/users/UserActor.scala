@@ -218,100 +218,100 @@ class UserActor(ipAddress: InetSocketAddress, connection: ActorRef, var user: Us
       if (!ChatValidator(data)) {
         connection ! Abort
         self ! KillConnection
-      } else if (Config().AntiFlood.enabled && floodState(data.length)) {
+        return receive
+      }
+
+      val command = CommandDecoder(user, data)
+      if (Config().AntiFlood.enabled && floodState(command, data.length)) {
         // Handle AntiFlood
         encodeAndSend(UserFlooded)
         self ! KillConnection
-      } else {
-        CommandDecoder(user, data) match {
-          case command: Command =>
-            //log.error(s"UserMessageDecoder $command")
-            command match {
-              case PongCommand(cookie) =>
-                handlePingResponse(cookie)
+        return receive
+      }
 
-              /**
-                * The channel command and user command have two different flows.
-                * A user has to go through a middle-man users actor because there is no guarantee the receiving user is online.
-                * A command being sent to the user's channel can be done via actor selection, since we can guarantee the
-                * channel exists.
-                */
-              case c @ JoinUserCommand(fromUser, channel) =>
-                if (ChannelJoinValidator(user.inChannel, channel)) {
-                  joinChannel(channel)
-                }
-              case ResignCommand => resign()
-              case RejoinCommand => rejoin()
-              case command: ChannelCommand =>
-                if (channelActor != ActorRef.noSender) {
-                  channelActor ! command
-                }
-              case ChannelsCommand => channelsActor ! ChannelsCommand
-              case command: ShowChannelBans => channelsActor ! command
-              case command: WhoCommand => channelsActor ! command
-              case command: PrintChannelUsers => channelsActor ! command
-              case command: OperableCommand =>
-                if (Flags.canBan(user)) {
-                  usersActor ! command
-                } else {
-                  encoder(UserError(NOT_OPERATOR)).foreach(connection ! WriteOut(_))
-                }
-              case command: UserToChannelCommand => usersActor ! command
-              case command: UserCommand => usersActor ! command
-              case command: ReturnableCommand => encoder(command).foreach(connection ! WriteOut(_))
-              case command@UsersCommand => usersActor ! command
-              case command: TopCommand =>
-                if (command.serverIp != Config().Server.host) {
-                  system.actorSelection(remoteAddress(command.serverIp, INIT6_TOP_COMMAND_ACTOR)) ! command
-                } else {
-                  topCommandActor ! command
-                }
-              case AwayCommand(message) => awayAvailablity.enableAction(message)
-              case DndCommand(message) => dndAvailablity.enableAction(message)
-              case AccountMade(username, passwordHash) =>
-                daoActor ! CreateAccount(username, passwordHash)
-              case ChangePasswordCommand(newPassword) =>
-                daoActor ! UpdateAccountPassword(user.name, newPassword)
-              case AliasCommand(alias) =>
-                daoActor ! DAOAliasCommand(user, alias)
-              case AliasToCommand(alias) =>
-                daoActor ! DAOAliasToCommand(user, alias)
+      //log.error(s"UserMessageDecoder $command")
+      command match {
+        case PongCommand(cookie) =>
+          handlePingResponse(cookie)
 
-              case command: FriendsCommand =>
-                handleFriendsCommand(command)
+        /**
+          * The channel command and user command have two different flows.
+          * A user has to go through a middle-man users actor because there is no guarantee the receiving user is online.
+          * A command being sent to the user's channel can be done via actor selection, since we can guarantee the
+          * channel exists.
+          */
+        case c @ JoinUserCommand(fromUser, channel) =>
+          if (ChannelJoinValidator(user.inChannel, channel)) {
+            joinChannel(channel)
+          }
+        case ResignCommand => resign()
+        case RejoinCommand => rejoin()
+        case command: ChannelCommand =>
+          if (channelActor != ActorRef.noSender) {
+            channelActor ! command
+          }
+        case ChannelsCommand => channelsActor ! ChannelsCommand
+        case command: ShowChannelBans => channelsActor ! command
+        case command: WhoCommand => channelsActor ! command
+        case command: PrintChannelUsers => channelsActor ! command
+        case command: OperableCommand =>
+          if (Flags.canBan(user)) {
+            usersActor ! command
+          } else {
+            encoder(UserError(NOT_OPERATOR)).foreach(connection ! WriteOut(_))
+          }
+        case command: UserToChannelCommand => usersActor ! command
+        case command: UserCommand => usersActor ! command
+        case command: ReturnableCommand => encoder(command).foreach(connection ! WriteOut(_))
+        case command@UsersCommand => usersActor ! command
+        case command: TopCommand =>
+          if (command.serverIp != Config().Server.host) {
+            system.actorSelection(remoteAddress(command.serverIp, INIT6_TOP_COMMAND_ACTOR)) ! command
+          } else {
+            topCommandActor ! command
+          }
+        case AwayCommand(message) => awayAvailablity.enableAction(message)
+        case DndCommand(message) => dndAvailablity.enableAction(message)
+        case AccountMade(username, passwordHash) =>
+          daoActor ! CreateAccount(username, passwordHash)
+        case ChangePasswordCommand(newPassword) =>
+          daoActor ! UpdateAccountPassword(user.name, newPassword)
+        case AliasCommand(alias) =>
+          daoActor ! DAOAliasCommand(user, alias)
+        case AliasToCommand(alias) =>
+          daoActor ! DAOAliasToCommand(user, alias)
 
-              //ADMIN
-              case SplitMe =>
-                if (Flags.isAdmin(user)) {
+        case command: FriendsCommand =>
+          handleFriendsCommand(command)
+
+        //ADMIN
+        case SplitMe =>
+          if (Flags.isAdmin(user)) {
 //                  publish(TOPIC_SPLIT, SplitMe)
-                }
-              case SendBirth =>
-                if (Flags.isAdmin(user)) {
+          }
+        case SendBirth =>
+          if (Flags.isAdmin(user)) {
 //                  publish(TOPIC_ONLINE, ServerOnline)
-                }
-              case command @ BroadcastCommand(message) =>
-                usersActor ! command
-              case command @ DisconnectCommand(user) =>
-                usersActor ! command
-              case command @ CloseAccountCommand(account, reason) =>
-                daoActor ! CloseAccount(account, reason)
-              case command @ OpenAccountCommand(account) =>
-                daoActor ! OpenAccount(account)
-              case ReloadConfig =>
-                Config.reload()
-                self ! UserInfo(s"$INIT6_SPACE configuration reloaded.")
-              case ReloadDb =>
-                daoActor ! ReloadDb
+          }
+        case command @ BroadcastCommand(message) =>
+          usersActor ! command
+        case command @ DisconnectCommand(user) =>
+          usersActor ! command
+        case command @ CloseAccountCommand(account, reason) =>
+          daoActor ! CloseAccount(account, reason)
+        case command @ OpenAccountCommand(account) =>
+          daoActor ! OpenAccount(account)
+        case ReloadConfig =>
+          Config.reload()
+          self ! UserInfo(s"$INIT6_SPACE configuration reloaded.")
+        case ReloadDb =>
+          daoActor ! ReloadDb
 
-              case PrintConnectionLimit =>
-                ipLimiterActor ! PrintConnectionLimit
-              case PrintLoginLimit =>
-                usersActor ! PrintLoginLimit
-              case _ =>
-            }
-          case x =>
-            log.debug("{} UserMessageDecoder Unhandled {}", user.name, x)
-        }
+        case PrintConnectionLimit =>
+          ipLimiterActor ! PrintConnectionLimit
+        case PrintLoginLimit =>
+          usersActor ! PrintLoginLimit
+        case _ =>
       }
 
     case command: UserToChannelCommandAck =>

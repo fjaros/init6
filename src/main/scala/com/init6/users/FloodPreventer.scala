@@ -1,6 +1,7 @@
 package com.init6.users
 
 import com.init6.Config
+import com.init6.coders.commands.Command
 
 /**
   * Created by fjaros on 12/23/16.
@@ -13,24 +14,29 @@ private[users] trait FloodPreventer {
   )
   private var state = FloodState()
 
-  def floodState(numBytes: Int): Boolean = {
+  def floodState(command: Command, numBytes: Int): Boolean = {
     val cfg = Config().AntiFlood
-    val now = System.currentTimeMillis()
+    if (!cfg.whitelist.contains(command.getClass.getName)) {
 
-    if (now >= state.timestamp) {
-      val credits = math.min(
-        state.credits + ((now - state.timestamp) / 1000 * cfg.creditsReturnedPerSecond),
-        cfg.maxCredits
-      ).toInt
+      val now = System.currentTimeMillis()
 
-      val cost = math.min(cfg.packetMinCost + numBytes * cfg.costPerByte, cfg.packetMaxCost)
+      if (now >= state.timestamp) {
+        val credits = math.min(
+          state.credits + ((now - state.timestamp) / 1000 * cfg.creditsReturnedPerSecond),
+          cfg.maxCredits
+        ).toInt
 
-      state = FloodState(credits - cost, now)
+        val cost = math.min(cfg.packetMinCost + numBytes * cfg.costPerByte, cfg.packetMaxCost)
 
-      cost > credits
+        state = FloodState(credits - cost, now)
+
+        cost > credits
+      } else {
+        // Server time has changed backwards. Ignore this update.
+        state = FloodState()
+        false
+      }
     } else {
-      // Server time has changed backwards. Ignore this update.
-      state = FloodState()
       false
     }
   }
