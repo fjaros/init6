@@ -245,7 +245,11 @@ trait ChannelActor extends Init6RemotingActor {
       }
 
     case InternalChannelUserUpdate(actor, user) =>
-      remoteIn(actor, user)
+      if (users.contains(actor)) {
+        remoteIn(actor, user)
+      } else {
+        log.info("###ICUU ignored in " + name + " - " + actor + " - "  + user)
+      }
 
 //    case UserToChannelPing =>
 //      usersKeepAlive += sender() -> System.currentTimeMillis()
