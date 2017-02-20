@@ -443,7 +443,10 @@ class UserActor(ipAddress: InetSocketAddress, connection: ActorRef, var user: Us
   }
 
   private def joinChannel(channel: String, forceJoin: Boolean = false) = {
-    if (!Config().Server.Chat.enabled || Config().Server.Chat.channels.contains(channel.toLowerCase)) {
+    if (Flags.isAdmin(user) ||
+      !Config().Server.Chat.enabled ||
+      Config().Server.Chat.channels.contains(channel.toLowerCase)
+    ) {
       implicit val timeout = Timeout(2, TimeUnit.SECONDS)
       //println(user.name + " - " + self + " - SENDING JOIN")
       Await.result(channelsActor ? UserSwitchedChat(self, user, channel), timeout.duration) match {

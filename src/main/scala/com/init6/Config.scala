@@ -73,8 +73,8 @@ sealed class Config(filePath: String) {
 
       private val pA = p.getConfig("chat")
 
-      val enabled = Try(p.getBoolean("enabled")).getOrElse(false)
-      val channels = Try(p.getStringList("channels").asScala.toSet).getOrElse(Set.empty)
+      val enabled = Try(pA.getBoolean("enabled")).getOrElse(false)
+      val channels = Try(pA.getStringList("channels").asScala.toSet).getOrElse(Set.empty)
     }
   }
 
