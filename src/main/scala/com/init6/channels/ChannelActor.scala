@@ -26,13 +26,13 @@ object ChannelActor {
   def apply(name: String) = Props({
     name.toLowerCase match {
       case "backstage" => AdminChannelActor("Backstage")
-      case "vile" => LockedChannelActor("ViLe", "Channel ViLe has been locked. Please use our new chatting channel: init 6")
+      //case "vile" => LockedChannelActor("ViLe", "Channel ViLe has been locked. Please use our new chatting channel: init 6")
       case "the void" => VoidedChannelActor("The Void")
       case "init 6" => PublicChannelActor("init 6")
       case "chat" => PublicLimitlessChannelActor("Chat")
-      case "dark" => new DiabOTChannelActor(name)
-      case "andariel" | "duriel" | "belial" | "azmodan" => new LesserEvilChannelActor(name)
-      case "deckard cain" => new DeckardCainChannelActor("Deckard Cain")
+      //case "dark" => new DiabOTChannelActor(name)
+      //case "andariel" | "duriel" | "belial" | "azmodan" => new LesserEvilChannelActor(name)
+      //case "deckard cain" => new DeckardCainChannelActor("Deckard Cain")
       case _ => PrivateChannelActor(name)
     }
   })
