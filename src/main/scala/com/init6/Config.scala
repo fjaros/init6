@@ -128,6 +128,8 @@ sealed class Config(filePath: String) {
     val creditsReturnedPerSecond = p.getInt("credits-returned-per-second")
 
     val whitelist = p.getStringList("whitelist").asScala.toSet
+
+    val ipBanTime = p.getInt("ipban-time")
   }
 
   val motd = root.getStringList("motd")

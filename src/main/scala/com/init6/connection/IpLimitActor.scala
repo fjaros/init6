@@ -22,11 +22,13 @@ case class Connected(connectingActor: ActorRef, address: InetSocketAddress)
 case class Disconnected(connectingActor: ActorRef)
 case class Allowed(connectingActor: ActorRef, address: InetSocketAddress)
 case class NotAllowed(connectingActor: ActorRef, address: InetSocketAddress)
+case class IpBan(address: InetSocketAddress, until: Long)
 
 class IpLimitActor(limit: Int) extends Init6Actor {
 
   val actorToIp = mutable.HashMap.empty[ActorRef, Int]
   val ipCount = mutable.HashMap.empty[Int, Int]
+  val ipBanned = mutable.HashMap.empty[Int, Long]
 
   override def receive: Receive = {
     case Connected(connectingActor, address) =>
@@ -40,8 +42,16 @@ class IpLimitActor(limit: Int) extends Init6Actor {
 
       val addressInt = IPUtils.toDword(address.getAddress.getAddress)
       val current = ipCount.getOrElse(addressInt, 0)
+      val isIpBanned = ipBanned.get(addressInt).exists(until => {
+        if (System.currentTimeMillis >= until) {
+          ipBanned -= addressInt
+          false
+        } else {
+          true
+        }
+      })
 
-      if (limit > current) {
+      if (limit > current && !isIpBanned) {
         actorToIp += connectingActor -> addressInt
         ipCount += addressInt -> (current + 1)
         sender() ! Allowed(connectingActor, address)
@@ -60,6 +70,10 @@ class IpLimitActor(limit: Int) extends Init6Actor {
           }
           actorToIp -= connectingActor
         })
+
+    case IpBan(address, until) =>
+      val addressInt = IPUtils.toDword(address.getAddress.getAddress)
+      ipBanned += addressInt -> until
 
     case PrintConnectionLimit =>
       sender() ! UserInfoArray(

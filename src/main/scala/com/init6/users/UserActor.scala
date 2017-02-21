@@ -10,7 +10,7 @@ import akka.util.Timeout
 import com.init6.Constants._
 import com.init6.coders.chat1.Chat1Encoder
 import com.init6.coders.commands._
-import com.init6.connection.WriteOut
+import com.init6.connection.{IpBan, WriteOut}
 import com.init6.{Config, Init6Actor, Init6LoggingActor, ReloadConfig}
 import com.init6.channels._
 import com.init6.channels.utils.ChannelJoinValidator
@@ -225,6 +225,7 @@ class UserActor(ipAddress: InetSocketAddress, connection: ActorRef, var user: Us
       if (Config().AntiFlood.enabled && floodState(command, data.length)) {
         // Handle AntiFlood
         encodeAndSend(UserFlooded)
+        ipLimiterActor ! IpBan(ipAddress, System.currentTimeMillis + (Config().AntiFlood.ipBanTime * 1000))
         self ! KillConnection
         return receive
       }
