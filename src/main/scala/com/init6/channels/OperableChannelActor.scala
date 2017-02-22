@@ -48,7 +48,7 @@ trait OperableChannelActor extends ChannelActor {
     val userOpt = super.rem(actor)
 
     userOpt.foreach(user => {
-      if (users.nonEmpty && Flags.isOp(user) && !existsOperator()) {
+      if (users.nonEmpty && !existsOperator()) {
         val possibleNextOpActor = determineNextOp
         val designatedActorOpt = designatedActors.get(actor)
         val (oppedActor, oppedUser) =
