@@ -120,6 +120,7 @@ object CommandDecoder {
           case "closeaccount" => CloseAccountCommand(user, message)
           case "openaccount" => OpenAccountCommand(user, message)
           case "disconnect" | "dc" => DisconnectCommand(message)
+          case "ipban" => IpBanCommand(message)
           //case "splitme" => SplitMe
           //case "recon" => SendBirth
           case "printchannelusers" => OneCommand(PrintChannelUsers(message), PrintChannelUsers(user.inChannel))

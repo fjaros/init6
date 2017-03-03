@@ -12,7 +12,6 @@ import com.init6._
 import com.init6.channels._
 import com.init6.Constants._
 import com.init6.coders.IPUtils
-import com.init6.connection._
 import com.init6.utils.RealKeyedCaseInsensitiveHashMap
 
 import scala.collection.mutable
@@ -281,6 +280,9 @@ class UsersActor extends Init6RemotingActor with Init6LoggingActor {
 
     case DisconnectCommand(user) =>
       rem(user)
+
+    case IpBanCommand(ipAddress, _) =>
+      localUsers ! DisconnectOnIp(ipAddress)
 
     case PrintLoginLimit =>
       sender() ! UserInfoArray(

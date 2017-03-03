@@ -44,7 +44,7 @@ case class UserUpdated(user: User) extends ChatEvent
 case class PingSent(time: Long, cookie: String) extends Command
 case class UpdatePing(ping: Int) extends Command
 case object KillConnection extends Command
-
+case class DisconnectOnIp(ipAddress: Array[Byte]) extends Command
 
 class UserActor(ipAddress: InetSocketAddress, connection: ActorRef, var user: User, encoder: Encoder)
   extends FloodPreventer with Init6Actor with Init6LoggingActor {
@@ -225,7 +225,10 @@ class UserActor(ipAddress: InetSocketAddress, connection: ActorRef, var user: Us
       if (Config().AntiFlood.enabled && floodState(command, data.length)) {
         // Handle AntiFlood
         encodeAndSend(UserFlooded)
-        ipLimiterActor ! IpBan(ipAddress, System.currentTimeMillis + (Config().AntiFlood.ipBanTime * 1000))
+        ipLimiterActor ! IpBan(
+          ipAddress.getAddress.getAddress,
+          System.currentTimeMillis + (Config().AntiFlood.ipBanTime * 1000)
+        )
         self ! KillConnection
         return receive
       }
@@ -298,6 +301,9 @@ class UserActor(ipAddress: InetSocketAddress, connection: ActorRef, var user: Us
           usersActor ! command
         case command @ DisconnectCommand(user) =>
           usersActor ! command
+        case command @ IpBanCommand(ipAddress, until) =>
+          ipLimiterActor ! IpBan(ipAddress, until)
+          usersActor ! command
         case command @ CloseAccountCommand(account, reason) =>
           daoActor ! CloseAccount(account, reason)
         case command @ OpenAccountCommand(account) =>
@@ -340,6 +346,11 @@ class UserActor(ipAddress: InetSocketAddress, connection: ActorRef, var user: Us
     case KillConnection =>
       //println("#KILLCONNECTION FROM " + sender() + " - FOR: " + self + " - " + user)
       connection ! PoisonPill
+
+    case DisconnectOnIp(ipAddress) =>
+      if (this.ipAddress.getAddress.getAddress.sameElements(ipAddress)) {
+        connection ! PoisonPill
+      }
 
     case x =>
       log.debug("{} UserActor Unhandled {}", user.name, x)

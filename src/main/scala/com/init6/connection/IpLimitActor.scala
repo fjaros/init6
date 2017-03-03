@@ -1,6 +1,6 @@
 package com.init6.connection
 
-import java.net.{InetAddress, InetSocketAddress}
+import java.net.InetSocketAddress
 
 import akka.actor.{ActorRef, Props}
 import com.init6.Constants._
@@ -22,7 +22,7 @@ case class Connected(connectingActor: ActorRef, address: InetSocketAddress)
 case class Disconnected(connectingActor: ActorRef)
 case class Allowed(connectingActor: ActorRef, address: InetSocketAddress)
 case class NotAllowed(connectingActor: ActorRef, address: InetSocketAddress)
-case class IpBan(address: InetSocketAddress, until: Long)
+case class IpBan(address: Array[Byte], until: Long)
 
 class IpLimitActor(limit: Int) extends Init6Actor {
 
@@ -72,7 +72,7 @@ class IpLimitActor(limit: Int) extends Init6Actor {
         })
 
     case IpBan(address, until) =>
-      val addressInt = IPUtils.toDword(address.getAddress.getAddress)
+      val addressInt = IPUtils.toDword(address)
       ipBanned += addressInt -> until
 
     case PrintConnectionLimit =>
