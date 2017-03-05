@@ -56,6 +56,8 @@ object Constants {
   val FLOODED_OFF = "You have been disconnected for flooding!"
   val INVALID_COMMAND = "That is not a valid command. Type /help or /? for more info."
   val INVALID_USER = "Invalid user."
+  val IPBANNED = (ipAddress: String) => s"$ipAddress has been ipbanned."
+  val UNIPBANNED = (ipAddress: String) => s"$ipAddress has been unipbanned."
   val NO_CHANNEL_INPUT = "What channel do you want to join?"
   val NO_CHAT_PRIVILEGES = "This channel does not have chat privileges."
   val NO_MESSAGE_INPUT = "What do you want to say?"
@@ -90,7 +92,7 @@ object Constants {
   val OPS_CHANNEL = (name: String, size: Int) => s"Listing $size ${addS(size, "operator")} in channel $name:"
   val WHO_CHANNEL = (name: String, size: Int) => s"Listing $size ${addS(size, "user")} in channel $name:"
 
-  val WHOAMI = (username: String, client: String, channel: String, serverIp: String) => s"You are $username, using $client in the channel $channel on server $serverIp."
+  val WHOAMI = (username: String, clientIp: String, client: String, channel: String, serverIp: String) => s"You are $username ($clientIp), using $client in the channel $channel on server $serverIp."
   val TOP_INFO = (number: Int, protocol: String, serverIp: String) => s"Showing the top $number $protocol connections on $serverIp:"
   val TOP_LIST = (number: Int, username: String, client: String, channel: String, loggedInTime: Long) =>
     String.format("%1$-3s| %2$-16s| %3$-5s| %4$-10s| %5$s", number.toString, username, client.reverse, formatNanos(loggedInTime), channel)

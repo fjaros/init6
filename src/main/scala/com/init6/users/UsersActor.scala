@@ -288,7 +288,7 @@ class UsersActor extends Init6RemotingActor with Init6LoggingActor {
       sender() ! UserInfoArray(
         ipLimitMap.map {
           case (ipDword, count) =>
-            s"${IPUtils.toString(ipDword)} - $count"
+            s"${IPUtils.dwordToString(ipDword)} - $count"
         }.toArray
       )
 
@@ -315,7 +315,7 @@ class UsersActor extends Init6RemotingActor with Init6LoggingActor {
   }
 
   def addToLimiter(ipAddress: InetSocketAddress) = {
-    val ipDword = IPUtils.toDword(ipAddress.getAddress.getAddress)
+    val ipDword = IPUtils.bytesToDword(ipAddress.getAddress.getAddress)
     val count = ipLimitMap.getOrElse(ipDword, 0)
 
     if (Config().Accounts.loginLimit > count) {
@@ -327,7 +327,7 @@ class UsersActor extends Init6RemotingActor with Init6LoggingActor {
   }
 
   def removeFromLimiter(ipAddress: InetSocketAddress) = {
-    val ipDword = IPUtils.toDword(ipAddress.getAddress.getAddress)
+    val ipDword = IPUtils.bytesToDword(ipAddress.getAddress.getAddress)
 
     ipLimitMap
       .get(ipDword)

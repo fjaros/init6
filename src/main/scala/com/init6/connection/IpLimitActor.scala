@@ -4,10 +4,10 @@ import java.net.InetSocketAddress
 
 import akka.actor.{ActorRef, Props}
 import com.init6.Constants._
-import com.init6.channels.UserInfoArray
+import com.init6.channels.{UserInfo, UserInfoArray}
 import com.init6.coders.IPUtils
-import com.init6.coders.commands.PrintConnectionLimit
-import com.init6.{Config, Init6Actor, Init6Component}
+import com.init6.coders.commands.{PrintConnectionLimit, UnIpBanCommand}
+import com.init6.{Config, Init6Component, Init6RemotingActor}
 
 import scala.collection.mutable
 
@@ -24,7 +24,9 @@ case class Allowed(connectingActor: ActorRef, address: InetSocketAddress)
 case class NotAllowed(connectingActor: ActorRef, address: InetSocketAddress)
 case class IpBan(address: Array[Byte], until: Long)
 
-class IpLimitActor(limit: Int) extends Init6Actor {
+class IpLimitActor(limit: Int) extends Init6RemotingActor {
+
+  override val actorPath = INIT6_IP_LIMITER_PATH
 
   val actorToIp = mutable.HashMap.empty[ActorRef, Int]
   val ipCount = mutable.HashMap.empty[Int, Int]
@@ -40,7 +42,7 @@ class IpLimitActor(limit: Int) extends Init6Actor {
         return receive
       }
 
-      val addressInt = IPUtils.toDword(address.getAddress.getAddress)
+      val addressInt = IPUtils.bytesToDword(address.getAddress.getAddress)
       val current = ipCount.getOrElse(addressInt, 0)
       val isIpBanned = ipBanned.get(addressInt).exists(until => {
         if (System.currentTimeMillis >= until) {
@@ -72,14 +74,20 @@ class IpLimitActor(limit: Int) extends Init6Actor {
         })
 
     case IpBan(address, until) =>
-      val addressInt = IPUtils.toDword(address)
+      val addressInt = IPUtils.bytesToDword(address)
       ipBanned += addressInt -> until
+      sender() ! UserInfo(IPBANNED(IPUtils.dwordToString(addressInt)))
+
+    case UnIpBanCommand(address) =>
+      val addressInt = IPUtils.bytesToDword(address)
+      ipBanned -= addressInt
+      sender() ! UserInfo(UNIPBANNED(IPUtils.dwordToString(addressInt)))
 
     case PrintConnectionLimit =>
       sender() ! UserInfoArray(
         ipCount.map {
           case (ipDword, count) =>
-            s"${IPUtils.toString(ipDword)} - $count"
+            s"${IPUtils.dwordToString(ipDword)} - $count"
         }.toArray
       )
   }

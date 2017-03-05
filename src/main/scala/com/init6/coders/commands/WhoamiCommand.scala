@@ -10,6 +10,6 @@ import com.init6.channels.{User, UserInfo}
 object WhoamiCommand {
 
   def apply(user: User): Command = {
-    UserInfo(WHOAMI(user.name, encodeClient(user.client), user.inChannel, Config().Server.host))
+    UserInfo(WHOAMI(user.name, user.ipAddress, encodeClient(user.client), user.inChannel, Config().Server.host))
   }
 }

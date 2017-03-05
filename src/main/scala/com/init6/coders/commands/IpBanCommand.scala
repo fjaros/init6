@@ -1,5 +1,6 @@
 package com.init6.coders.commands
 
+import com.init6.coders.IPUtils
 import com.init6.servers.Remotable
 
 /**
@@ -9,7 +10,7 @@ object IpBanCommand {
 
   def apply(message: String): Command = {
     val (ip, howLong) = CommandDecoder.spanBySpace(message)
-    IpBanCommand(ip.getBytes, System.currentTimeMillis + (howLong.toInt * 60000))
+    IpBanCommand(IPUtils.stringToBytes(ip), System.currentTimeMillis + (howLong.toInt * 60000))
   }
 }
 

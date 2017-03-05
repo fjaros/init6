@@ -45,27 +45,46 @@ GROUP BY accounts.username, channel
 ORDER BY channel;
 
 -- sum of grabbed ops
-SELECT
-    CASE
-    WHEN server_id=1 THEN 'montreal'
-    WHEN server_id=2 THEN 'seattle'
-    WHEN server_id=3 THEN 'chicago'
-    WHEN server_id=4 THEN 'dallas'
-    END as server,
-    channel,
-    accounts.username as account,
-    SUM(is_operator)
+SELECT tbl.* FROM (
+    SELECT
+        CASE
+        WHEN server_id=1 THEN 'chicago'
+        WHEN server_id=2 THEN 'dallas'
+        WHEN server_id=3 THEN 'seattle'
+        END as server,
+        channel,
+        accounts.username as account,
+        SUM(is_operator) as times_grabbed
 
-FROM channel_joins
-JOIN users accounts
-ON channel_joins.alias_id = accounts.id
+    FROM channel_joins
+    JOIN users accounts
+    ON channel_joins.alias_id = accounts.id
 
-WHERE channel_joins.alias_id != channel_joins.user_id
-AND channel_joins.alias_id is not null
-AND channel not in ('chat','init 6','the void')
-AND server_id in (1,2,3,4)
-AND server_accepting_time >= 1486713600000
-AND accounts.username in ('lev','s3v3n')
+    WHERE channel in ('dark','dark realm','hell','war','sex','war room','bar','warez')
+    AND server_id in (1,2,3)
 
-GROUP BY accounts.username, channel
-ORDER BY channel;
+    GROUP BY accounts.username, channel
+
+    UNION ALL
+
+    SELECT
+        CASE
+        WHEN server_id=1 THEN 'chicago'
+        WHEN server_id=2 THEN 'dallas'
+        WHEN server_id=3 THEN 'seattle'
+        END as server,
+        channel,
+        accounts.username as account,
+        SUM(is_operator) as times_grabbed
+
+    FROM channel_joins
+    JOIN users accounts
+    ON channel_joins.user_id = accounts.id
+
+    WHERE channel in ('dark','dark realm','hell','war','sex','war room','bar','warez')
+    AND server_id in (1,2,3)
+    AND channel_joins.alias_id IS NULL
+
+    GROUP BY accounts.username, channel
+) tbl WHERE times_grabbed > 0
+ORDER BY channel, times_grabbed DESC;

@@ -304,6 +304,8 @@ class UserActor(ipAddress: InetSocketAddress, connection: ActorRef, var user: Us
         case command @ IpBanCommand(ipAddress, until) =>
           ipLimiterActor ! IpBan(ipAddress, until)
           usersActor ! command
+        case command @ UnIpBanCommand(ipAddress) =>
+          ipLimiterActor ! command
         case command @ CloseAccountCommand(account, reason) =>
           daoActor ! CloseAccount(account, reason)
         case command @ OpenAccountCommand(account) =>
@@ -348,7 +350,7 @@ class UserActor(ipAddress: InetSocketAddress, connection: ActorRef, var user: Us
       connection ! PoisonPill
 
     case DisconnectOnIp(ipAddress) =>
-      if (this.ipAddress.getAddress.getAddress.sameElements(ipAddress)) {
+      if (!Flags.isAdmin(user) && this.ipAddress.getAddress.getAddress.sameElements(ipAddress)) {
         connection ! PoisonPill
       }
 
@@ -470,6 +472,8 @@ class UserActor(ipAddress: InetSocketAddress, connection: ActorRef, var user: Us
               this.channelActor = channelActor
               channelActor ! GetUsers
             case _ =>
+              // Seems best for most poopylicious bots that enjoy getting stuck in limbo
+              // Basically throw to void on force join of channel is full/or is banned
               if (forceJoin && !user.inChannel.equalsIgnoreCase(THE_VOID)) {
                 self ! JoinChannelFromConnection(THE_VOID, forceJoin)
               }
