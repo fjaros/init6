@@ -11,7 +11,7 @@ import com.init6.coders.Base64
 import com.init6.coders.commands._
 import com.init6.db.DbChannelJoin
 import com.init6.servers.{Remotable, ServerOnline, SplitMe}
-import com.init6.users.{GetUsers, UpdatePing, UserChannelChanged, UserUpdated}
+import com.init6.users.{GetUsers, UpdatePing, UserChannelJoined, UserUpdated}
 import com.init6.utils.CaseInsensitiveHashMap
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -61,7 +61,7 @@ case class TopicExchange(
 
 case class AddUser(actor: ActorRef, user: User) extends Command
 case class RemUser(actor: ActorRef) extends Command with Remotable
-case class UserAddedToChannel(user: User, channelName: String, channelFlags: Long, channelActor: ActorRef, topicExchange: TopicExchange)
+case class UserAddedToChannel(user: User, channelName: String, channelFlags: Long, channelActor: ActorRef, topicExchange: TopicExchange, channelSize: Int)
 case object CheckSize extends Command
 case class ChannelSize(actor: ActorRef, name: String, size: Int) extends Command
 case object ChannelToUserPing extends Command
@@ -146,8 +146,6 @@ trait ChannelActor extends Init6RemotingActor {
             is_operator = Flags.isOp(user)
           )
         }
-        joinedUsers += 1
-
         Flags.deSpecialOp(user.copy(inChannel = name, channelTimestamp = System.currentTimeMillis))
       } else {
         Flags.deSpecialOp(user.copy(inChannel = name))
@@ -158,9 +156,10 @@ trait ChannelActor extends Init6RemotingActor {
     reverseUsernames += newUser.name -> actor
 
     if (isLocal()) {
-      sender() ! UserAddedToChannel(newUser, name, flags, self, topicExchange)
-      topCommandActor ! UserChannelChanged(actor, newUser)
+      sender() ! UserAddedToChannel(newUser, name, flags, self, topicExchange, joinedUsers)
+      joinedUsers += 1
     }
+
     newUser
   }
 

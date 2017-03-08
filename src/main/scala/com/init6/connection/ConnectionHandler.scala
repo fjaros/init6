@@ -5,6 +5,7 @@ import java.net.InetSocketAddress
 import akka.actor.{ActorRef, FSM, Props}
 import akka.io.Tcp.{Abort, Bind, ConnectionClosed, Register, ResumeAccepting}
 import akka.io.{IO, Tcp}
+import com.init6.users.ConnectedActor
 import com.init6.{Init6Actor, Init6Component}
 
 /**
@@ -42,15 +43,17 @@ class ConnectionHandler(host: String, port: Int)
 
   when(Bound) {
     case Event(Tcp.Connected(remote, _), _) =>
+      val rawConnectionInfo = ConnectionInfo(remote, sender(), getAcceptingUptime.toNanos)
+      val connectedTime = getAcceptingUptime.toNanos
       log.debug("Address {} connected", remote.getAddress.getHostAddress)
-      ipLimiterActor ! Connected(sender(), remote)
+      ipLimiterActor ! Connected(rawConnectionInfo)
       stay()
-    case Event(Allowed(connectingActor, address), listener: ActorRef) =>
-      allowed(connectingActor, address)
+    case Event(Allowed(rawConnectionInfo), listener: ActorRef) =>
+      allowed(rawConnectionInfo)
       listener ! ResumeAccepting(1)
       stay()
-    case Event(NotAllowed(connectingActor, address), listener: ActorRef) =>
-      notAllowed(connectingActor, address)
+    case Event(NotAllowed(rawConnectionInfo), listener: ActorRef) =>
+      notAllowed(rawConnectionInfo)
       listener ! ResumeAccepting(1)
       stay()
     case Event(_: ConnectionClosed, _) =>
@@ -58,14 +61,14 @@ class ConnectionHandler(host: String, port: Int)
       stay()
   }
 
-  def allowed(connectingActor: ActorRef, remote: InetSocketAddress) = {
-    log.debug("Address {} allowed", remote.getAddress)
-    connectingActor ! Register(context.actorOf(ProtocolHandler(remote, connectingActor)), keepOpenOnPeerClosed = true)
-    connectingActor ! Tcp.SO.KeepAlive(on = true)
+  def allowed(rawConnectionInfo: ConnectionInfo) = {
+    log.debug("Address {} allowed", rawConnectionInfo.ipAddress.getAddress)
+    rawConnectionInfo.actor ! Register(context.actorOf(ProtocolHandler(rawConnectionInfo)), keepOpenOnPeerClosed = true)
+    rawConnectionInfo.actor ! Tcp.SO.KeepAlive(on = true)
   }
 
-  def notAllowed(connectingActor: ActorRef, remote: InetSocketAddress) = {
-    log.debug("Address {} disallowed", remote.getAddress)
-    connectingActor ! Abort
+  def notAllowed(rawConnectionInfo: ConnectionInfo) = {
+    log.debug("Address {} disallowed", rawConnectionInfo.ipAddress.getAddress)
+    rawConnectionInfo.actor ! Abort
   }
 }

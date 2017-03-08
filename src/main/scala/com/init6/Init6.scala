@@ -4,11 +4,11 @@ import java.util.concurrent.{Executors, TimeUnit}
 
 import akka.actor.{ActorRef, PoisonPill}
 import com.init6.channels.ChannelsActor
-import com.init6.coders.commands.{EmptyCommand, TopCommand}
 import com.init6.connection.{ConnectionHandler, IpLimitActor}
 import com.init6.db.{DAO, DAOActor}
 import com.init6.servers.{ServerPantyDropper, ServerRegistry}
-import com.init6.users.UsersActor
+import com.init6.users.{TopCommandActor, TopInfo, UsersActor}
+import com.init6.utils.TopInfoSeq
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
@@ -26,6 +26,7 @@ object Init6 extends App with Init6Component {
   IpLimitActor(Config().Accounts.connectionLimit)
   UsersActor()
   ChannelsActor()
+  TopCommandActor()
 
   val random = new Random(System.nanoTime())
   val delay =

@@ -12,6 +12,7 @@ import com.init6._
 import com.init6.channels._
 import com.init6.Constants._
 import com.init6.coders.IPUtils
+import com.init6.connection.ConnectionInfo
 import com.init6.utils.RealKeyedCaseInsensitiveHashMap
 
 import scala.collection.mutable
@@ -21,7 +22,8 @@ import scala.util.{Failure, Success}
 /**
  * Created by filip on 9/28/15.
  */
-case class Add(ipAddress: InetSocketAddress, connection: ActorRef, user: User, protocol: Protocol) extends Command
+case class Add(connectionInfo: ConnectionInfo, user: User, protocol: Protocol) extends Command
+case class RemoteAdd(userActor: ActorRef, username: String) extends Command
 case class Rem(ipAddress: InetSocketAddress, userActor: ActorRef) extends Command with Remotable
 case class RemActors(userActors: Set[ActorRef]) extends Command
 
@@ -33,6 +35,7 @@ object UsersActor extends Init6Component {
 }
 
 trait Protocol extends Command
+case object NotYetKnownProtocol extends Protocol
 case object BinaryProtocol extends Protocol
 case object TelnetProtocol extends Protocol
 case object Chat1Protocol extends Protocol
@@ -50,8 +53,6 @@ class UsersActor extends Init6RemotingActor with Init6LoggingActor {
 
   override val actorPath = INIT6_USERS_PATH
 
-  TopCommandActor()
-
   var placeCounter = 1
 
   val users = RealKeyedCaseInsensitiveHashMap[ActorRef]()
@@ -60,6 +61,8 @@ class UsersActor extends Init6RemotingActor with Init6LoggingActor {
   val remoteUsersMap = RemoteMultiMap[Address, ActorRef]()
 
   val ipLimitMap = mutable.HashMap[Int, Int]()
+
+  val placeMap = mutable.SortedMap[Long, Int]()
 
   private def sendGetUsers(address: Address): Unit = {
     remoteActorSelection(address).resolveOne(Timeout(2, TimeUnit.SECONDS).duration).onComplete {
@@ -71,7 +74,7 @@ class UsersActor extends Init6RemotingActor with Init6LoggingActor {
     }
   }
 
-  def localAdd(ipAddress: InetSocketAddress, connectionActor: ActorRef, user: User, protocol: Protocol) = {
+  def localAdd(connectionInfo: ConnectionInfo, user: User, protocol: Protocol) = {
     val newUser = getRealUser(user).copy(place = placeCounter)
     placeCounter += 1
 
@@ -79,7 +82,7 @@ class UsersActor extends Init6RemotingActor with Init6LoggingActor {
     rem(newUser.name)
 
     // Create new user actor
-    val userActor = context.actorOf(UserActor(ipAddress, connectionActor, newUser, protocol))
+    val userActor = context.actorOf(UserActor(connectionInfo, newUser, protocol))
 
     // Add to structures
     //println("#ADD " + userActor + " - " + newUser.name)
@@ -87,13 +90,10 @@ class UsersActor extends Init6RemotingActor with Init6LoggingActor {
     reverseUsers += userActor -> newUser.name
     localUsers += userActor
 
-    remoteActors.foreach(_ ! Add(ipAddress, userActor, user, protocol))
+    remoteActors.foreach(_ ! RemoteAdd(userActor, user.name))
 
     // reply to sender
     sender() ! UsersUserAdded(userActor, newUser)
-
-    // place in Top
-    topCommandActor ! Add(ipAddress, userActor, newUser, protocol)
   }
 
   def remoteAdd(actor: ActorRef, username: String): Unit = {
@@ -260,10 +260,10 @@ class UsersActor extends Init6RemotingActor with Init6LoggingActor {
         removeAllRemote(sender().path.address)
       }
 
-    case Add(ipAddress, connection, user, protocol) =>
+    case Add(connectionInfo, user, protocol) =>
       // Check if limited
-      if (addToLimiter(ipAddress)) {
-        localAdd(ipAddress, connection, user, protocol)
+      if (addToLimiter(connectionInfo.ipAddress)) {
+        localAdd(connectionInfo, user, protocol)
       } else {
         sender() ! UsersUserNotAdded()
       }
@@ -297,8 +297,8 @@ class UsersActor extends Init6RemotingActor with Init6LoggingActor {
   }
 
   def handleRemote: Receive = {
-    case Add(ipAddress, userActor, user, _) =>
-      remoteAdd(userActor, user.name)
+    case RemoteAdd(userActor, username) =>
+      remoteAdd(userActor, username)
 
     case Rem(ipAddress, userActor) =>
       rem(userActor)

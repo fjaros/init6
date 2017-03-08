@@ -94,8 +94,11 @@ object Constants {
 
   val WHOAMI = (username: String, clientIp: String, client: String, channel: String, serverIp: String) => s"You are $username ($clientIp), using $client in the channel $channel on server $serverIp."
   val TOP_INFO = (number: Int, protocol: String, serverIp: String) => s"Showing the top $number $protocol connections on $serverIp:"
-  val TOP_LIST = (number: Int, username: String, client: String, channel: String, loggedInTime: Long) =>
-    String.format("%1$-3s| %2$-16s| %3$-5s| %4$-10s| %5$s", number.toString, username, client.reverse, formatNanos(loggedInTime), channel)
+  val TOP_LIST = (number: Int, username: String, client: String, connectedTime: Long, channelPlace: Int, channel: String) =>
+    String.format(
+      "%1$-3s| %2$-16s| %3$-9s| %4$-10s| %5$-3s| %6$s",
+      number.toString, username, client, formatNanos(connectedTime), channelPlace.toString, channel
+    )
 
   val THE_VOID = "The Void"
 
@@ -134,7 +137,7 @@ object Constants {
   val FRIENDS_REMOVE_NOT_ADDED = (name: String) => s"$name was not in your friends list."
   val FRIENDS_REMOVED_FRIEND = (name: String) => s"Removed $name from your friends list."
   val FRIENDS_FRIEND_NOT_FOUND = (name: String) => s"$name is not a member of your friends list."
-  val YOUR_FRIENDS = "your friends"
+  val YOUR_FRIENDS = "your\u00A0friends"
 
   def isChatProtocol(client: String) = {
     client match {

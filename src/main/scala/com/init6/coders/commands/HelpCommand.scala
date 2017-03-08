@@ -34,6 +34,7 @@ object HelpCommand {
       "/kick",
 
       "/top, /top chat, /top binary",
+      "/top sea, /top dal, /top chi",
       "/place <name>",
       "/users",
       "/channels, /chs, /list",
@@ -42,7 +43,7 @@ object HelpCommand {
 
       "/serveruptime, /uptime",
       "/serverversion, /version",
-      "/help, /?"
+      "/serverhelp, /help, /?"
     )
   )
 }

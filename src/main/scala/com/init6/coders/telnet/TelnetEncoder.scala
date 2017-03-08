@@ -30,7 +30,7 @@ object TelnetEncoder extends Encoder {
         s"1005 TALK ${user.name} ${encodeFlags(user.flags)} ${'"'}$message${'"'}"
       case UserBroadcast(user, message) =>
         s"1006 BROADCAST ${'"'}$message${'"'}"
-      case UserChannel(user, channel, flags, _) =>
+      case UserChannel(user, channel, flags, _, _) =>
         s"1007 CHANNEL ${'"'}$channel${'"'}"
       case UserFlags(user) =>
         s"1009 USER ${user.name} ${encodeFlags(user.flags)} [${encodeClient(user.client)}]"

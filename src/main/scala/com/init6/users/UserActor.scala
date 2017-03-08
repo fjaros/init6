@@ -10,7 +10,7 @@ import akka.util.Timeout
 import com.init6.Constants._
 import com.init6.coders.chat1.Chat1Encoder
 import com.init6.coders.commands._
-import com.init6.connection.{IpBan, WriteOut}
+import com.init6.connection.{ConnectionInfo, IpBan, WriteOut}
 import com.init6.{Config, Init6Actor, Init6LoggingActor, ReloadConfig}
 import com.init6.channels._
 import com.init6.channels.utils.ChannelJoinValidator
@@ -29,8 +29,8 @@ import scala.concurrent.ExecutionContext.Implicits.global
  * Created by filip on 9/27/15.
  */
 object UserActor {
-  def apply(ipAddress: InetSocketAddress, connection: ActorRef, user: User, protocol: Protocol) =
-    Props(classOf[UserActor], ipAddress, connection, user,
+  def apply(connectionInfo: ConnectionInfo, user: User, protocol: Protocol) =
+    Props(classOf[UserActor], connectionInfo, user,
       protocol match {
         case BinaryProtocol => BinaryChatEncoder
         case TelnetProtocol => TelnetEncoder
@@ -46,7 +46,7 @@ case class UpdatePing(ping: Int) extends Command
 case object KillConnection extends Command
 case class DisconnectOnIp(ipAddress: Array[Byte]) extends Command
 
-class UserActor(ipAddress: InetSocketAddress, connection: ActorRef, var user: User, encoder: Encoder)
+class UserActor(connectionInfo: ConnectionInfo, var user: User, encoder: Encoder)
   extends FloodPreventer with Init6Actor with Init6LoggingActor {
 
   var isTerminated = false
@@ -63,7 +63,7 @@ class UserActor(ipAddress: InetSocketAddress, connection: ActorRef, var user: Us
   override def preStart() = {
     super.preStart()
 
-    context.watch(connection)
+    context.watch(connectionInfo.actor)
   }
 
   def checkSquelched(user: User) = {
@@ -75,7 +75,7 @@ class UserActor(ipAddress: InetSocketAddress, connection: ActorRef, var user: Us
   }
 
   def encodeAndSend(chatEvent: ChatEvent) = {
-    encoder(chatEvent).foreach(message => connection ! WriteOut(message))
+    encoder(chatEvent).foreach(message => connectionInfo.actor ! WriteOut(message))
   }
 
   override def loggedReceive: Receive = {
@@ -104,7 +104,7 @@ class UserActor(ipAddress: InetSocketAddress, connection: ActorRef, var user: Us
 
     case ChannelJoinResponse(event) =>
       event match {
-        case UserChannel(newUser, channel, flags, channelActor) =>
+        case UserChannel(newUser, channel, flags, channelActor, channelSize) =>
           user = newUser
           this.channelActor = channelActor
           channelActor ! GetUsers
@@ -127,7 +127,7 @@ class UserActor(ipAddress: InetSocketAddress, connection: ActorRef, var user: Us
           dndAvailablity
             .whisperAction(actor)
             .getOrElse({
-              connection ! WriteOut(msg)
+              connectionInfo.actor ! WriteOut(msg)
               awayAvailablity.whisperAction(actor)
               if (sendNotification) {
                 actor ! UserWhisperedTo(user, message)
@@ -216,7 +216,7 @@ class UserActor(ipAddress: InetSocketAddress, connection: ActorRef, var user: Us
     case Received(data) =>
       // sanity check
       if (!ChatValidator(data)) {
-        connection ! Abort
+        connectionInfo.actor ! Abort
         self ! KillConnection
         return receive
       }
@@ -226,7 +226,7 @@ class UserActor(ipAddress: InetSocketAddress, connection: ActorRef, var user: Us
         // Handle AntiFlood
         encodeAndSend(UserFlooded)
         ipLimiterActor ! IpBan(
-          ipAddress.getAddress.getAddress,
+          connectionInfo.ipAddress.getAddress.getAddress,
           System.currentTimeMillis + (Config().AntiFlood.ipBanTime * 1000)
         )
         self ! KillConnection
@@ -262,11 +262,11 @@ class UserActor(ipAddress: InetSocketAddress, connection: ActorRef, var user: Us
           if (Flags.canBan(user)) {
             usersActor ! command
           } else {
-            encoder(UserError(NOT_OPERATOR)).foreach(connection ! WriteOut(_))
+            encoder(UserError(NOT_OPERATOR)).foreach(connectionInfo.actor ! WriteOut(_))
           }
         case command: UserToChannelCommand => usersActor ! command
         case command: UserCommand => usersActor ! command
-        case command: ReturnableCommand => encoder(command).foreach(connection ! WriteOut(_))
+        case command: ReturnableCommand => encoder(command).foreach(connectionInfo.actor ! WriteOut(_))
         case command@UsersCommand => usersActor ! command
         case command: TopCommand =>
           if (command.serverIp != Config().Server.host) {
@@ -342,16 +342,16 @@ class UserActor(ipAddress: InetSocketAddress, connection: ActorRef, var user: Us
 //      } else {
         channelsActor ! RemUser(self)
 //      }
-      usersActor ! Rem(ipAddress, self)
+      usersActor ! Rem(connectionInfo.ipAddress, self)
       self ! PoisonPill
 
     case KillConnection =>
       //println("#KILLCONNECTION FROM " + sender() + " - FOR: " + self + " - " + user)
-      connection ! PoisonPill
+      connectionInfo.actor ! PoisonPill
 
     case DisconnectOnIp(ipAddress) =>
-      if (!Flags.isAdmin(user) && this.ipAddress.getAddress.getAddress.sameElements(ipAddress)) {
-        connection ! PoisonPill
+      if (!Flags.isAdmin(user) && this.connectionInfo.ipAddress.getAddress.getAddress.sameElements(ipAddress)) {
+        connectionInfo.actor ! PoisonPill
       }
 
     case x =>
@@ -467,10 +467,12 @@ class UserActor(ipAddress: InetSocketAddress, connection: ActorRef, var user: Us
         case ChannelJoinResponse(event) =>
           //println(user.name + " - " + self + " - RECEIVED JOIN")
           event match {
-            case UserChannel(newUser, channel, flags, channelActor) =>
+            case UserChannel(newUser, channel, flags, channelActor, channelSize) =>
               user = newUser
               this.channelActor = channelActor
               channelActor ! GetUsers
+
+              topCommandActor ! UserChannelJoined(connectionInfo, user, channelSize)
             case _ =>
               // Seems best for most poopylicious bots that enjoy getting stuck in limbo
               // Basically throw to void on force join of channel is full/or is banned

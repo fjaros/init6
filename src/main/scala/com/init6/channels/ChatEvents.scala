@@ -22,7 +22,7 @@ case class UserWhisperedFrom(override val user: User, message: String) extends S
 case class ITalked(user: User, message: String) extends ChatEvent
 case class UserTalked(override val user: User, message: String) extends SquelchableTalkEvent
 case class UserBroadcast(user: User, message: String) extends ChatEvent
-case class UserChannel(user: User, channelName: String, channelFlags: Long, channelActor: ActorRef) extends ChatEvent
+case class UserChannel(user: User, channelName: String, channelFlags: Long, channelActor: ActorRef, channelSize: Int) extends ChatEvent
 case class UserFlags(user: User) extends ChatEvent
 case class UserWhisperedTo(user: User, message: String) extends ChatEvent
 case class UserInfo(message: String) extends ChatEvent with ReturnableCommand

@@ -44,18 +44,17 @@ case class BinaryPacket(packetId: Byte, packet: ByteString)
 
 
 object BinaryMessageHandler {
-  def apply(clientAddress: InetSocketAddress, connection: ActorRef) =
-    Props(classOf[BinaryMessageHandler], clientAddress, connection)
+  def apply(connectionInfo: ConnectionInfo) = Props(classOf[BinaryMessageHandler], connectionInfo)
 }
 
-class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRef) extends Init6KeepAliveActor with FSM[BinaryState, ActorRef] {
+class BinaryMessageHandler(connectionInfo: ConnectionInfo) extends Init6KeepAliveActor with FSM[BinaryState, ActorRef] {
 
   implicit val timeout = Timeout(500, TimeUnit.MILLISECONDS)
 
   val ALLOWED_PRODUCTS = Set("D2DV", "D2XP", "DRTL", "DSHR", "JSTR", "SEXP", "SSHR", "STAR", "W2BN")
 
   startWith(StartLoginState, ActorRef.noSender)
-  context.watch(connection)
+  context.watch(connectionInfo.actor)
 
   val pingCookie: Int = Random.nextInt
   val serverToken: Int = Random.nextInt
@@ -73,7 +72,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
 
 
   def handleRest(binaryPacket: BinaryPacket): State = {
-    log.debug(">> {} Received: {}", connection, f"${binaryPacket.packetId}%X")
+    log.debug(">> {} Received: {}", connectionInfo.actor, f"${binaryPacket.packetId}%X")
     binaryPacket.packetId match {
       case SID_NULL =>
         binaryPacket.packet match {
@@ -95,7 +94,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
               }
             }
           case x =>
-            log.error(">> {} Unexpected ping packet: {}", connection, x)
+            log.error(">> {} Unexpected ping packet: {}", connectionInfo.actor, x)
         }
       case SID_GETCHANNELLIST =>
         binaryPacket.packet match {
@@ -114,7 +113,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
 //          case x => ////println(s"${x.getClass}")
 //        }
       case packetId =>
-        log.error(">> {} Unexpected: {}", connection, f"$packetId%X")
+        log.error(">> {} Unexpected: {}", connectionInfo.actor, f"$packetId%X")
     }
     stay()
   }
@@ -122,9 +121,9 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
   def send(data: ByteString) = {
     if (log.isDebugEnabled) {
       val packetId = data.asByteBuffer.get(1)
-      log.debug("<< {} {}", connection, f"$packetId%X")
+      log.debug("<< {} {}", connectionInfo.actor, f"$packetId%X")
     }
-    connection ! WriteOut(data)
+    connectionInfo.actor ! WriteOut(data)
   }
   def sendPing() = {
     send(SidPing(pingCookie))
@@ -140,7 +139,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
 
   when(StartLoginState) {
     case Event(BinaryPacket(packetId, data), _) =>
-      log.debug(">> {} Received: {}", connection, f"$packetId%X")
+      log.debug(">> {} Received: {}", connectionInfo.actor, f"$packetId%X")
       packetId match {
         case SID_CLIENTID =>
           send(SidLogonChallenge(serverToken))
@@ -167,7 +166,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
 
   when(ExpectingSidStartVersioning) {
     case Event(BinaryPacket(packetId, data), _) =>
-      log.debug(">> {} Received: {}", connection, f"$packetId%X")
+      log.debug(">> {} Received: {}", connectionInfo.actor, f"$packetId%X")
       packetId match {
         case SID_STARTVERSIONING =>
           data match {
@@ -182,7 +181,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
 
   when(ExpectingSidReportVersion) {
     case Event(BinaryPacket(packetId, data), _) =>
-      log.debug(">> {} Received: {}", connection, f"$packetId%X")
+      log.debug(">> {} Received: {}", connectionInfo.actor, f"$packetId%X")
       packetId match {
         case SID_REPORTVERSION =>
           data match {
@@ -260,7 +259,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
       send(SidCreateAccount(SidCreateAccount.RESULT_ACCOUNT_CREATED))
       goto(ExpectingSidLogonResponse)
     case x =>
-      log.debug(">> {} Unhandled in ExpectingSidCreateAccountFromDAO {}", connection, x)
+      log.debug(">> {} Unhandled in ExpectingSidCreateAccountFromDAO {}", connectionInfo.actor, x)
       stop()
   }
 
@@ -269,7 +268,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
       send(SidCreateAccount2(SidCreateAccount2.RESULT_ACCOUNT_CREATED))
       goto(ExpectingSidLogonResponse)
     case x =>
-      log.debug(">> {} Unhandled in ExpectingSidCreateAccount2FromDAO {}", connection, x)
+      log.debug(">> {} Unhandled in ExpectingSidCreateAccount2FromDAO {}", connectionInfo.actor, x)
       stop()
   }
 
@@ -282,7 +281,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
     case Event(UsersUserNotAdded(), _) =>
       stop()
     case x =>
-      log.debug(">> {} Unhandled in ExpectingLogonHandled {}", connection, x)
+      log.debug(">> {} Unhandled in ExpectingLogonHandled {}", connectionInfo.actor, x)
       stop()
   }
 
@@ -295,7 +294,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
     case Event(UsersUserNotAdded(), _) =>
       stop()
     case x =>
-      log.debug(">> {} Unhandled in ExpectingLogon2Handled {}", connection, x)
+      log.debug(">> {} Unhandled in ExpectingLogon2Handled {}", connectionInfo.actor, x)
       stop()
   }
 
@@ -304,7 +303,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
       send(SidChangePassword(SidChangePassword.RESULT_SUCCESS))
       goto(ExpectingSidLogonResponse)
     case x =>
-      log.debug(">> {} Unhandled in ExpectingChangePasswordHandled {}", connection, x)
+      log.debug(">> {} Unhandled in ExpectingChangePasswordHandled {}", connectionInfo.actor, x)
       stop()
   }
 
@@ -366,10 +365,10 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
       } else {
         if (BSHA1(clientToken, serverToken, dbUser.password_hash).sameElements(passwordHash)) {
           val u = User(
-            dbUser.id, dbUser.alias_id, clientAddress.getAddress.getHostAddress, oldUsername,
+            dbUser.id, dbUser.alias_id, connectionInfo.ipAddress.getAddress.getHostAddress, oldUsername,
             dbUser.flags, ping, client = productId
           )
-          usersActor ! Add(clientAddress, connection, u, BinaryProtocol)
+          usersActor ! Add(connectionInfo, u, BinaryProtocol)
           goto(ExpectingLogonHandled)
         } else {
           send(SidLogonResponse(SidLogonResponse.RESULT_INVALID_PASSWORD))
@@ -391,10 +390,10 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
       } else {
         if (BSHA1(clientToken, serverToken, dbUser.password_hash).sameElements(passwordHash)) {
           val u = User(
-            dbUser.id, dbUser.alias_id, clientAddress.getAddress.getHostAddress, oldUsername,
+            dbUser.id, dbUser.alias_id, connectionInfo.ipAddress.getAddress.getHostAddress, oldUsername,
             dbUser.flags, ping, client = productId
           )
-          usersActor ! Add(clientAddress, connection, u, BinaryProtocol)
+          usersActor ! Add(connectionInfo, u, BinaryProtocol)
           goto(ExpectingLogon2Handled)
         } else {
           send(SidLogonResponse2(SidLogonResponse2.RESULT_INVALID_PASSWORD))
@@ -441,7 +440,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
 
   when(ExpectingSidEnterChat) {
     case Event(BinaryPacket(packetId, data), actor) =>
-      log.debug(">> {} Received: {}", connection, f"$packetId%X")
+      log.debug(">> {} Received: {}", connectionInfo.actor, f"$packetId%X")
       packetId match {
         case SID_ENTERCHAT =>
           data match {
@@ -457,7 +456,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
 
   when(LoggedIn) {
     case Event(BinaryPacket(packetId, data), actor) =>
-      log.debug(">> {} Received: {}", connection, f"$packetId%X")
+      log.debug(">> {} Received: {}", connectionInfo.actor, f"$packetId%X")
       keptAlive = 0
       packetId match {
         case SID_JOINCHANNEL =>
@@ -490,7 +489,7 @@ class BinaryMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
 
   onTermination {
     case x =>
-      log.debug(">> {} BinaryMessageHandler onTermination: {}", connection, x)
-      connection ! PoisonPill
+      log.debug(">> {} BinaryMessageHandler onTermination: {}", connectionInfo.actor, x)
+      connectionInfo.actor ! PoisonPill
   }
 }

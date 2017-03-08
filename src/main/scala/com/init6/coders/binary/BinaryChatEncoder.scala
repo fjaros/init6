@@ -27,7 +27,7 @@ object BinaryChatEncoder extends Encoder {
         SidChatEvent(0x05, user.flags, user.ping, user.name, message)
       case UserBroadcast(user, message) =>
         SidChatEvent(0x06, 0, 0, INIT6, message)
-      case UserChannel(user, channel, flags, _) =>
+      case UserChannel(user, channel, flags, _, _) =>
         SidChatEvent(0x07, flags, user.ping, user.name, channel)
       case UserFlags(user) =>
         SidChatEvent(0x09, user.flags, user.ping, user.name, user.client)

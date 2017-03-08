@@ -34,7 +34,7 @@ object Chat1Encoder extends Encoder {
         s"USER TALK FROM    ${user.name} $message"
       case UserBroadcast(user, message) =>
         s"SERVER BROADCAST   ${user.name} $message"
-      case UserChannel(user, channel, flags, _) =>
+      case UserChannel(user, channel, flags, _, _) =>
         s"CHANNEL JOIN    $channel"
       case UserFlags(user) =>
         s"USER UPDATE   ${user.flags} ${user.ping} ${user.name} ${user.client}"

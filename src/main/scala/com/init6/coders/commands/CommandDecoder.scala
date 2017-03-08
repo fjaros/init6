@@ -85,7 +85,7 @@ object CommandDecoder {
         case "dnd" => DndCommand(message)
         case "emote" | "me" => OneCommand(EmoteCommand(user, message), EmptyCommand)
         case "friends" | "f" => FriendsCommand(message)
-        case "help" | "?" => HelpCommand()
+        case "serverhelp" | "help" | "?" => HelpCommand()
         case "kick" => OneOperableCommand(user, KickCommand(message), UserError(USER_NOT_LOGGED_ON))
         case "makeaccount" | "createaccount" => MakeAccountCommand(message)
         case "servermotd" | "motd" => MotdCommand()

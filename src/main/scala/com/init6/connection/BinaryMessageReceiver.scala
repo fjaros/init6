@@ -23,11 +23,10 @@ case class ReceivingData(buffer: Array[Byte] = Array[Byte]()) extends ReceiverDa
  * Created by filip on 10/25/15.
  */
 object BinaryMessageReceiver {
-  def apply(clientAddress: InetSocketAddress, connection: ActorRef) =
-    Props(classOf[BinaryMessageReceiver], clientAddress, connection)
+  def apply(connectionInfo: ConnectionInfo) = Props(classOf[BinaryMessageReceiver], connectionInfo)
 }
 
-class BinaryMessageReceiver(clientAddress: InetSocketAddress, connection: ActorRef)
+class BinaryMessageReceiver(connectionInfo: ConnectionInfo)
   extends Init6Actor with FSM[PacketReceiverState, ReceiverData] {
 
   val HEADER_BYTE = 0xFF.toByte
@@ -35,7 +34,7 @@ class BinaryMessageReceiver(clientAddress: InetSocketAddress, connection: ActorR
 
   val IN_HEADER_TIMEOUT = Duration(10, TimeUnit.SECONDS)
 
-  val handler = context.actorOf(BinaryMessageHandler(clientAddress, connection))
+  val handler = context.actorOf(BinaryMessageHandler(connectionInfo))
 
   startWith(ReceivingHeader, ReceivingData())
 

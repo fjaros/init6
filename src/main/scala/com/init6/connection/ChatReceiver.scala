@@ -14,7 +14,7 @@ import scala.collection.mutable.ArrayBuffer
   */
 trait ChatReceiver extends Init6Actor {
 
-  val connection: ActorRef
+  val connectionInfo: ConnectionInfo
   val handler: ActorRef
 
   val buffer = ArrayBuffer[Byte]()
@@ -27,7 +27,7 @@ trait ChatReceiver extends Init6Actor {
         val readData = data.takeWhile(b => b != '\r' && b != '\n')
         // sanity check
         if (!ChatValidator(readData)) {
-          connection ! Abort
+          connectionInfo.actor ! Abort
           context.stop(self)
           return
         }

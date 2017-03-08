@@ -31,32 +31,30 @@ case class AuthenticatedUser(actor: ActorRef, user: User, packetsToProcess: muta
  * Created by filip on 9/19/15.
  */
 object TelnetMessageReceiver {
-  def apply(clientAddress: InetSocketAddress, connection: ActorRef) =
-    Props(classOf[TelnetMessageReceiver], clientAddress, connection)
+  def apply(connectionInfo: ConnectionInfo) = Props(classOf[TelnetMessageReceiver], connectionInfo)
 }
 
-class TelnetMessageReceiver(clientAddress: InetSocketAddress, override val connection: ActorRef) extends ChatReceiver {
+class TelnetMessageReceiver(override val connectionInfo: ConnectionInfo) extends ChatReceiver {
 
-  override val handler = context.actorOf(TelnetMessageHandler(clientAddress, connection))
+  override val handler = context.actorOf(TelnetMessageHandler(connectionInfo))
 }
 
 object TelnetMessageHandler {
-  def apply(clientAddress: InetSocketAddress, connection: ActorRef) =
-    Props(classOf[TelnetMessageHandler], clientAddress, connection)
+  def apply(connectionInfo: ConnectionInfo) = Props(classOf[TelnetMessageHandler], connectionInfo)
 }
 
-class TelnetMessageHandler(clientAddress: InetSocketAddress, connection: ActorRef)
+class TelnetMessageHandler(connectionInfo: ConnectionInfo)
   extends Init6KeepAliveActor with FSM[State, Data] {
 
   override def preStart() = {
     super.preStart()
 
-    context.watch(connection)
+    context.watch(connectionInfo.actor)
     startWith(ExpectingUsername, UnauthenticatedUser)
   }
 
   def sendNull() = {
-    connection ! WriteOut(TelnetEncoder(UserNull).get)
+    connectionInfo.actor ! WriteOut(TelnetEncoder(UserNull).get)
   }
 
   when (ExpectingUsername) {
@@ -67,22 +65,22 @@ class TelnetMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
   when (ExpectingPassword) {
     case Event(Received(data), buffer: UnauthenticatedUser) =>
       DAO.getUser(buffer.user).fold({
-        connection ! WriteOut(TelnetEncoder(TELNET_INCORRECT_USERNAME))
+        connectionInfo.actor ! WriteOut(TelnetEncoder(TELNET_INCORRECT_USERNAME))
         stop()
       })(dbUser => {
         if (dbUser.closed) {
-          connection ! WriteOut(TelnetEncoder(ACCOUNT_CLOSED(buffer.user, dbUser.closed_reason)))
+          connectionInfo.actor ! WriteOut(TelnetEncoder(ACCOUNT_CLOSED(buffer.user, dbUser.closed_reason)))
           stop()
         } else {
           if (BSHA1(data.toArray).sameElements(dbUser.password_hash)) {
             val u = User(
-              dbUser.id, dbUser.alias_id, clientAddress.getAddress.getHostAddress, buffer.user,
+              dbUser.id, dbUser.alias_id, connectionInfo.ipAddress.getAddress.getHostAddress, buffer.user,
               dbUser.flags | Flags.UDP, 0, client = "TAHC"
             )
-            usersActor ! Add(clientAddress, connection, u, TelnetProtocol)
+            usersActor ! Add(connectionInfo, u, TelnetProtocol)
             goto(StoreExtraData)
           } else {
-            connection ! WriteOut(TelnetEncoder(TELNET_INCORRECT_PASSWORD))
+            connectionInfo.actor ! WriteOut(TelnetEncoder(TELNET_INCORRECT_PASSWORD))
             stop()
           }
         }
@@ -98,7 +96,7 @@ class TelnetMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
       handleLoggedIn(authenticatedUser)
       goto(ExpectingAckOfLoginMessages) using authenticatedUser
     case Event(UsersUserNotAdded(), buffer: UnauthenticatedUser) =>
-      connection ! WriteOut(TelnetEncoder(TELNET_TOO_MANY_LOGINS))
+      connectionInfo.actor ! WriteOut(TelnetEncoder(TELNET_TOO_MANY_LOGINS))
       stop()
   }
 
@@ -126,13 +124,13 @@ class TelnetMessageHandler(clientAddress: InetSocketAddress, connection: ActorRe
   }
 
   def handleLoggedIn(buffer: AuthenticatedUser) = {
-    connection ! WriteOut(TelnetEncoder(TELNET_CONNECTED(clientAddress)))
-    connection ! WriteOut(TelnetEncoder(UserName(buffer.user.name)).get)
-    connection ! WriteOut(TelnetEncoder(UserInfoArray(Config().motd)).get)
+    connectionInfo.actor ! WriteOut(TelnetEncoder(TELNET_CONNECTED(connectionInfo.ipAddress)))
+    connectionInfo.actor ! WriteOut(TelnetEncoder(UserName(buffer.user.name)).get)
+    connectionInfo.actor ! WriteOut(TelnetEncoder(UserInfoArray(Config().motd)).get)
   }
 
   onTermination {
     case terminated =>
-      connection ! PoisonPill
+      connectionInfo.actor ! PoisonPill
   }
 }

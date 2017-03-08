@@ -21,12 +21,12 @@ import scala.util.Random
   * Created by filip on 1/10/16.
   */
 object Chat1Receiver {
-  def apply(clientAddress: InetSocketAddress, connection: ActorRef) = Props(classOf[Chat1Receiver], clientAddress, connection)
+  def apply(connectionInfo: ConnectionInfo) = Props(classOf[Chat1Receiver], connectionInfo)
 }
 
-class Chat1Receiver(clientAddress: InetSocketAddress, override val connection: ActorRef) extends ChatReceiver {
+class Chat1Receiver(override val connectionInfo: ConnectionInfo) extends ChatReceiver {
 
-  override val handler = context.actorOf(Props(classOf[Chat1Handler], clientAddress, connection))
+  override val handler = context.actorOf(Props(classOf[Chat1Handler], connectionInfo))
 }
 
 sealed trait Chat1State
@@ -41,13 +41,13 @@ sealed trait Chat1Data
 case class UserCredentials(username: String = "", alias: String = "", password: String = "", home: String = "", packetsToProcess: mutable.Buffer[ByteString] = mutable.Buffer.empty) extends Chat1Data
 case class LoggedInUser(actor: ActorRef, userCredentials: UserCredentials) extends Chat1Data
 
-class Chat1Handler(clientAddress: InetSocketAddress, connection: ActorRef) extends Init6KeepAliveActor with FSM[Chat1State, Chat1Data] {
+class Chat1Handler(connectionInfo: ConnectionInfo) extends Init6KeepAliveActor with FSM[Chat1State, Chat1Data] {
 
   startWith(LoggingInChat1State, UserCredentials())
 
   when (LoggingInChat1State) {
     case Event(Received(data), userCredentials: UserCredentials) =>
-      log.debug(">> {} Chat1 LoggingInChat1State", connection)
+      log.debug(">> {} Chat1 LoggingInChat1State", connectionInfo.actor)
       val splt = data.utf8String.split(" ", 2)
       val (command, value) = (splt.head, splt.last)
 
@@ -82,18 +82,18 @@ class Chat1Handler(clientAddress: InetSocketAddress, connection: ActorRef) exten
         createAccount(userCredentials)
       })(dbUser => {
         if (dbUser.closed) {
-          connection ! WriteOut(Chat1Encoder(LoginFailed(ACCOUNT_CLOSED(userCredentials.username, dbUser.closed_reason))).get)
+          connectionInfo.actor ! WriteOut(Chat1Encoder(LoginFailed(ACCOUNT_CLOSED(userCredentials.username, dbUser.closed_reason))).get)
           stop()
         } else {
           if (BSHA1(userCredentials.password).sameElements(dbUser.password_hash)) {
             val u = User(
-              dbUser.id, dbUser.alias_id, clientAddress.getAddress.getHostAddress, userCredentials.username,
+              dbUser.id, dbUser.alias_id, connectionInfo.ipAddress.getAddress.getHostAddress, userCredentials.username,
               dbUser.flags | Flags.UDP, 0, client = "TAHC"
             )
-            usersActor ! Add(clientAddress, connection, u, Chat1Protocol)
+            usersActor ! Add(connectionInfo, u, Chat1Protocol)
             goto(StoreExtraData) using userCredentials
           } else {
-            connection ! WriteOut(Chat1Encoder(LoginFailed(TELNET_INCORRECT_PASSWORD)).get)
+            connectionInfo.actor ! WriteOut(Chat1Encoder(LoginFailed(TELNET_INCORRECT_PASSWORD)).get)
             stop()
           }
         }
@@ -107,7 +107,7 @@ class Chat1Handler(clientAddress: InetSocketAddress, connection: ActorRef) exten
     case Event(DAOCreatedAck(_, _), userCredentials: UserCredentials) =>
       login(userCredentials)
     case x =>
-      log.debug(">> {} Unhandled in ExpectingCreateAccountResponse {}", connection, x)
+      log.debug(">> {} Unhandled in ExpectingCreateAccountResponse {}", connectionInfo.actor, x)
       stop()
   }
 
@@ -131,12 +131,12 @@ class Chat1Handler(clientAddress: InetSocketAddress, connection: ActorRef) exten
       stay()
     case Event(UsersUserAdded(actor, user), buffer: UserCredentials) =>
       val loggedInUser = LoggedInUser(actor, buffer)
-      connection ! WriteOut(Chat1Encoder(LoginOK).get)
-      connection ! WriteOut(Chat1Encoder(UserInfo(TELNET_CONNECTED(clientAddress))).get)
-      connection ! WriteOut(Chat1Encoder(ServerTopicArray(Config().motd)).get)
+      connectionInfo.actor ! WriteOut(Chat1Encoder(LoginOK).get)
+      connectionInfo.actor ! WriteOut(Chat1Encoder(UserInfo(TELNET_CONNECTED(connectionInfo.ipAddress))).get)
+      connectionInfo.actor ! WriteOut(Chat1Encoder(ServerTopicArray(Config().motd)).get)
       goto(ExpectingAckOfLoginMessages) using loggedInUser
     case Event(UsersUserNotAdded(), buffer: UserCredentials) =>
-      connection ! WriteOut(Chat1Encoder(LoginFailed(TELNET_TOO_MANY_LOGINS)).get)
+      connectionInfo.actor ! WriteOut(Chat1Encoder(LoginFailed(TELNET_TOO_MANY_LOGINS)).get)
       stop()
   }
 
@@ -164,18 +164,18 @@ class Chat1Handler(clientAddress: InetSocketAddress, connection: ActorRef) exten
   }
 
   def send(chatEvent: ChatEvent) = {
-    Chat1Encoder(chatEvent).foreach(connection ! WriteOut(_))
+    Chat1Encoder(chatEvent).foreach(connectionInfo.actor ! WriteOut(_))
   }
 
   def sendPing(userActor: ActorRef) = {
     val pingCookie = (0 until 4).map(Random.alphanumeric).mkString
 
-    connection ! WriteOut(Chat1Encoder(UserPing(pingCookie)).get)
+    connectionInfo.actor ! WriteOut(Chat1Encoder(UserPing(pingCookie)).get)
     userActor ! PingSent(System.currentTimeMillis(), pingCookie)
   }
 
   onTermination {
     case terminated =>
-      connection ! PoisonPill
+      connectionInfo.actor ! PoisonPill
   }
 }

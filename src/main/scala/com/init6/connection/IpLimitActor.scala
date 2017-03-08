@@ -18,10 +18,10 @@ object IpLimitActor extends Init6Component {
   def apply(limit: Int) = system.actorOf(Props(classOf[IpLimitActor], limit), INIT6_IP_LIMITER_PATH)
 }
 
-case class Connected(connectingActor: ActorRef, address: InetSocketAddress)
+case class Connected(connectionInfo: ConnectionInfo)
 case class Disconnected(connectingActor: ActorRef)
-case class Allowed(connectingActor: ActorRef, address: InetSocketAddress)
-case class NotAllowed(connectingActor: ActorRef, address: InetSocketAddress)
+case class Allowed(connectionInfo: ConnectionInfo)
+case class NotAllowed(connectionInfo: ConnectionInfo)
 case class IpBan(address: Array[Byte], until: Long)
 
 class IpLimitActor(limit: Int) extends Init6RemotingActor {
@@ -33,16 +33,16 @@ class IpLimitActor(limit: Int) extends Init6RemotingActor {
   val ipBanned = mutable.HashMap.empty[Int, Long]
 
   override def receive: Receive = {
-    case Connected(connectingActor, address) =>
+    case Connected(connectionInfo) =>
       if (
         Config().Accounts.enableIpWhitelist &&
-        !Config().Accounts.ipWhitelist.contains(address.getAddress.getHostAddress)
+        !Config().Accounts.ipWhitelist.contains(connectionInfo.ipAddress.getAddress.getHostAddress)
       ) {
-        sender() ! NotAllowed(connectingActor, address)
+        sender() ! NotAllowed(connectionInfo)
         return receive
       }
 
-      val addressInt = IPUtils.bytesToDword(address.getAddress.getAddress)
+      val addressInt = IPUtils.bytesToDword(connectionInfo.ipAddress.getAddress.getAddress)
       val current = ipCount.getOrElse(addressInt, 0)
       val isIpBanned = ipBanned.get(addressInt).exists(until => {
         if (System.currentTimeMillis >= until) {
@@ -54,11 +54,11 @@ class IpLimitActor(limit: Int) extends Init6RemotingActor {
       })
 
       if (limit > current && !isIpBanned) {
-        actorToIp += connectingActor -> addressInt
+        actorToIp += connectionInfo.actor -> addressInt
         ipCount += addressInt -> (current + 1)
-        sender() ! Allowed(connectingActor, address)
+        sender() ! Allowed(connectionInfo)
       } else {
-        sender() ! NotAllowed(connectingActor, address)
+        sender() ! NotAllowed(connectionInfo)
       }
 
     case Disconnected(connectingActor) =>
