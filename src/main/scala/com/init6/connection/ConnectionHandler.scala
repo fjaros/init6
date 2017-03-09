@@ -47,7 +47,7 @@ class ConnectionHandler(host: String, port: Int)
       ipLimiterActor ! Connected(rawConnectionInfo)
       stay()
     case Event(Allowed(rawConnectionInfo), listener: ActorRef) =>
-      allowed(rawConnectionInfo)
+      allowed(rawConnectionInfo.copy(place = getAndIncreasePlace))
       listener ! ResumeAccepting(1)
       stay()
     case Event(NotAllowed(rawConnectionInfo), listener: ActorRef) =>

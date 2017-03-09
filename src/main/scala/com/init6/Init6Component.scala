@@ -1,6 +1,7 @@
 package com.init6
 
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 
 import akka.actor.ActorSystem
 import com.init6.Constants._
@@ -26,7 +27,7 @@ private[init6] trait Init6Component {
   val remoteAddress = (node: String, path: String) => s"akka://$INIT6@$node/user/$path"
 
   def getAcceptingUptime = {
-    Duration(System.nanoTime() - SystemContext.startAccepting, TimeUnit.NANOSECONDS)
+    Duration(System.nanoTime - SystemContext.startAccepting, TimeUnit.NANOSECONDS)
   }
 
   def setAcceptingUptime() = {
@@ -35,6 +36,10 @@ private[init6] trait Init6Component {
         SystemContext.startAccepting = System.nanoTime
       }
     }
+  }
+
+  def getAndIncreasePlace = {
+    SystemContext.placeCounter.getAndAdd(1)
   }
 }
 
@@ -51,4 +56,6 @@ private object SystemContext {
   def getUptime = Duration(System.nanoTime() - start, TimeUnit.NANOSECONDS)
 
   var startAccepting: Long = 0
+
+  val placeCounter = new AtomicInteger(1)
 }

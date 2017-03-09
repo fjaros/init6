@@ -1,20 +1,18 @@
 package com.init6.utils
 
 import scala.collection.mutable.ArrayBuffer
-import scala.concurrent.{Future, Promise}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.Success
-
-import scala.concurrent.ExecutionContext.Implicits.global
-
 
 /**
   * Created by filip on 1/16/16.
   */
 object FutureCollector {
-  implicit def futureSeqToFutureCollector[A](futures: Iterable[Future[A]]): FutureCollector[A] = new FutureCollector[A](futures)
+  implicit def futureSeqToFutureCollector[A](futures: Iterable[Future[A]])(implicit executor: ExecutionContext): FutureCollector[A] =
+    new FutureCollector[A](futures)
 }
 
-class FutureCollector[A](futures: Iterable[Future[A]]) {
+sealed class FutureCollector[A](futures: Iterable[Future[A]])(implicit executor: ExecutionContext) {
 
   def collectResults[B](task: A => Option[B]): Future[Seq[B]] = {
     val returnPromise = Promise[Seq[B]]()

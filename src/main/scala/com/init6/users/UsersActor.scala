@@ -16,7 +16,6 @@ import com.init6.connection.ConnectionInfo
 import com.init6.utils.RealKeyedCaseInsensitiveHashMap
 
 import scala.collection.mutable
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success}
 
 /**
@@ -53,8 +52,6 @@ class UsersActor extends Init6RemotingActor with Init6LoggingActor {
 
   override val actorPath = INIT6_USERS_PATH
 
-  var placeCounter = 1
-
   val users = RealKeyedCaseInsensitiveHashMap[ActorRef]()
   val reverseUsers = mutable.HashMap[ActorRef, String]()
   val localUsers = LocalUsersSet()
@@ -65,6 +62,8 @@ class UsersActor extends Init6RemotingActor with Init6LoggingActor {
   val placeMap = mutable.SortedMap[Long, Int]()
 
   private def sendGetUsers(address: Address): Unit = {
+    import system.dispatcher
+
     remoteActorSelection(address).resolveOne(Timeout(2, TimeUnit.SECONDS).duration).onComplete {
       case Success(actor) =>
         actor ! GetUsers
@@ -75,8 +74,7 @@ class UsersActor extends Init6RemotingActor with Init6LoggingActor {
   }
 
   def localAdd(connectionInfo: ConnectionInfo, user: User, protocol: Protocol) = {
-    val newUser = getRealUser(user).copy(place = placeCounter)
-    placeCounter += 1
+    val newUser = getRealUser(user)
 
     // Kill any existing actors for this user (can be remote)
     rem(newUser.name)

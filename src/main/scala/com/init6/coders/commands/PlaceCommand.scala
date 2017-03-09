@@ -13,9 +13,10 @@ object PlaceCommand {
     if (message.nonEmpty) {
       PlaceOfUserCommand(user, message)
     } else {
-      UserInfo(PLACED(user.place, Config().Server.host))
+      PlaceOfSelfCommand
     }
   }
 }
 
+case object PlaceOfSelfCommand extends Command
 case class PlaceOfUserCommand(override val fromUser: User, override val toUsername: String) extends UserCommand

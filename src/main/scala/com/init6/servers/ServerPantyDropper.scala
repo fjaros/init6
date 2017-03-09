@@ -8,7 +8,6 @@ import com.init6.Constants._
 import com.init6.coders.commands.{BroadcastCommand, Command}
 import com.init6.{Init6Actor, Init6Component}
 
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.Random
 
 /**
@@ -29,6 +28,8 @@ case object Split extends Command
 case object Recon extends Command
 
 class ServerPantyDropper(serverName: String) extends Init6Actor {
+
+  import system.dispatcher
 
   val buildPath = (server: String) => s"akka://$INIT6@$server/user/$INIT6_SERVERS_PATH"
 

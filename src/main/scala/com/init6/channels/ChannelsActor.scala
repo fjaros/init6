@@ -86,6 +86,8 @@ class ChannelsActor extends Init6RemotingActor {
         }
 
       Try {
+        import system.dispatcher
+
         Await.result(futureSeq.collectResults {
           case ChannelSize(actor, name, size) =>
             if (size == 0) {

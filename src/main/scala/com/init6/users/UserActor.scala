@@ -23,7 +23,6 @@ import com.init6.utils.{CaseInsensitiveHashSet, ChatValidator}
 import com.init6.utils.FutureCollector.futureSeqToFutureCollector
 
 import scala.concurrent.Await
-import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
  * Created by filip on 9/27/15.
@@ -48,6 +47,8 @@ case class DisconnectOnIp(ipAddress: Array[Byte]) extends Command
 
 class UserActor(connectionInfo: ConnectionInfo, var user: User, encoder: Encoder)
   extends FloodPreventer with Init6Actor with Init6LoggingActor {
+
+  import system.dispatcher
 
   var isTerminated = false
   var channelActor = ActorRef.noSender
@@ -147,7 +148,7 @@ class UserActor(connectionInfo: ConnectionInfo, var user: User, encoder: Encoder
       actor ! FriendsWhoisResponse(online = true, position, user.name, user.client, user.inChannel, Config().Server.host)
 
     case (actor: ActorRef, PlaceOfUserCommand(_, _)) =>
-      actor ! UserInfo(USER_PLACED(user.name, user.place, Config().Server.host))
+      actor ! UserInfo(USER_PLACED(user.name, connectionInfo.place, Config().Server.host))
 
     case WhoCommandResponse(whoResponseMessage, userMessages) =>
       whoResponseMessage.fold(encodeAndSend(UserErrorArray(CHANNEL_NOT_EXIST)))(whoResponseMessage => {
@@ -274,6 +275,7 @@ class UserActor(connectionInfo: ConnectionInfo, var user: User, encoder: Encoder
           } else {
             topCommandActor ! command
           }
+        case PlaceOfSelfCommand => encodeAndSend(UserInfo(PLACED(connectionInfo.place, Config().Server.host)))
         case AwayCommand(message) => awayAvailablity.enableAction(message)
         case DndCommand(message) => dndAvailablity.enableAction(message)
         case AccountMade(username, passwordHash) =>

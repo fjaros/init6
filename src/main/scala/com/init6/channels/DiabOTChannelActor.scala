@@ -31,7 +31,7 @@ class DiabOTChannelActor(override val name: String)
   var onDiabloTalk = 0
   var diabloActivated = false
   val dummyActor = context.actorOf(Props(classOf[DummyActor]))
-  val diablo = User(0,None,"", "DiabOT",Flags.UDP,0,"RHSD",0,name,0)
+  val diablo = User(0,None,"", "DiabOT",Flags.UDP,0,"RHSD",name,0)
 
   system.actorOf(Props(classOf[LesserEvilChannelAggregator]), "lesserevil")
 
@@ -133,7 +133,7 @@ class DeckardCainChannelActor(override val name: String)
     with FullableChannelActor {
 
   val random = new Random(System.nanoTime())
-  val cain = User(0,None,"", "DeckardCain",Flags.UDP,0,"RHSD",0,"Deckard Cain",0)
+  val cain = User(0,None,"", "DeckardCain",Flags.UDP,0,"RHSD","Deckard Cain",0)
   var cainFunc: Cancellable = _
   var onCainTalk = 0
 
@@ -202,7 +202,7 @@ class LesserEvilChannelActor(override val name: String)
 
   val dummyActor = context.actorOf(Props(classOf[DummyActor]))
   val random = new Random(System.nanoTime())
-  val advisor = User(0,None,"", name, Flags.UDP,0,"RHSD",0,name,0)
+  val advisor = User(0,None,"", name, Flags.UDP,0,"RHSD",name,0)
   var advisorFunc: Cancellable = _
   var onCainTalk = 0
   var nameCount = 0
