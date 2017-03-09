@@ -213,14 +213,14 @@ class UsersActor extends Init6RemotingActor with Init6LoggingActor {
       sender() ! UserWhisperedTo(fromUser.copy(name = YOUR_FRIENDS), message)
 
     case UsersCommand =>
-      println("=== LOCALUSERS " + localUsers.size)
-      println(localUsers)
-      println("=== REVERSEUSERS " + reverseUsers.size)
-      println(reverseUsers)
-      println("=== REMOTEUSERMAP " + remoteUsersMap.values.map(_.size).toSeq)
-      println(remoteUsersMap)
-      println("=== USERS " + users.size)
-      println(users)
+//      println("=== LOCALUSERS " + localUsers.size)
+//      println(localUsers)
+//      println("=== REVERSEUSERS " + reverseUsers.size)
+//      println(reverseUsers)
+//      println("=== REMOTEUSERMAP " + remoteUsersMap.values.map(_.size).toSeq)
+//      println(remoteUsersMap)
+//      println("=== USERS " + users.size)
+//      println(users)
       val userActor = sender()
       userActor ! UserInfo(USERS_TOTAL(users.size, Config().Server.host))
       (remoteUsersMap

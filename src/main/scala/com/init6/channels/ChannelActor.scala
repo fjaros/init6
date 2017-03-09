@@ -14,7 +14,6 @@ import com.init6.servers.{Remotable, ServerOnline, SplitMe}
 import com.init6.users.{GetUsers, UpdatePing, UserChannelJoined, UserUpdated}
 import com.init6.utils.CaseInsensitiveHashMap
 
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.collection.mutable
 import scala.util.{Failure, Success}
 
@@ -98,6 +97,8 @@ trait ChannelActor extends Init6RemotingActor {
 
 
   private def sendGetChannelUsers(address: Address): Unit = {
+    import system.dispatcher
+
     remoteActorSelection(address).resolveOne(Timeout(2, TimeUnit.SECONDS).duration).onComplete {
       case Success(actor) =>
         actor ! GetChannelUsers

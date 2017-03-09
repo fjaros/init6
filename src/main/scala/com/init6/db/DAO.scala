@@ -8,6 +8,7 @@ import scalikejdbc._
  */
 object DAO {
 
+  GlobalSettings.loggingSQLAndTime = GlobalSettings.loggingSQLAndTime.copy(enabled = false)
   Class.forName("org.mariadb.jdbc.Driver")
   ConnectionPool.singleton(
     s"jdbc:mariadb://${Config().Database.host}:${Config().Database.port}/vilenet", Config().Database.username, Config().Database.password

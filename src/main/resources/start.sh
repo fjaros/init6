@@ -124,7 +124,7 @@ fi
 
 java_run=" \
     -XX:+HeapDumpOnOutOfMemoryError -XX:+DisableExplicitGC \
-    -Xms128m -Xmx4g \
+    -Xms2g -Xmx4g \
     -Dconfig=$config \
     -cp lib/*:init6.jar \
     com.init6.Init6"

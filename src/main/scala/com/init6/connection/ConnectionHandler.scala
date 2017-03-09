@@ -5,7 +5,6 @@ import java.net.InetSocketAddress
 import akka.actor.{ActorRef, FSM, Props}
 import akka.io.Tcp.{Abort, Bind, ConnectionClosed, Register, ResumeAccepting}
 import akka.io.{IO, Tcp}
-import com.init6.users.ConnectedActor
 import com.init6.{Init6Actor, Init6Component}
 
 /**
@@ -44,7 +43,6 @@ class ConnectionHandler(host: String, port: Int)
   when(Bound) {
     case Event(Tcp.Connected(remote, _), _) =>
       val rawConnectionInfo = ConnectionInfo(remote, sender(), getAcceptingUptime.toNanos)
-      val connectedTime = getAcceptingUptime.toNanos
       log.debug("Address {} connected", remote.getAddress.getHostAddress)
       ipLimiterActor ! Connected(rawConnectionInfo)
       stay()

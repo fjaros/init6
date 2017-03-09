@@ -13,7 +13,6 @@ import com.init6.servers._
 import com.init6.utils.FutureCollector.futureSeqToFutureCollector
 import com.init6.utils.RealKeyedCaseInsensitiveHashMap
 
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Await
 import scala.util.{Failure, Success, Try}
 
@@ -61,6 +60,8 @@ class ChannelsActor extends Init6RemotingActor {
 //  }
 
   private def sendGetChannels(address: Address): Unit = {
+    import system.dispatcher
+
     remoteActorSelection(address).resolveOne(Timeout(2, TimeUnit.SECONDS).duration).onComplete {
       case Success(actor) =>
         actor ! GetChannels
@@ -154,7 +155,7 @@ class ChannelsActor extends Init6RemotingActor {
               userActor ! ChannelJoinResponse(reply)
             }
           case msg =>
-            println(msg)
+            log.info("Unhandled ChannelsActor Channel response message {}", msg)
         }
       }.getOrElse({
           log.error("ChannelsActor getOrCreate timed out for {}", command)
@@ -164,6 +165,8 @@ class ChannelsActor extends Init6RemotingActor {
       })
 
     case ChannelsCommand =>
+      import system.dispatcher
+
       val replyActor = sender()
 
       channels
@@ -207,7 +210,6 @@ class ChannelsActor extends Init6RemotingActor {
       })
 
     case c @ PrintChannelUsers(channel) =>
-      println(c)
       getChannel(channel).fold(sender() ! UserErrorArray(CHANNEL_NOT_EXIST))(actor => {
         actor.tell(c, sender())
       })
