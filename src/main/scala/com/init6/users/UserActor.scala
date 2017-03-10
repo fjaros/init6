@@ -269,6 +269,7 @@ class UserActor(connectionInfo: ConnectionInfo, var user: User, encoder: Encoder
         case command: UserCommand => usersActor ! command
         case command: ReturnableCommand => encoder(command).foreach(connectionInfo.actor ! WriteOut(_))
         case command@UsersCommand => usersActor ! command
+        case command @ UptimeCommand => usersActor ! command
         case command: TopCommand =>
           if (command.serverIp != Config().Server.host) {
             system.actorSelection(remoteAddress(command.serverIp, INIT6_TOP_COMMAND_ACTOR)) ! command
@@ -388,7 +389,12 @@ class UserActor(connectionInfo: ConnectionInfo, var user: User, encoder: Encoder
     }
   }
 
-  private def handleFriendsCommand(friendsCommand: FriendsCommand) = {
+  private def handleFriendsCommand(friendsCommand: FriendsCommand): Unit = {
+    if (user.id == 0) {
+      encodeAndSend(UserError("Due to a pending fix, new accounts cannot use the friends list until the next server restart."))
+      return
+    }
+
     friendsCommand match {
       case FriendsAdd(who) =>
         if (user.name.equalsIgnoreCase(who)) {

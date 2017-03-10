@@ -133,7 +133,7 @@ trait ChannelActor extends Init6RemotingActor {
     val newUser =
       if (isLocal(actor)) {
         // later
-        if (joinedTime - creationTime < 1000000000) {
+        if (user.id > 0 && joinedTime - creationTime < 1000000000) {
           daoActor ! DbChannelJoin(
             server_id = Config().Server.serverId,
             user_id = user.id,

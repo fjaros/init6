@@ -233,6 +233,9 @@ class UsersActor extends Init6RemotingActor with Init6LoggingActor {
           case (host, size) => userActor ! UserInfo(USERS(size, host))
         }
 
+    case UptimeCommand =>
+      sender() ! UptimeCommand()
+
     case event =>
       //log.error(s"event $event from ${sender()}")
       if (isLocal()) {

@@ -1,19 +1,20 @@
 package com.init6.coders.commands
 
 import com.init6.Constants._
-import com.init6.SystemContext
+import com.init6.{Config, SystemContext}
 import com.init6.channels.UserInfo
+import com.init6.servers.Remotable
 
 /**
   * Created by filip on 12/16/15.
   */
-object UptimeCommand {
+case object UptimeCommand extends Command with Remotable {
 
   def apply() = {
     val uptime = SystemContext.getUptime
     UserInfo(
-      s"""Uptime: ${
-        Array(
+      s"""Uptime on ${Config().Server.host}: ${
+        Seq(
           uptime.toDays -> "day",
           uptime.toHours % 24 -> "hour",
           uptime.toMinutes % 60 -> "minute",
