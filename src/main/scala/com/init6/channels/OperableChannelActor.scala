@@ -1,6 +1,7 @@
 package com.init6.channels
 
 import akka.actor.{ActorRef, Address}
+import com.init6.Config
 import com.init6.Constants._
 import com.init6.coders.commands.DesignateCommand
 import com.init6.users.{UserToChannelCommandAck, UserUpdated}
@@ -47,27 +48,29 @@ trait OperableChannelActor extends ChannelActor {
   override def rem(actor: ActorRef): Option[User] = {
     val userOpt = super.rem(actor)
 
-    userOpt.foreach(user => {
-      if (users.nonEmpty && !existsOperator()) {
-        val possibleNextOpActor = determineNextOp
-        val designatedActorOpt = designatedActors.get(actor)
-        val (oppedActor, oppedUser) =
-          if (designatedActorOpt.isDefined && users.contains(designatedActorOpt.get)) {
-            // designated is in the channel
-            designatedActorOpt.get -> Flags.op(users(designatedActorOpt.get))
-          } else {
-            possibleNextOpActor -> Flags.op(users(possibleNextOpActor))
-          }
-        log.info("###OPPED " + oppedActor + " - " + oppedUser)
+    if (!Config().Server.Chat.enabled) {
+      userOpt.foreach(user => {
+        if (users.nonEmpty && !existsOperator()) {
+          val possibleNextOpActor = determineNextOp
+          val designatedActorOpt = designatedActors.get(actor)
+          val (oppedActor, oppedUser) =
+            if (designatedActorOpt.isDefined && users.contains(designatedActorOpt.get)) {
+              // designated is in the channel
+              designatedActorOpt.get -> Flags.op(users(designatedActorOpt.get))
+            } else {
+              possibleNextOpActor -> Flags.op(users(possibleNextOpActor))
+            }
+          log.info("###OPPED " + oppedActor + " - " + oppedUser)
 
-        users += oppedActor -> oppedUser
-        designatedActors -= actor
-        oppedActor ! UserUpdated(oppedUser)
-        localUsers ! UserFlags(oppedUser)
+          users += oppedActor -> oppedUser
+          designatedActors -= actor
+          oppedActor ! UserUpdated(oppedUser)
+          localUsers ! UserFlags(oppedUser)
 
-        remoteActors.foreach(_ ! InternalChannelUserUpdate(oppedActor, oppedUser))
-      }
-    })
+          remoteActors.foreach(_ ! InternalChannelUserUpdate(oppedActor, oppedUser))
+        }
+      })
+    }
 
     userOpt
   }
