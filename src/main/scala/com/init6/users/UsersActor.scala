@@ -5,14 +5,14 @@ import java.util.concurrent.TimeUnit
 
 import akka.actor.{ActorRef, Address, Props}
 import akka.util.Timeout
-import com.init6.channels.utils.{LocalUsersSet, RemoteMultiMap}
-import com.init6.coders.commands._
-import com.init6.servers._
+import com.init6.Constants._
 import com.init6._
 import com.init6.channels._
-import com.init6.Constants._
+import com.init6.channels.utils.{LocalUsersSet, RemoteMultiMap}
 import com.init6.coders.IPUtils
+import com.init6.coders.commands._
 import com.init6.connection.ConnectionInfo
+import com.init6.servers._
 import com.init6.utils.RealKeyedCaseInsensitiveHashMap
 
 import scala.collection.mutable

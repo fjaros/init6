@@ -1,7 +1,5 @@
 package com.init6.connection
 
-import java.net.InetSocketAddress
-
 import akka.actor.{ActorRef, Props}
 import com.init6.Constants._
 import com.init6.channels.{UserInfo, UserInfoArray}

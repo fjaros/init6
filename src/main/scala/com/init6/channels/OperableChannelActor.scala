@@ -2,7 +2,7 @@ package com.init6.channels
 
 import akka.actor.{ActorRef, Address}
 import com.init6.Constants._
-import com.init6.coders.commands.{Command, DesignateCommand, OperableCommand}
+import com.init6.coders.commands.DesignateCommand
 import com.init6.users.{UserToChannelCommandAck, UserUpdated}
 
 import scala.collection.mutable

@@ -4,9 +4,10 @@ import java.util.concurrent.{Executors, TimeUnit}
 
 import akka.actor.{ActorRef, PoisonPill}
 import com.init6.channels.ChannelsActor
+import com.init6.connection.websocket.WebSocketConnectionHandler
 import com.init6.connection.{ConnectionHandler, IpLimitActor}
 import com.init6.db.{DAO, DAOActor}
-import com.init6.servers.{ServerPantyDropper, ServerRegistry}
+import com.init6.servers.ServerRegistry
 import com.init6.users.{TopCommandActor, UsersActor}
 
 import scala.concurrent.Await
@@ -42,7 +43,8 @@ object Init6 extends App with Init6Component {
       connectionHandlers = Config().Server.ports
         .map(port => {
           ConnectionHandler(Config().Server.host, port)
-        })
+        }) :+
+        WebSocketConnectionHandler()
     }
   }, delay, TimeUnit.SECONDS)
   executor.shutdown()

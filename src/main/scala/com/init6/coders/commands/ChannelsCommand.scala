@@ -1,7 +1,5 @@
 package com.init6.coders.commands
 
-import akka.actor.ActorRef
-
 /**
   * Created by filip on 12/16/15.
   */

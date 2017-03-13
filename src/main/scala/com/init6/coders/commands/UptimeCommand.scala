@@ -1,9 +1,9 @@
 package com.init6.coders.commands
 
 import com.init6.Constants._
-import com.init6.{Config, SystemContext}
 import com.init6.channels.UserInfo
 import com.init6.servers.Remotable
+import com.init6.{Config, SystemContext}
 
 /**
   * Created by filip on 12/16/15.

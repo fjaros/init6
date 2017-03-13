@@ -1,9 +1,9 @@
 package com.init6.channels
 
 import akka.actor.ActorSystem
-import akka.dispatch.{UnboundedStablePriorityMailbox, PriorityGenerator}
+import akka.dispatch.{PriorityGenerator, UnboundedStablePriorityMailbox}
+import com.init6.coders.commands.{ChannelsCommand, ChatCommand, EmoteCommand, WhoCommand}
 import com.typesafe.config.Config
-import com.init6.coders.commands.{WhoCommand, ChannelsCommand, EmoteCommand, ChatCommand}
 
 /**
   * Created by filip on 11/7/15.

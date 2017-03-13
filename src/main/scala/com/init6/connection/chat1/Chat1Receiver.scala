@@ -1,7 +1,5 @@
 package com.init6.connection.chat1
 
-import java.net.InetSocketAddress
-
 import akka.actor.{ActorRef, FSM, PoisonPill, Props}
 import akka.io.Tcp.Received
 import akka.util.ByteString

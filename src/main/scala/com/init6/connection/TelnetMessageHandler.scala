@@ -1,16 +1,14 @@
 package com.init6.connection
 
-import java.net.InetSocketAddress
-
 import akka.actor.{ActorRef, FSM, PoisonPill, Props}
 import akka.io.Tcp.Received
 import akka.util.ByteString
-import com.init6.Constants._
-import com.init6.coders.binary.hash.BSHA1
-import com.init6.db.DAO
 import com.init6.Config
+import com.init6.Constants._
 import com.init6.channels._
+import com.init6.coders.binary.hash.BSHA1
 import com.init6.coders.telnet.TelnetEncoder
+import com.init6.db.DAO
 import com.init6.users._
 
 import scala.collection.mutable

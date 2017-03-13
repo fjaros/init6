@@ -3,9 +3,9 @@ package com.init6.db
 import akka.actor.Props
 import com.init6.Constants._
 import com.init6.channels.{User, UserError}
-import com.init6.{Init6Component, Init6RemotingActor}
 import com.init6.coders.commands.Command
 import com.init6.servers.Remotable
+import com.init6.{Init6Component, Init6RemotingActor}
 
 /**
   * Created by filip on 12/21/15.

@@ -1,7 +1,7 @@
 package com.init6.coders.commands
 
 import com.init6.Constants._
-import com.init6.channels.{UserError, User}
+import com.init6.channels.{User, UserError}
 
 /**
   * Created by filip on 12/16/15.

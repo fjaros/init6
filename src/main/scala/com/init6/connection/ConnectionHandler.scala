@@ -3,7 +3,7 @@ package com.init6.connection
 import java.net.InetSocketAddress
 
 import akka.actor.{ActorRef, FSM, Props}
-import akka.io.Tcp.{Abort, Bind, ConnectionClosed, Register, ResumeAccepting}
+import akka.io.Tcp._
 import akka.io.{IO, Tcp}
 import com.init6.{Init6Actor, Init6Component}
 

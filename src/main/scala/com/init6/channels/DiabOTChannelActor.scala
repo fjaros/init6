@@ -3,7 +3,6 @@ package com.init6.channels
 import java.util.concurrent.TimeUnit
 
 import akka.actor.{ActorRef, Cancellable, Props}
-import com.init6.Constants.YOU_BANNED
 import com.init6.Init6Actor
 import com.init6.coders.commands._
 

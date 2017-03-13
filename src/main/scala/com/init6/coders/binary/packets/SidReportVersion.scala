@@ -1,7 +1,7 @@
 package com.init6.coders.binary.packets
 
 import akka.util.ByteString
-import com.init6.coders.binary.{DeBuffer, BinaryPacket}
+import com.init6.coders.binary.{BinaryPacket, DeBuffer}
 
 import scala.util.Try
 

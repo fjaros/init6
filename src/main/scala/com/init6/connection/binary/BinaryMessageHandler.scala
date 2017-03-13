@@ -1,23 +1,22 @@
 package com.init6.connection.binary
 
-import java.net.InetSocketAddress
 import java.util.concurrent.TimeUnit
 
 import akka.actor.{ActorRef, FSM, PoisonPill, Props}
 import akka.io.Tcp.Received
 import akka.util.{ByteString, Timeout}
+import com.init6.Config
 import com.init6.Constants._
 import com.init6.channels.{User, UserInfoArray}
 import com.init6.coders.binary.BinaryChatEncoder
 import com.init6.coders.binary.hash.BSHA1
-import com.init6.coders.binary.packets._
 import com.init6.coders.binary.packets.Packets._
+import com.init6.coders.binary.packets._
 import com.init6.coders.commands.{FriendsList, PongCommand}
 import com.init6.connection._
 import com.init6.db.{CreateAccount, DAO, DAOCreatedAck, UpdateAccountPassword}
 import com.init6.users._
 import com.init6.utils.LimitedAction
-import com.init6.Config
 
 import scala.util.Random
 

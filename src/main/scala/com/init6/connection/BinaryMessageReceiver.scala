@@ -1,13 +1,12 @@
 package com.init6.connection
 
-import java.net.InetSocketAddress
 import java.util.concurrent.TimeUnit
 
-import akka.actor.{ActorRef, FSM, Props}
+import akka.actor.{FSM, Props}
 import akka.io.Tcp.Received
 import akka.util.ByteString
-import com.init6.connection.binary.{BinaryMessageHandler, BinaryPacket}
 import com.init6.Init6Actor
+import com.init6.connection.binary.{BinaryMessageHandler, BinaryPacket}
 
 import scala.annotation.tailrec
 import scala.concurrent.duration.Duration

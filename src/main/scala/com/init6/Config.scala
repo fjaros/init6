@@ -2,8 +2,8 @@ package com.init6
 
 import java.io.File
 
-import com.typesafe.config.ConfigFactory
 import com.init6.coders.commands.Command
+import com.typesafe.config.ConfigFactory
 
 import scala.collection.JavaConverters._
 import scala.util.Try
@@ -52,6 +52,7 @@ sealed class Config(filePath: String) {
     val serverId = p.getInt("server-id")
     val host = p.getString("host")
     val ports = p.getIntList("ports").asScala
+    val websocketPort = p.getInt("websocket-port")
 
     val akka_host = Try(p.getString("akka_host")).getOrElse(host)
     val akka_port = p.getInt("akka_port")

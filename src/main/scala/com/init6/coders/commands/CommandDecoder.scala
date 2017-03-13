@@ -5,7 +5,6 @@ import com.init6.Constants._
 import com.init6.ReloadConfig
 import com.init6.channels._
 import com.init6.db.ReloadDb
-import com.init6.servers.{SendBirth, SplitMe}
 
 /**
   * Created by filip on 9/21/15.

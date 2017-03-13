@@ -2,11 +2,11 @@ package com.init6.users
 
 import akka.actor.{ActorRef, Props}
 import com.init6.Constants._
-import com.init6.{Config, Init6Actor, Init6Component}
 import com.init6.channels.{User, UserInfo}
 import com.init6.coders.commands.TopCommand
 import com.init6.connection.ConnectionInfo
 import com.init6.utils.TopInfoSeq
+import com.init6.{Config, Init6Actor, Init6Component}
 
 /**
   * Created by filip on 2/8/16.

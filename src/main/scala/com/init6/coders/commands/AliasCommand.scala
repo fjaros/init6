@@ -3,7 +3,7 @@ package com.init6.coders.commands
 import com.init6.Constants._
 import com.init6.channels.{User, UserError}
 import com.init6.coders.binary.hash.BSHA1
-import com.init6.db.{DAO, DAOActor}
+import com.init6.db.DAO
 
 /**
   * Created by fjaros on 1/29/17.

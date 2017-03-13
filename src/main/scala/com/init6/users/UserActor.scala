@@ -1,6 +1,5 @@
 package com.init6.users
 
-import java.net.InetSocketAddress
 import java.util.concurrent.TimeUnit
 
 import akka.actor.{ActorRef, PoisonPill, Props, Terminated}
@@ -8,19 +7,19 @@ import akka.io.Tcp.{Abort, Received}
 import akka.pattern.ask
 import akka.util.Timeout
 import com.init6.Constants._
-import com.init6.coders.chat1.Chat1Encoder
-import com.init6.coders.commands._
-import com.init6.connection.{ConnectionInfo, IpBan, WriteOut}
-import com.init6.{Config, Init6Actor, Init6LoggingActor, ReloadConfig}
 import com.init6.channels._
 import com.init6.channels.utils.ChannelJoinValidator
 import com.init6.coders._
 import com.init6.coders.binary.BinaryChatEncoder
+import com.init6.coders.chat1.Chat1Encoder
+import com.init6.coders.commands._
 import com.init6.coders.telnet._
+import com.init6.connection.{ConnectionInfo, IpBan, WriteOut}
 import com.init6.db._
-import com.init6.servers.{SendBirth, ServerOnline, SplitMe}
-import com.init6.utils.{CaseInsensitiveHashSet, ChatValidator}
+import com.init6.servers.{SendBirth, SplitMe}
 import com.init6.utils.FutureCollector.futureSeqToFutureCollector
+import com.init6.utils.{CaseInsensitiveHashSet, ChatValidator}
+import com.init6.{Config, Init6Actor, Init6LoggingActor, ReloadConfig}
 
 import scala.concurrent.Await
 

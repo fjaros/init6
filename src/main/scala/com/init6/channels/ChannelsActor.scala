@@ -7,11 +7,11 @@ import akka.pattern.ask
 import akka.util.Timeout
 import com.init6.Constants._
 import com.init6.coders.Base64
-import com.init6.{Init6Component, Init6RemotingActor}
 import com.init6.coders.commands._
 import com.init6.servers._
 import com.init6.utils.FutureCollector.futureSeqToFutureCollector
 import com.init6.utils.RealKeyedCaseInsensitiveHashMap
+import com.init6.{Init6Component, Init6RemotingActor}
 
 import scala.concurrent.Await
 import scala.util.{Failure, Success, Try}

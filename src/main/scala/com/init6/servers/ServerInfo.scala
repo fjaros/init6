@@ -1,7 +1,6 @@
 package com.init6.servers
 
 import com.init6.Init6Actor
-import com.init6.users.UsersActor
 
 /**
   * Created by filip on 12/6/15.
