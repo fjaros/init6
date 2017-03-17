@@ -131,6 +131,16 @@ sealed class Config(filePath: String) {
     val whitelist = p.getStringList("whitelist").asScala.toSet
 
     val ipBanTime = p.getInt("ipban-time")
+
+    object ReconnectLimit {
+
+      private val pA = p.getConfig("reconnect-limit")
+
+      val enabled = pA.getBoolean("enabled")
+      val times = pA.getInt("times")
+      val inPeriod = pA.getInt("in-period")
+      val ipBanTime = pA.getInt("ipban-time")
+    }
   }
 
   val motd = root.getStringList("motd")

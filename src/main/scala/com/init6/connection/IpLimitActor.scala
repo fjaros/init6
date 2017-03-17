@@ -28,7 +28,31 @@ class IpLimitActor(limit: Int) extends Init6RemotingActor {
 
   val actorToIp = mutable.HashMap.empty[ActorRef, Int]
   val ipCount = mutable.HashMap.empty[Int, Int]
+  val ipConnectionTimes = mutable.HashMap.empty[Int, mutable.PriorityQueue[Long]]
   val ipBanned = mutable.HashMap.empty[Int, Long]
+
+  def addIpConnection(addressInt: Int) = {
+    if (Config().AntiFlood.ReconnectLimit.enabled) {
+      val t = System.currentTimeMillis
+
+      ipConnectionTimes
+        .get(addressInt)
+        .fold({
+          ipConnectionTimes += addressInt -> mutable.PriorityQueue(t)(Ordering[Long].reverse)
+          true
+        })(queue => {
+          // more than 20 times within 1 min
+          val allowed = Config().AntiFlood.ReconnectLimit.inPeriod
+          while (queue.nonEmpty && t - queue.head >= allowed) {
+            queue.dequeue()
+          }
+          queue += t
+          queue.length < Config().AntiFlood.ReconnectLimit.times
+        })
+    } else {
+      true
+    }
+  }
 
   override def receive: Receive = {
     case Connected(connectionInfo) =>
@@ -42,6 +66,9 @@ class IpLimitActor(limit: Int) extends Init6RemotingActor {
 
       val addressInt = IPUtils.bytesToDword(connectionInfo.ipAddress.getAddress.getAddress)
       val current = ipCount.getOrElse(addressInt, 0)
+      if (!addIpConnection(addressInt)) {
+        ipBanned += addressInt -> (System.currentTimeMillis() + (Config().AntiFlood.ReconnectLimit.ipBanTime * 1000))
+      }
       val isIpBanned = ipBanned.get(addressInt).exists(until => {
         if (System.currentTimeMillis >= until) {
           ipBanned -= addressInt
