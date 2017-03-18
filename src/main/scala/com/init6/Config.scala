@@ -137,6 +137,7 @@ sealed class Config(filePath: String) {
       private val pA = p.getConfig("reconnect-limit")
 
       val enabled = pA.getBoolean("enabled")
+      val ignoreAtStartFor = pA.getInt("ignore-at-start-for")
       val times = pA.getInt("times")
       val inPeriod = pA.getInt("in-period")
       val ipBanTime = pA.getInt("ipban-time")

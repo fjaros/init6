@@ -32,8 +32,10 @@ class IpLimitActor(limit: Int) extends Init6RemotingActor {
   val ipBanned = mutable.HashMap.empty[Int, Long]
 
   def addIpConnection(addressInt: Int) = {
-    if (Config().AntiFlood.ReconnectLimit.enabled) {
-      val t = System.currentTimeMillis
+    val t = System.currentTimeMillis
+
+    if (Config().AntiFlood.ReconnectLimit.enabled &&
+      getAcceptingUptime.toSeconds >= Config().AntiFlood.ReconnectLimit.ignoreAtStartFor) {
 
       ipConnectionTimes
         .get(addressInt)
