@@ -35,6 +35,8 @@ class ProtocolHandler(rawConnectionInfo: ConnectionInfo) extends Init6Actor with
   val INIT6_CHAT: Byte = 'C'.toByte
   val INIT6_CHAT_1: Byte = '1'.toByte
 
+  var hasAccepted = false
+
   override def preStart() = {
     super.preStart()
 
@@ -97,6 +99,10 @@ class ProtocolHandler(rawConnectionInfo: ConnectionInfo) extends Init6Actor with
       rawConnectionInfo.actor ! Write(data, Ack)
       sender() ! WrittenOut
       goto (InitializedBuffering)
+    case Event(resumeAccepting @ ResumeAccepting(batchSize), protocolData: ConnectionProtocolData) =>
+      context.parent ! resumeAccepting
+      hasAccepted = true
+      stay()
     case Event(x, protocolData: ConnectionProtocolData) =>
       ////log.error(s"### RECEIVE3 connection $client message $x")
       protocolData.messageHandler ! x
@@ -125,6 +131,10 @@ class ProtocolHandler(rawConnectionInfo: ConnectionInfo) extends Init6Actor with
           buffer = buffer.drop(1)
           stay()
         })
+    case Event(resumeAccepting @ ResumeAccepting(batchSize), protocolData: ConnectionProtocolData) =>
+      context.parent ! resumeAccepting
+      hasAccepted = true
+      stay()
     case Event(x, protocolData: ConnectionProtocolData) =>
       ////log.error(s"### RECEIVE3 connection $client message $x")
       protocolData.messageHandler ! x
@@ -171,6 +181,9 @@ class ProtocolHandler(rawConnectionInfo: ConnectionInfo) extends Init6Actor with
 
   onTermination {
     case terminated =>
+      if (!hasAccepted) {
+        context.parent ! ResumeAccepting(1)
+      }
       ipLimiterActor ! Disconnected(rawConnectionInfo.actor)
   }
 }

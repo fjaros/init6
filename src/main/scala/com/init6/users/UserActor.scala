@@ -3,7 +3,7 @@ package com.init6.users
 import java.util.concurrent.TimeUnit
 
 import akka.actor.{ActorRef, PoisonPill, Props, Terminated}
-import akka.io.Tcp.{Abort, Received}
+import akka.io.Tcp.{Abort, Received, ResumeAccepting}
 import akka.pattern.ask
 import akka.util.Timeout
 import com.init6.Constants._
@@ -81,6 +81,7 @@ class UserActor(connectionInfo: ConnectionInfo, var user: User, encoder: Encoder
   override def loggedReceive: Receive = {
     case JoinChannelFromConnection(channel, forceJoin) =>
       joinChannel(channel, forceJoin)
+      connectionInfo.actor ! ResumeAccepting(1)
 
     case ChannelToUserPing =>
       sender() ! UserToChannelPing

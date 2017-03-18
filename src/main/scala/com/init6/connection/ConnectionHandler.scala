@@ -35,7 +35,7 @@ class ConnectionHandler(host: String, port: Int)
       log.debug("Local address {} bound", localAddress)
       val listener = sender()
 
-      listener ! ResumeAccepting(1)
+      listener ! ResumeAccepting(sys.runtime.availableProcessors * 2)
       setAcceptingUptime()
       goto(Bound) using listener
   }
@@ -48,11 +48,13 @@ class ConnectionHandler(host: String, port: Int)
       stay()
     case Event(Allowed(rawConnectionInfo), listener: ActorRef) =>
       allowed(rawConnectionInfo.copy(place = getAndIncreasePlace))
-      listener ! ResumeAccepting(1)
       stay()
     case Event(NotAllowed(rawConnectionInfo), listener: ActorRef) =>
       notAllowed(rawConnectionInfo)
       listener ! ResumeAccepting(1)
+      stay()
+    case Event(resumeAccepting @ ResumeAccepting(batchSize), listener: ActorRef) =>
+      listener ! resumeAccepting
       stay()
     case Event(_: ConnectionClosed, _) =>
       ipLimiterActor ! Disconnected(sender())
