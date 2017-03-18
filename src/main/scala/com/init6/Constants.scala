@@ -66,6 +66,7 @@ object Constants {
   val NOT_BANNED = "That user is not banned."
   val NOT_OPERATOR = "You are not a channel operator."
   val PLACED = (place: Int, serverIp: String) => s"You placed $place on server $serverIp."
+  val SERVER_PLACE = (place: Int, serverIp: String) => s"Place counter is $place on server $serverIp."
   val USER_PLACED = (username: String, place: Int, serverIp: String) => s"$username placed $place on server $serverIp."
   val PUBLIC_CHANNEL = "This is a chat channel. No Ops will be given."
 

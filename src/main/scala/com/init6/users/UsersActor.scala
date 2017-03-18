@@ -193,6 +193,9 @@ class UsersActor extends Init6RemotingActor with Init6LoggingActor {
             actor ! (sender(), command)
           }
 
+    case PlaceOnServerCommand(serverIp) =>
+      sender() ! UserInfo(SERVER_PLACE(getPlace, Config().Server.host))
+
     case command @ FriendsWhois(position, who) =>
       users.get(who)
         .fold(sender() ! FriendsWhoisResponse(online = false, position, who, "", "", "")) {

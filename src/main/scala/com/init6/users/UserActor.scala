@@ -277,6 +277,12 @@ class UserActor(connectionInfo: ConnectionInfo, var user: User, encoder: Encoder
             topCommandActor ! command
           }
         case PlaceOfSelfCommand => encodeAndSend(UserInfo(PLACED(connectionInfo.place, Config().Server.host)))
+        case command @ PlaceOnServerCommand(serverIp) =>
+          if (command.serverIp != Config().Server.host) {
+            system.actorSelection(remoteAddress(command.serverIp, INIT6_USERS_PATH)) ! command
+          } else {
+            encodeAndSend(UserInfo(SERVER_PLACE(getPlace, Config().Server.host)))
+          }
         case AwayCommand(message) => awayAvailablity.enableAction(message)
         case DndCommand(message) => dndAvailablity.enableAction(message)
         case AccountMade(username, passwordHash) =>

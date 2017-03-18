@@ -38,6 +38,10 @@ private[init6] trait Init6Component {
     }
   }
 
+  def getPlace = {
+    SystemContext.placeCounter.get()
+  }
+
   def getAndIncreasePlace = {
     SystemContext.placeCounter.getAndAdd(1)
   }
