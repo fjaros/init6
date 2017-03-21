@@ -51,13 +51,13 @@ trait OperableChannelActor extends ChannelActor {
     if (!Config().Server.Chat.enabled) {
       userOpt.foreach(user => {
         if (users.nonEmpty && !existsOperator()) {
-          val possibleNextOpActor = determineNextOp
           val designatedActorOpt = designatedActors.get(actor)
           val (oppedActor, oppedUser) =
             if (designatedActorOpt.isDefined && users.contains(designatedActorOpt.get)) {
               // designated is in the channel
               designatedActorOpt.get -> Flags.op(users(designatedActorOpt.get))
             } else {
+              val possibleNextOpActor = determineNextOp
               possibleNextOpActor -> Flags.op(users(possibleNextOpActor))
             }
           log.info("###OPPED " + oppedActor + " - " + oppedUser)
@@ -103,24 +103,7 @@ trait OperableChannelActor extends ChannelActor {
     !users.values.forall(!Flags.isOp(_))
   }
 
-  // First user from each server, then determine one with the oldest/lowest channel timestamp
   def determineNextOp: ActorRef = {
-    val checkedAddresses = mutable.HashSet.empty[Address]
-
-    users
-      .reduceLeft[(ActorRef, User)] {
-        case (nextOp, (actor, user)) =>
-          if (!checkedAddresses.contains(actor.path.address)) {
-            checkedAddresses += actor.path.address
-            if (nextOp._2.channelTimestamp > user.channelTimestamp) {
-              actor -> user
-            } else {
-              nextOp
-            }
-          } else {
-            nextOp
-          }
-      }
-      ._1
+    users.min(Ordering.by[(ActorRef, User), Long](_._2.channelTimestamp))._1
   }
 }

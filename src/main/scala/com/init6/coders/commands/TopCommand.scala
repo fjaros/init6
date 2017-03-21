@@ -40,6 +40,7 @@ object TopCommand {
       case "dal" | "dallas" => nodes.find(_.contains("dal"))
       case "sea" | "seattle" => nodes.find(_.contains("sea"))
       case "chi" | "chicago" => nodes.find(_.contains("chi"))
+      case "chat" => nodes.find(_.contains("chat"))
       case _ => None
     }
   }
