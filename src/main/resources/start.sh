@@ -168,6 +168,9 @@ while :; do
             if [ $((waited_nc_time / check_proc_accepting_interval)) -gt 0 ]; then
                 waited_nc_time=0
 
+                #nmap_result=$(nmap -Pn -p6112 "$accepting_ip"|awk "\$1 ~ /6112/ {print \$2}"|grep open|wc -l)
+                #if [ "$nmap_result" -ne 1 ]; then
+
                 nc -z "$accepting_ip" 6112 &> /dev/null
                 if [ $? -ne 0 ]; then
                     echo "init6 dropped outside of drop script. Restarting..."
