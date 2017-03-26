@@ -7,7 +7,7 @@ import com.init6.channels.ChannelsActor
 import com.init6.connection.websocket.WebSocketConnectionHandler
 import com.init6.connection.{ConnectionHandler, IpLimitActor}
 import com.init6.db.{DAO, DAOActor}
-import com.init6.servers.ServerRegistry
+import com.init6.servers.{ServerAnnouncementActor, ServerRegistry}
 import com.init6.users.{TopCommandActor, UsersActor}
 
 import scala.concurrent.Await
@@ -27,6 +27,7 @@ object Init6 extends App with Init6Component {
   UsersActor()
   ChannelsActor()
   TopCommandActor()
+  ServerAnnouncementActor(args(0).toLong)
 
   val random = new Random(System.nanoTime())
   val delay =

@@ -29,7 +29,7 @@ case object Recon extends Command
 
 class ServerPantyDropper(serverName: String) extends Init6Actor {
 
-  import system.dispatcher
+  import context.dispatcher
 
   val buildPath = (server: String) => s"akka://$INIT6@$server/user/$INIT6_SERVERS_PATH"
 

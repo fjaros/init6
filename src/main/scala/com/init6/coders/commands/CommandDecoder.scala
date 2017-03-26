@@ -93,6 +93,7 @@ object CommandDecoder {
         case "place" => PlaceCommand(user, message)
         case "pong" => PongCommand(message)
         case "rejoin" | "rj" => RejoinCommand
+        case "reply" | "r" => ReplyCommand(message)
         case "resign" => ResignCommand
         case "serveruptime" | "uptime" => UptimeCommand
         case "serverversion" | "version" => VersionCommand()
@@ -114,6 +115,7 @@ object CommandDecoder {
         command.toLowerCase match {
           // Admin commands
           case "broadcast" | "bcast" => BroadcastCommand(message)
+          case "rbroadcast" | "rbcast" => RepeatingBroadcast(message)
           case "diabot" => StartRP
           case "quitdiabot" => EndRP
           case "closeaccount" => CloseAccountCommand(user, message)

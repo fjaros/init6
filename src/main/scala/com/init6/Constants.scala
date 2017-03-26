@@ -24,11 +24,13 @@ object Constants {
   val INIT6_CHANNELS_PATH = "Channels"
   val INIT6_USERS_PATH = "Users"
   val INIT6_IP_LIMITER_PATH = "IpLimiter"
-  val INIT6_TOP_COMMAND_ACTOR = "TopCommand"
+  val INIT6_TOP_COMMAND_PATH = "TopCommand"
+  val INIT6_SERVER_ANNOUNCEMENT_PATH = "ServerAnnouncement"
   val CHANNEL_DISPATCHER = "channel-dispatcher"
   val CHANNELS_DISPATCHER = "channels-dispatcher"
   val SERVER_REGISTRY_DISPATCHER = "server-registry-dispatcher"
 
+  val WILL_DROP_IN = (serverIp: String, time: Long) => s"$serverIp will drop in approximately $time seconds!"
 
   val ALREADY_OPERATOR = "That user is already an operator."
   val AWAY_ENGAGED = "You are now marked as being away."

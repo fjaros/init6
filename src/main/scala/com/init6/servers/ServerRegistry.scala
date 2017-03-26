@@ -54,7 +54,7 @@ class ServerRegistry extends Init6Actor {
   override def preStart() = {
     super.preStart()
 
-    import system.dispatcher
+    import context.dispatcher
     val initialDelay = Duration(Config().Server.Registry.initialDelay, TimeUnit.MILLISECONDS)
     val pingDelay = Duration(Config().Server.Registry.pingDelay, TimeUnit.MILLISECONDS)
     system.scheduler.schedule(

@@ -28,7 +28,7 @@ trait Init6KeepAliveActor extends Init6Actor {
 
   def keepAlive(actor: ActorRef, f: () => Unit, delay: Long, unit: TimeUnit): Unit = {
     val pingDuration = Duration(25, TimeUnit.SECONDS)
-    import system.dispatcher
+    import context.dispatcher
 
     pingTask = system.scheduler.schedule(
       pingDuration,

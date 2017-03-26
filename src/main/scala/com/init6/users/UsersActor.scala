@@ -16,6 +16,7 @@ import com.init6.servers._
 import com.init6.utils.RealKeyedCaseInsensitiveHashMap
 
 import scala.collection.mutable
+import scala.concurrent.duration.Duration
 import scala.util.{Failure, Success}
 
 /**
@@ -62,7 +63,7 @@ class UsersActor extends Init6RemotingActor with Init6LoggingActor {
   val placeMap = mutable.SortedMap[Long, Int]()
 
   private def sendGetUsers(address: Address): Unit = {
-    import system.dispatcher
+    import context.dispatcher
 
     remoteActorSelection(address).resolveOne(Timeout(2, TimeUnit.SECONDS).duration).onComplete {
       case Success(actor) =>

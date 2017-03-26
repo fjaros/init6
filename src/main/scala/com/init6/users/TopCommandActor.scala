@@ -12,7 +12,7 @@ import com.init6.{Config, Init6Actor, Init6Component}
   * Created by filip on 2/8/16.
   */
 object TopCommandActor extends Init6Component {
-  def apply() = system.actorOf(Props[TopCommandActor], INIT6_TOP_COMMAND_ACTOR)
+  def apply() = system.actorOf(Props[TopCommandActor], INIT6_TOP_COMMAND_PATH)
 }
 
 case class ConnectedActor(connectionActor: ActorRef, connectionTime: Long)

@@ -60,7 +60,7 @@ class ChannelsActor extends Init6RemotingActor {
 //  }
 
   private def sendGetChannels(address: Address): Unit = {
-    import system.dispatcher
+    import context.dispatcher
 
     remoteActorSelection(address).resolveOne(Timeout(2, TimeUnit.SECONDS).duration).onComplete {
       case Success(actor) =>
@@ -86,7 +86,7 @@ class ChannelsActor extends Init6RemotingActor {
         }
 
       Try {
-        import system.dispatcher
+        import context.dispatcher
 
         Await.result(futureSeq.collectResults {
           case ChannelSize(actor, name, size) =>
@@ -167,7 +167,7 @@ class ChannelsActor extends Init6RemotingActor {
       })
 
     case ChannelsCommand =>
-      import system.dispatcher
+      import context.dispatcher
 
       val replyActor = sender()
 

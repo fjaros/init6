@@ -16,7 +16,7 @@ import com.init6.coders.commands._
 import com.init6.coders.telnet._
 import com.init6.connection.{ConnectionInfo, IpBan, WriteOut}
 import com.init6.db._
-import com.init6.servers.{SendBirth, SplitMe}
+import com.init6.servers.{RepeatingAnnoucement, SendBirth, SplitMe}
 import com.init6.utils.FutureCollector.futureSeqToFutureCollector
 import com.init6.utils.{CaseInsensitiveHashSet, ChatValidator}
 import com.init6.{Config, Init6Actor, Init6LoggingActor, ReloadConfig}
@@ -47,12 +47,13 @@ case class DisconnectOnIp(ipAddress: Array[Byte]) extends Command
 class UserActor(connectionInfo: ConnectionInfo, var user: User, encoder: Encoder)
   extends FloodPreventer with Init6Actor with Init6LoggingActor {
 
-  import system.dispatcher
+  import context.dispatcher
 
   var isTerminated = false
   var channelActor = ActorRef.noSender
   var squelchedUsers = CaseInsensitiveHashSet()
   var friendsList: Option[Seq[DbFriend]] = None
+  var replyToUser: Option[String] = None
   val awayAvailablity = AwayAvailablity(user.name)
   val dndAvailablity = DndAvailablity(user.name)
 
@@ -128,6 +129,7 @@ class UserActor(connectionInfo: ConnectionInfo, var user: User, encoder: Encoder
           dndAvailablity
             .whisperAction(actor)
             .getOrElse({
+              replyToUser = Some(fromUser.name)
               connectionInfo.actor ! WriteOut(msg)
               awayAvailablity.whisperAction(actor)
               if (sendNotification) {
@@ -272,7 +274,7 @@ class UserActor(connectionInfo: ConnectionInfo, var user: User, encoder: Encoder
         case command @ UptimeCommand => usersActor ! command
         case command: TopCommand =>
           if (command.serverIp != Config().Server.host) {
-            system.actorSelection(remoteAddress(command.serverIp, INIT6_TOP_COMMAND_ACTOR)) ! command
+            system.actorSelection(remoteAddress(command.serverIp, INIT6_TOP_COMMAND_PATH)) ! command
           } else {
             topCommandActor ! command
           }
@@ -285,6 +287,12 @@ class UserActor(connectionInfo: ConnectionInfo, var user: User, encoder: Encoder
           }
         case AwayCommand(message) => awayAvailablity.enableAction(message)
         case DndCommand(message) => dndAvailablity.enableAction(message)
+        case ReplyCommand(message) =>
+          replyToUser.fold({
+            encodeAndSend(UserError(NO_WHISPER_USER_INPUT))
+          })(replyToUser => {
+            usersActor ! WhisperMessage(user, replyToUser, message, sendNotification = true)
+          })
         case AccountMade(username, passwordHash) =>
           daoActor ! CreateAccount(username, passwordHash)
         case ChangePasswordCommand(newPassword) =>
@@ -333,6 +341,8 @@ class UserActor(connectionInfo: ConnectionInfo, var user: User, encoder: Encoder
           channelsActor ! StartRP
         case EndRP =>
           channelsActor ! EndRP
+        case c : RepeatingAnnoucement =>
+          serverAnnouncementActor ! c
         case _ =>
       }
 
@@ -388,6 +398,10 @@ class UserActor(connectionInfo: ConnectionInfo, var user: User, encoder: Encoder
           if (!squelchedUsers.contains(channelEvent.user.name)) {
             encodeAndSend(channelEvent)
           }
+
+        case UserWhisperedTo(user, message) =>
+          replyToUser = Some(user.name)
+          encodeAndSend(chatEvent)
 
         case _ =>
           encodeAndSend(chatEvent)

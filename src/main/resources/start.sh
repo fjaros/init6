@@ -28,7 +28,6 @@ max_between_drops=32
 restart_if_killed=true
 check_proc_interval=5
 check_proc_accepting_interval=30
-accepting_ip=127.0.0.1
 
 # ---------------------
 # CONFIG VARS OVERRIDES
@@ -86,6 +85,8 @@ done
 # SCRIPT
 # ------
 
+accepting_ip=$(grep 'akka_host' "$config"|sed -e 's/^[ \t]*akka_host = "//' -e 's/"$//')
+
 # override echo to prepend timestamp
 function echo() {
     date +"[%Y-%m-%d %H:%M:%S] $*"
@@ -122,14 +123,21 @@ if [[ ! "$java_version" > 1.8.* ]]; then
     exit
 fi
 
-java_run=" \
-    -XX:+HeapDumpOnOutOfMemoryError -XX:+DisableExplicitGC \
-    -Xms2g -Xmx4g \
-    -Dconfig=$config \
-    -cp lib/*:init6.jar \
-    com.init6.Init6"
-
 while :; do
+    random_range wait_time "$min_wait" "$max_wait"
+
+    java_run=" \
+        -XX:+HeapDumpOnOutOfMemoryError -XX:+DisableExplicitGC \
+        -Xms2g -Xmx4g \
+        -Dconfig=$config \
+        -cp lib/*:init6.jar \
+        com.init6.Init6 \
+    "
+
+    echo "Waiting $wait_time minutes before next drop"
+    let "wait_time *= 60"
+    java_run="$java_run $wait_time"
+
     if [ -n "$pid" ]; then
         echo "PID set to $pid"
     else
@@ -151,11 +159,6 @@ while :; do
         fi
         pid=$!
     fi
-
-    random_range wait_time "$min_wait" "$max_wait"
-
-    echo "Waiting $wait_time minutes before next drop"
-    let "wait_time *= 60"
 
     waited_time=0
     waited_nc_time=0

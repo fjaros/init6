@@ -96,7 +96,7 @@ trait ChannelActor extends Init6RemotingActor {
 
 
   private def sendGetChannelUsers(address: Address): Unit = {
-    import system.dispatcher
+    import context.dispatcher
 
     remoteActorSelection(address).resolveOne(Timeout(2, TimeUnit.SECONDS).duration).onComplete {
       case Success(actor) =>
