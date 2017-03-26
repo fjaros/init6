@@ -1,6 +1,6 @@
 package com.init6
 
-import java.util.concurrent.{Executors, TimeUnit}
+import java.util.concurrent.TimeUnit
 
 import akka.actor.{ActorRef, PoisonPill}
 import com.init6.channels.ChannelsActor
@@ -38,17 +38,17 @@ object Init6 extends App with Init6Component {
     }
 
   var connectionHandlers: Seq[ActorRef] = _
-  val executor = Executors.newSingleThreadScheduledExecutor
-  executor.schedule(new Runnable {
-    override def run() = {
-      connectionHandlers = Config().Server.ports
-        .map(port => {
-          ConnectionHandler(Config().Server.host, port)
-        }) :+
-        WebSocketConnectionHandler()
-    }
-  }, delay, TimeUnit.SECONDS)
-  executor.shutdown()
+
+  import system.dispatcher
+  system.scheduler.scheduleOnce(
+    Duration(delay, TimeUnit.SECONDS)
+  )({
+    connectionHandlers = Config().Server.ports
+      .map(port => {
+        ConnectionHandler(Config().Server.host, port)
+      }) :+
+      WebSocketConnectionHandler()
+  })
 
   sys.addShutdownHook({
     Option(connectionHandlers).foreach(_.foreach(_ ! PoisonPill))
