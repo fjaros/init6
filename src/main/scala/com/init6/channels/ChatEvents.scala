@@ -40,7 +40,7 @@ case class UserUnsquelched(user: String) extends ChatEvent
 case class UserSentChat(user: String, message: String) extends ChatEvent
 case class UserSentEmote(user: String, message: String) extends ChatEvent
 case class Designate(user: String, message: String) extends ChatEvent
-case class UserSwitchedChat(actor: ActorRef, user: User, channel: String) extends ChatEvent with NonRemotable
+case class UserSwitchedChat(actor: ActorRef, user: User, channel: String, connectionTimestamp: Long) extends ChatEvent with NonRemotable
 case class UserLeftChat(user: User) extends ChatEvent
 case object UserFlooded extends ChatEvent
 

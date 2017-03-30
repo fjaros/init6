@@ -2,9 +2,9 @@
 
 #./build.sh
 
-#scp -P22022 target/init6.jar i6serverhost@sea.wserv.org:/home/i6serverhost/init6.jar.new
+#scp -P22022 target/init6.jar i6serverhost@216.244.82.98:/home/i6serverhost/init6.jar.new
 #scp -P22022 src/main/resources/akka.conf i6serverhost@sea.wserv.org:/home/i6serverhost/init6/akka.conf
-#scp -P22022 target/init6.jar i6serverhost@chi.wserv.org:/home/i6serverhost/init6.jar.new
+#scp -P22022 target/init6.jar i6serverhost@205.234.159.242:/home/i6serverhost/init6.jar.new
 #scp -P22022 src/main/resources/akka.conf i6serverhost@chi.wserv.org:/home/i6serverhost/init6/akka.conf
 #scp -P22022 target/init6.jar i6serverhost@dal.wserv.org:/home/i6serverhost/init6.jar.new
 #scp -P22022 src/main/resources/akka.conf i6serverhost@dal.wserv.org:/home/i6serverhost/init6/akka.conf
@@ -17,7 +17,7 @@ ssh -p22022 -f i6serverhost@dal.wserv.org "crontab -r"
 ssh -p22022 -f i6serverhost@chat.wserv.org "crontab -r"
 ssh -p22022 -f i6serverhost@205.234.159.242 "crontab -r"
 
-sleep 2
+sleep 1
 
 ssh -p22022 -f i6serverhost@216.244.82.98 "./k.sh"
 ssh -p22022 -f i6serverhost@dal.wserv.org "./k.sh"
@@ -26,7 +26,7 @@ ssh -p22022 -f i6serverhost@205.234.159.242 "./k.sh"
 
 #ssh -p22022 -f i6serverhost@50.2.212.132 "./k.sh"
 
-sleep 2
+sleep 10
 
 for i in $(seq 1 1 3); do
     if [ $i -eq 1 ]; then
@@ -36,10 +36,8 @@ for i in $(seq 1 1 3); do
     elif [ $i -eq 3 ]; then
         ssh -p22022 -f i6serverhost@dal.wserv.org "cp init6.jar.new init6/init6.jar; cd init6; ./start.sh &> /dev/null"
     fi
-    #sleep 5
+    sleep 8
 done
-
-sleep 10
 
 ssh -p22022 -f i6serverhost@chat.wserv.org "cp init6.jar.new init6/init6.jar; cd init6; ./start.sh &> /dev/null"
 #ssh -p22022 -f i6serverhost@chat.wserv.org "cp init6.jar.new init6-sandbox/init6.jar; cp init6/akka.conf init6-sandbox/akka.conf; cd init6-sandbox; ./start_sandbox.sh &> /dev/null"

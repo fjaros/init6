@@ -18,9 +18,29 @@ class ChannelMailbox(settings: ActorSystem.Settings, config: Config)
 
 class ChannelsMailbox(settings: ActorSystem.Settings, config: Config)
   extends UnboundedStablePriorityMailbox(
-    PriorityGenerator {
-      case ChannelsCommand | WhoCommand => 1
-      case MrCleanChannelEraser => 3
-      case _ => 2
+    new PriorityGenerator {
+
+      var minConTime: Option[Long] = None
+
+      override def gen(message: Any) = {
+        message match {
+          case ChannelsCommand | WhoCommand => 1
+          case UserSwitchedChat(_, _, _, connectionTimestamp) =>
+            val msgOrder = minConTime
+              .fold({
+                minConTime = Some(connectionTimestamp)
+                2
+              })(time => {
+                if (connectionTimestamp < time) {
+                  minConTime = Some(connectionTimestamp)
+                  2
+                } else {
+                  3
+                }
+              })
+            msgOrder
+          case _ => 3
+        }
+      }
     }
   )

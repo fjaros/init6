@@ -79,6 +79,7 @@ class WebSocketConnectionHandler extends Init6Actor {
       Flow[Message]
         .map {
           case TextMessage.Strict(text) => ByteString(text)
+          case _ => ???
         }
         .to(Sink.actorRef[ByteString](protocolHandler, PoisonPill))
 

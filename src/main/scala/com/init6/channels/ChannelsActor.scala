@@ -128,7 +128,7 @@ class ChannelsActor extends Init6RemotingActor {
           case (name, actor) => getOrCreate(name)
         }
 
-    case command @ UserSwitchedChat(actor, user, channel) =>
+    case command @ UserSwitchedChat(actor, user, channel, connectionTimestamp) =>
 
       val userActor = sender()
       Try {
@@ -150,7 +150,7 @@ class ChannelsActor extends Init6RemotingActor {
               // special case for now - refactor later
               // !!!!!!!!!!!!!!!
               // NEED TO GIVE REMOTES THE CORRECT FLAGS FROM THIS SERVER!!!!
-              remoteActors.foreach(_.tell(UserSwitchedChat(actor, reply.user.copy(inChannel = user.inChannel), channel), userActor))
+              remoteActors.foreach(_.tell(UserSwitchedChat(actor, reply.user.copy(inChannel = user.inChannel), channel, connectionTimestamp), userActor))
             }
           case reply: ChatEvent =>
             if (isLocal(userActor)) {
