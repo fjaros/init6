@@ -30,7 +30,7 @@ object Constants {
   val CHANNELS_DISPATCHER = "channels-dispatcher"
   val SERVER_REGISTRY_DISPATCHER = "server-registry-dispatcher"
 
-  val WILL_DROP_IN = (serverIp: String, time: Long) => s"$serverIp will drop in approximately $time seconds!"
+  val WILL_DROP_IN = (serverIp: String, time: Long) => s"$serverIp will drop within 1 minute!"
 
   val ALREADY_OPERATOR = "That user is already an operator."
   val AWAY_ENGAGED = "You are now marked as being away."
