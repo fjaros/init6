@@ -94,6 +94,7 @@ object CommandDecoder {
         case "pong" => PongCommand(message)
         case "rejoin" | "rj" => RejoinCommand
         case "reply" | "r" => ReplyCommand(message)
+        case "roll" => RollCommand(user, message)
         case "resign" => ResignCommand
         case "serveruptime" | "uptime" => UptimeCommand
         case "serverversion" | "version" => VersionCommand()

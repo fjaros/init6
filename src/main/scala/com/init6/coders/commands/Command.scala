@@ -1,6 +1,7 @@
 package com.init6.coders.commands
 
 import com.init6.channels.User
+import com.init6.servers.Remotable
 
 /**
   * Created by filip on 12/10/15.
@@ -14,6 +15,10 @@ trait MessageCommand extends Command {
 trait ChannelCommand extends Command {
   val fromUser: User
 }
+trait ChannelBroadcastable extends ChannelCommand with Remotable {
+  val message: String
+}
+
 trait UserCommand extends Command {
   val fromUser: User
   val toUsername: String

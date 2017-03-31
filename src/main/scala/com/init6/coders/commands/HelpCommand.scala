@@ -15,6 +15,7 @@ object HelpCommand {
       "/makeaccount",
       "/changepassword, /chpass",
       "/whisper, /w, /msg, /m",
+      "/reply, /r",
       "/channel, /join, /j",
       "/squelch, /ignore",
       "/unsquelch, /unignore",
@@ -40,6 +41,8 @@ object HelpCommand {
       "/channels, /chs, /list",
       "/topic <message>",
       "/servermotd, /motd",
+
+      "/roll",
 
       "/serveruptime, /uptime",
       "/serverversion, /version",

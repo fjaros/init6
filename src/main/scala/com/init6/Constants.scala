@@ -142,6 +142,9 @@ object Constants {
   val FRIENDS_FRIEND_NOT_FOUND = (name: String) => s"$name is not a member of your friends list."
   val YOUR_FRIENDS = "your\u00A0friends"
 
+  val ROLL_FORMAT = "Roll command format is /roll min-max"
+  val ROLL_INFO = (name: String, roll: Int, minRoll: Int, maxRoll: Int) => s"$name rolls $roll ($minRoll-$maxRoll)"
+
   def isChatProtocol(client: String) = {
     client match {
       case "CHAT" | "TAHC" => true

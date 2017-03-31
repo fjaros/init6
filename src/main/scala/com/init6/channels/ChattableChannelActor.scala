@@ -63,6 +63,10 @@ trait ChattableChannelActor extends ChannelActor {
           }
         }
       })
+
+    case command: ChannelBroadcastable =>
+      localUsers ! UserInfo(command.message)
+
   }: Receive)
     .orElse(super.receiveEvent)
 
