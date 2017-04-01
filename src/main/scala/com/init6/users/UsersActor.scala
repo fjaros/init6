@@ -31,7 +31,7 @@ case class WhisperTo(user: User, username: String, message: String)  extends Com
 case object SubscribeAll
 
 object UsersActor extends Init6Component {
-  def apply() = system.actorOf(Props[UsersActor], INIT6_USERS_PATH)
+  def apply() = system.actorOf(Props[UsersActor].withDispatcher(USERS_DISPATCHER), INIT6_USERS_PATH)
 }
 
 trait Protocol extends Command

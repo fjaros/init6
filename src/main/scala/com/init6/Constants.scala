@@ -28,6 +28,7 @@ object Constants {
   val INIT6_SERVER_ANNOUNCEMENT_PATH = "ServerAnnouncement"
   val CHANNEL_DISPATCHER = "channel-dispatcher"
   val CHANNELS_DISPATCHER = "channels-dispatcher"
+  val USERS_DISPATCHER = "users-dispatcher"
   val SERVER_REGISTRY_DISPATCHER = "server-registry-dispatcher"
 
   val WILL_DROP_IN = (serverIp: String, time: Long) => s"$serverIp will drop within 1 minute!"

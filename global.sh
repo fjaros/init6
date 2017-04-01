@@ -26,7 +26,7 @@ ssh -p22022 -f i6serverhost@205.234.159.242 "./k.sh"
 
 #ssh -p22022 -f i6serverhost@50.2.212.132 "./k.sh"
 
-sleep 1
+sleep 10
 
 for i in $(seq 1 1 3|sort -R); do
     if [ $i -eq 1 ]; then

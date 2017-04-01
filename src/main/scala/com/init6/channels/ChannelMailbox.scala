@@ -1,7 +1,9 @@
 package com.init6.channels
 
+import java.util.Comparator
+
 import akka.actor.ActorSystem
-import akka.dispatch.{PriorityGenerator, UnboundedStablePriorityMailbox}
+import akka.dispatch.{Envelope, PriorityGenerator, UnboundedStablePriorityMailbox}
 import com.init6.coders.commands.{ChannelsCommand, ChatCommand, EmoteCommand, WhoCommand}
 import com.typesafe.config.Config
 
@@ -18,29 +20,33 @@ class ChannelMailbox(settings: ActorSystem.Settings, config: Config)
 
 class ChannelsMailbox(settings: ActorSystem.Settings, config: Config)
   extends UnboundedStablePriorityMailbox(
-    new PriorityGenerator {
-
-      var minConTime: Option[Long] = None
-
-      override def gen(message: Any) = {
-        message match {
-          case ChannelsCommand | WhoCommand => 1
-          case UserSwitchedChat(_, _, _, connectionTimestamp) =>
-            val msgOrder = minConTime
-              .fold({
-                minConTime = Some(connectionTimestamp)
-                2
-              })(time => {
-                if (connectionTimestamp < time) {
-                  minConTime = Some(connectionTimestamp)
-                  2
-                } else {
-                  3
-                }
-              })
-            msgOrder
-          case _ => 3
-        }
-      }
+    ChannelsPriorityGenerator {
+      case ChannelsCommand | WhoCommand => 1
+      case _: UserSwitchedChat => 2
+      case _ => 4
     }
   )
+
+object ChannelsPriorityGenerator {
+  def apply(priorityFunction: Any => Int): ChannelsPriorityGenerator =
+    (message: Any) => priorityFunction(message)
+}
+
+trait ChannelsPriorityGenerator extends Comparator[Envelope] {
+  def gen(message: Any): Int
+
+  override def compare(o1: Envelope, o2: Envelope) = {
+    if (o1.message.isInstanceOf[UserSwitchedChat] && o2.message.isInstanceOf[UserSwitchedChat]) {
+      val m1 = o1.message.asInstanceOf[UserSwitchedChat]
+      val m2 = o2.message.asInstanceOf[UserSwitchedChat]
+
+      if (m1.connectionTimestamp > m2.connectionTimestamp) {
+        3
+      } else {
+        2
+      }
+    } else {
+      gen(o1.message) - gen(o2.message)
+    }
+  }
+}
