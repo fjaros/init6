@@ -145,7 +145,7 @@ class ChannelsActor extends Init6RemotingActor {
               userActor ! ChannelJoinResponse(UserChannel(reply.user, reply.channelName, reply.channelFlags, reply.channelActor, reply.channelSize))
               // real actor
               if (reply.topicExchange.topic.nonEmpty) {
-                userActor ! UserInfo(CHANNEL_TOPIC(reply.topicExchange.topic))
+                actor ! UserInfo(CHANNEL_TOPIC(reply.topicExchange.topic))
               }
               // special case for now - refactor later
               // !!!!!!!!!!!!!!!
