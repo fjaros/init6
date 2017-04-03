@@ -4,7 +4,8 @@ import akka.actor.{ActorRef, FSM, Props}
 import akka.io.Tcp._
 import akka.util.ByteString
 import com.init6.Init6Actor
-import com.init6.connection.chat1.Chat1Receiver
+import com.init6.connection.binary.BinaryMessageHandler
+import com.init6.connection.chat1.Chat1Handler
 import com.init6.users.{BinaryProtocol, Chat1Protocol, TelnetProtocol}
 
 object ProtocolHandler {
@@ -25,7 +26,7 @@ case object InitializedBuffering extends ProtocolState
 sealed trait ProtocolData
 case object EmptyProtocolData extends ProtocolData
 case class ConnectingProtocolData(bufferedData: ByteString) extends ProtocolData
-case class ConnectionProtocolData(messageHandler: ActorRef, data: ByteString) extends ProtocolData
+case class ConnectionProtocolData(packetReceiver: PacketReceiver[_], messageHandler: ActorRef, data: ByteString) extends ProtocolData
 
 class ProtocolHandler(rawConnectionInfo: ConnectionInfo) extends Init6Actor with FSM[ProtocolState, ProtocolData] {
 
@@ -46,42 +47,32 @@ class ProtocolHandler(rawConnectionInfo: ConnectionInfo) extends Init6Actor with
 
   when(Uninitialized) {
     case Event(Received(data), _) =>
-      data.head match {
-        case BINARY =>
-          goto (Initialized) using ConnectionProtocolData(context.actorOf(BinaryMessageReceiver(
-            rawConnectionInfo.copy(actor = self, protocol = BinaryProtocol)))
-            , data.tail)
-        case TELNET =>
-          goto (Uninitialized2Telnet) using ConnectingProtocolData(data.tail)
-        case INIT6_CHAT =>
-          goto (Uninitialized2Chat1) using ConnectingProtocolData(data.tail)
-        case _ => stop()
-      }
-    case _ => stop()
-  }
+      val packetReceivedTime = getAcceptingUptime.toNanos
+      var isC1 = false
+      val protocolData =
+        if (data.head == BINARY) {
+          Some(ConnectionProtocolData(new BinaryReceiver, context.actorOf(BinaryMessageHandler(
+            rawConnectionInfo.copy(actor = self, firstPacketReceivedTime = packetReceivedTime, protocol = BinaryProtocol))), data.drop(1)))
+        } else if (data(0) == TELNET && data(1) == TELNET_2) {
+          Some(ConnectionProtocolData(new ChatReceiver, context.actorOf(TelnetMessageHandler(
+            rawConnectionInfo.copy(actor = self, firstPacketReceivedTime = packetReceivedTime, protocol = TelnetProtocol))), data.drop(2)))
+        } else if (data(0) == INIT6_CHAT && data(1) == INIT6_CHAT_1) {
+          isC1 = true
+          Some(ConnectionProtocolData(new ChatReceiver, context.actorOf(Chat1Handler(
+            rawConnectionInfo.copy(actor = self, firstPacketReceivedTime = packetReceivedTime, protocol = Chat1Protocol))), data.drop(2)))
+        } else {
+          None
+        }
 
-  when (Uninitialized2Telnet) {
-    case Event(Received(data), protocolData: ConnectingProtocolData) =>
-      data.head match {
-        case TELNET_2 =>
-          goto (Initialized) using ConnectionProtocolData(context.actorOf(TelnetMessageReceiver(
-            rawConnectionInfo.copy(actor = self, protocol = TelnetProtocol)))
-            , data.tail)
-        case _ => stop()
-      }
-    case _ => stop()
-  }
-
-  when (Uninitialized2Chat1) {
-    case Event(Received(data), protocolData: ConnectingProtocolData) =>
-      data.head match {
-        case INIT6_CHAT_1 =>
-          goto (Initialized) using ConnectionProtocolData(
-            context.actorOf(Chat1Receiver(
-              rawConnectionInfo.copy(actor = self, protocol = Chat1Protocol)))
-            , data.tail)
-        case _ => stop()
-      }
+      protocolData.fold(stop())(protocolData => {
+        if (isC1) {
+          protocolData.messageHandler ! protocolData.packetReceiver.parsePacket(protocolData.data)
+        } else {
+          protocolData.packetReceiver.parsePacket(protocolData.data).foreach(protocolData.messageHandler ! _)
+        }
+        rawConnectionInfo.actor ! ResumeReading
+        goto (Initialized) using protocolData
+      })
     case _ => stop()
   }
 
@@ -89,7 +80,7 @@ class ProtocolHandler(rawConnectionInfo: ConnectionInfo) extends Init6Actor with
 
   when(Initialized) {
     case Event(Received(data), protocolData: ConnectionProtocolData) =>
-      protocolData.messageHandler ! Received(data)
+      protocolData.packetReceiver.parsePacket(data).foreach(protocolData.messageHandler ! _)
       rawConnectionInfo.actor ! ResumeReading
       stay()
     case Event(_: ConnectionClosed, _) =>
@@ -114,7 +105,7 @@ class ProtocolHandler(rawConnectionInfo: ConnectionInfo) extends Init6Actor with
 
   when(InitializedBuffering) {
     case Event(Received(data), protocolData: ConnectionProtocolData) =>
-      protocolData.messageHandler ! Received(data)
+      protocolData.packetReceiver.parsePacket(data).foreach(protocolData.messageHandler ! _)
       rawConnectionInfo.actor ! ResumeReading
       stay()
     case Event(_: ConnectionClosed, _) =>
@@ -142,41 +133,6 @@ class ProtocolHandler(rawConnectionInfo: ConnectionInfo) extends Init6Actor with
     case x =>
       log.error("{} ProtocolHandler InitializedBuffering unhandled: {}", rawConnectionInfo.ipAddress.getAddress.getHostAddress, x)
       stay()
-  }
-
-  onTransition {
-    case Uninitialized -> Initialized |
-         Uninitialized2Telnet -> Initialized |
-         Uninitialized2Chat1 -> Initialized =>
-      nextStateData match {
-        case ConnectionProtocolData(actor, data) =>
-          if (data.nonEmpty) {
-            self ! Received(data)
-          } else {
-            rawConnectionInfo.actor ! ResumeReading
-          }
-        case x =>
-          log.error("{} ProtocolHandler onTransition unhandled state data: {}", rawConnectionInfo.ipAddress.getAddress.getHostAddress, x)
-      }
-    case Uninitialized -> Uninitialized2Telnet => transitionToExpectByte2()
-    case Uninitialized -> Uninitialized2Chat1 => transitionToExpectByte2()
-    case Initialized -> InitializedBuffering =>
-    case InitializedBuffering -> Initialized =>
-    case x =>
-      log.error("{} ProtocolHandler onTransition unhandled transition: {}", rawConnectionInfo.ipAddress.getAddress.getHostAddress, x)
-  }
-
-  def transitionToExpectByte2() = {
-    nextStateData match {
-      case ConnectingProtocolData(data) =>
-        if (data.nonEmpty) {
-          self ! Received(data)
-        } else {
-          rawConnectionInfo.actor ! ResumeReading
-        }
-      case x =>
-        log.error("{} ProtocolHandler onTransition unhandled state data: {}", rawConnectionInfo.ipAddress.getAddress.getHostAddress, x)
-    }
   }
 
   onTermination {

@@ -129,7 +129,7 @@ class ChannelsActor extends Init6RemotingActor {
         }
 
     case command @ UserSwitchedChat(actor, user, channel, connectionTimestamp) =>
-
+      //println(getAcceptingUptime.toNanos + " - " + user.name)
       val userActor = sender()
       Try {
         Await.result(getOrCreate(channel) ? AddUser(actor, user), timeout.duration) match {

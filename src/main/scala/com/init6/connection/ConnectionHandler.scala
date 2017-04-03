@@ -66,7 +66,6 @@ class ConnectionHandler(host: String, port: Int)
   def allowed(rawConnectionInfo: ConnectionInfo) = {
     log.debug("Address {} allowed", rawConnectionInfo.ipAddress.getAddress)
     rawConnectionInfo.actor ! Register(context.actorOf(ProtocolHandler(rawConnectionInfo)), keepOpenOnPeerClosed = true)
-    rawConnectionInfo.actor ! Tcp.SO.KeepAlive(on = true)
   }
 
   def notAllowed(rawConnectionInfo: ConnectionInfo) = {

@@ -36,11 +36,11 @@ for i in $(seq 1 1 3|sort -R); do
     elif [ $i -eq 3 ]; then
         ssh -p22022 -f i6serverhost@dal.wserv.org "cp init6.jar.new init6/init6.jar; cd init6; ./start.sh &> /dev/null"
     fi
-    sleep 8
+    sleep 20
 done
 
 ssh -p22022 -f i6serverhost@chat.wserv.org "cp init6.jar.new init6/init6.jar; cd init6; ./start.sh &> /dev/null"
-#ssh -p22022 -f i6serverhost@chat.wserv.org "cp init6.jar.new init6-sandbox/init6.jar; cp init6/akka.conf init6-sandbox/akka.conf; cd init6-sandbox; ./start_sandbox.sh &> /dev/null"
+ssh -p22022 -f i6serverhost@216.244.82.98 "cp init6.jar.new init6-sandbox/init6.jar; cd init6-sandbox; ./start_sandbox.sh &> /dev/null"
 
 sleep 10
 

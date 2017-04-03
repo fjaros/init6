@@ -12,6 +12,8 @@ case class ConnectionInfo(
   ipAddress: InetSocketAddress,
   actor: ActorRef,
   connectedTime: Long,
+  firstPacketReceivedTime: Long = -1,
+//  joiningTime: Long = -1,
   place: Int = -1,
   protocol: Protocol = NotYetKnownProtocol
 )

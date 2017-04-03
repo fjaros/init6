@@ -1,75 +1,75 @@
-package com.init6.connection
-
-import java.util.concurrent.TimeUnit
-
-import akka.actor.{FSM, Props}
-import akka.io.Tcp.Received
-import akka.util.ByteString
-import com.init6.Init6Actor
-import com.init6.connection.binary.{BinaryMessageHandler, BinaryPacket}
-
-import scala.annotation.tailrec
-import scala.concurrent.duration.Duration
-
-sealed trait PacketReceiverState
-case object ReceivingHeader extends PacketReceiverState
-case object ReceivingPacket extends PacketReceiverState
-
-sealed trait ReceiverData
-case class ReceivingData(buffer: Array[Byte] = Array[Byte]()) extends ReceiverData
-
-/**
- * Created by filip on 10/25/15.
- */
-object BinaryMessageReceiver {
-  def apply(connectionInfo: ConnectionInfo) = Props(classOf[BinaryMessageReceiver], connectionInfo)
-}
-
-class BinaryMessageReceiver(connectionInfo: ConnectionInfo)
-  extends Init6Actor with FSM[PacketReceiverState, ReceiverData] {
-
-  val HEADER_BYTE = 0xFF.toByte
-  val HEADER_SIZE = 4
-
-  val IN_HEADER_TIMEOUT = Duration(10, TimeUnit.SECONDS)
-
-  val handler = context.actorOf(BinaryMessageHandler(connectionInfo))
-
-  startWith(ReceivingHeader, ReceivingData())
-
-  when (ReceivingHeader) {
-    case Event(Received(data), ReceivingData(buffer)) =>
-      @tailrec
-      def constructPackets(data: Array[Byte]): State = {
-        val dataLen = data.length
-        if (dataLen >= HEADER_SIZE) {
-          val fullData: Array[Byte] = data
-
-          if (data.head == HEADER_BYTE) {
-            val packetId = data(1)
-            val length = (data(3) << 8 & 0xFF00 | data(2) & 0xFF).toShort
-
-            if (dataLen >= length) {
-              val packet = ByteString(fullData.slice(HEADER_SIZE, length))
-
-              handler ! BinaryPacket(packetId, packet)
-
-              constructPackets(fullData.drop(length))
-            } else {
-              stay using ReceivingData(fullData)
-            }
-          } else {
-            stop()
-          }
-        } else if (dataLen == 0) {
-          stay using ReceivingData()
-        } else {
-          stay using ReceivingData(data) forMax IN_HEADER_TIMEOUT
-        }
-      }
-      constructPackets(buffer ++ data.toArray[Byte])
-
-    case Event(StateTimeout, _) =>
-      stop()
-  }
-}
+//package com.init6.connection
+//
+//import java.util.concurrent.TimeUnit
+//
+//import akka.actor.{FSM, Props}
+//import akka.io.Tcp.Received
+//import akka.util.ByteString
+//import com.init6.Init6Actor
+//import com.init6.connection.binary.{BinaryMessageHandler, BinaryPacket}
+//
+//import scala.annotation.tailrec
+//import scala.concurrent.duration.Duration
+//
+//sealed trait PacketReceiverState
+//case object ReceivingHeader extends PacketReceiverState
+//case object ReceivingPacket extends PacketReceiverState
+//
+//sealed trait ReceiverData
+//case class ReceivingData(buffer: Array[Byte] = Array[Byte]()) extends ReceiverData
+//
+///**
+// * Created by filip on 10/25/15.
+// */
+//object BinaryMessageReceiver {
+//  def apply(connectionInfo: ConnectionInfo) = Props(classOf[BinaryMessageReceiver], connectionInfo)
+//}
+//
+//class BinaryMessageReceiver(connectionInfo: ConnectionInfo)
+//  extends Init6Actor with FSM[PacketReceiverState, ReceiverData] {
+//
+//  val HEADER_BYTE = 0xFF.toByte
+//  val HEADER_SIZE = 4
+//
+//  val IN_HEADER_TIMEOUT = Duration(10, TimeUnit.SECONDS)
+//
+//  val handler = context.actorOf(BinaryMessageHandler(connectionInfo))
+//
+//  startWith(ReceivingHeader, ReceivingData())
+//
+//  when (ReceivingHeader) {
+//    case Event(Received(data), ReceivingData(buffer)) =>
+//      @tailrec
+//      def constructPackets(data: Array[Byte]): State = {
+//        val dataLen = data.length
+//        if (dataLen >= HEADER_SIZE) {
+//          val fullData: Array[Byte] = data
+//
+//          if (data.head == HEADER_BYTE) {
+//            val packetId = data(1)
+//            val length = (data(3) << 8 & 0xFF00 | data(2) & 0xFF).toShort
+//
+//            if (dataLen >= length) {
+//              val packet = ByteString(fullData.slice(HEADER_SIZE, length))
+//
+//              handler ! BinaryPacket(packetId, packet)
+//
+//              constructPackets(fullData.drop(length))
+//            } else {
+//              stay using ReceivingData(fullData)
+//            }
+//          } else {
+//            stop()
+//          }
+//        } else if (dataLen == 0) {
+//          stay using ReceivingData()
+//        } else {
+//          stay using ReceivingData(data) forMax IN_HEADER_TIMEOUT
+//        }
+//      }
+//      constructPackets(buffer ++ data.toArray[Byte])
+//
+//    case Event(StateTimeout, _) =>
+//      stop()
+//  }
+//}

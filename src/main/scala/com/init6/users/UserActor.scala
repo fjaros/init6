@@ -484,6 +484,7 @@ class UserActor(connectionInfo: ConnectionInfo, var user: User, encoder: Encoder
     joinChannel(user.inChannel)
   }
 
+  //var joiningTime: Long = -1
   private def joinChannel(channel: String, forceJoin: Boolean = false) = {
     if (Flags.isAdmin(user) ||
       !Config().Server.Chat.enabled ||
@@ -491,6 +492,7 @@ class UserActor(connectionInfo: ConnectionInfo, var user: User, encoder: Encoder
     ) {
       implicit val timeout = Timeout(2, TimeUnit.SECONDS)
       //println(user.name + " - " + self + " - SENDING JOIN")
+      //if (joiningTime == -1) joiningTime = getAcceptingUptime.toNanos
       Await.result(channelsActor ? UserSwitchedChat(self, user, channel, connectionInfo.connectedTime), timeout.duration) match {
         case ChannelJoinResponse(event) =>
           //println(user.name + " - " + self + " - RECEIVED JOIN")

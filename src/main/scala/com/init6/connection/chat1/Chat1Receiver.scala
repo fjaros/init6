@@ -18,13 +18,18 @@ import scala.util.Random
 /**
   * Created by filip on 1/10/16.
   */
-object Chat1Receiver {
-  def apply(connectionInfo: ConnectionInfo) = Props(classOf[Chat1Receiver], connectionInfo)
-}
+//object Chat1Receiver {
+//  def apply(connectionInfo: ConnectionInfo) = Props(classOf[Chat1Receiver], connectionInfo)
+//}
+//
+//class Chat1Receiver(override val connectionInfo: ConnectionInfo) extends ChatReceiver {
+//
+//  override val handler = context.actorOf(Props(classOf[Chat1Handler], connectionInfo))
+//}
 
-class Chat1Receiver(override val connectionInfo: ConnectionInfo) extends ChatReceiver {
+object Chat1Handler {
 
-  override val handler = context.actorOf(Props(classOf[Chat1Handler], connectionInfo))
+  def apply(connectionInfo: ConnectionInfo) = Props(classOf[Chat1Handler], connectionInfo)
 }
 
 sealed trait Chat1State
@@ -44,7 +49,29 @@ class Chat1Handler(connectionInfo: ConnectionInfo) extends Init6KeepAliveActor w
   startWith(LoggingInChat1State, UserCredentials())
 
   when (LoggingInChat1State) {
-    case Event(Received(data), userCredentials: UserCredentials) =>
+    case Event(data: Array[ByteString], userCredentials: UserCredentials) =>
+      log.debug(">> {} Chat1 LoggingInChat1State", connectionInfo.actor)
+      val result = data.foldLeft((userCredentials, false)) {
+        case ((result, gotLogin), data) =>
+          val splt = data.utf8String.split(" ", 2)
+          val (command, value) = (splt.head, splt.last)
+
+          command match {
+            case "ACCT" => (result.copy(username = value), gotLogin)
+            case "AS" => (result.copy(alias = value), gotLogin)
+            case "PASS" => (result.copy(password = value), gotLogin)
+            case "HOME" => (result.copy(home = value), gotLogin)
+            case "LOGIN" => (result, true)
+            case _ => (result, gotLogin)
+          }
+      }
+      println(result._1)
+      if (result._2) {
+        login(result._1)
+      } else {
+        stay() using result._1
+      }
+    case Event(data: ByteString, userCredentials: UserCredentials) =>
       log.debug(">> {} Chat1 LoggingInChat1State", connectionInfo.actor)
       val splt = data.utf8String.split(" ", 2)
       val (command, value) = (splt.head, splt.last)
@@ -60,7 +87,7 @@ class Chat1Handler(connectionInfo: ConnectionInfo) extends Init6KeepAliveActor w
   }
 
   when (LoggedInChat1State) {
-    case Event(Received(data), loggedInUser: LoggedInUser) =>
+    case Event(data: ByteString, loggedInUser: LoggedInUser) =>
       keptAlive = 0
       loggedInUser.actor ! Received(data)
       stay()
@@ -110,7 +137,7 @@ class Chat1Handler(connectionInfo: ConnectionInfo) extends Init6KeepAliveActor w
   }
 
   when (ExpectingAckOfLoginMessages) {
-    case Event(Received(data), loggedInUser: LoggedInUser) =>
+    case Event(data: ByteString, loggedInUser: LoggedInUser) =>
       loggedInUser.userCredentials.packetsToProcess += data
       stay()
     case Event(WrittenOut, loggedInUser: LoggedInUser) =>
@@ -124,7 +151,7 @@ class Chat1Handler(connectionInfo: ConnectionInfo) extends Init6KeepAliveActor w
   }
 
   when (StoreExtraData) {
-    case Event(Received(data), buffer: UserCredentials) =>
+    case Event(data: ByteString, buffer: UserCredentials) =>
       buffer.packetsToProcess += data
       stay()
     case Event(UsersUserAdded(actor, user), buffer: UserCredentials) =>

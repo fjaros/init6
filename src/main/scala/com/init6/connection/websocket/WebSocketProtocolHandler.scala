@@ -6,8 +6,8 @@ import akka.actor.{ActorRef, FSM, Props}
 import akka.io.Tcp.Received
 import akka.util.ByteString
 import com.init6.Init6Actor
-import com.init6.connection.chat1.Chat1Receiver
-import com.init6.connection.{ConnectionInfo, WriteOut, WrittenOut}
+import com.init6.connection.chat1.Chat1Handler
+import com.init6.connection.{ChatReceiver, ConnectionInfo, WriteOut, WrittenOut}
 
 /**
   * Created by filip on 3/12/17.
@@ -30,7 +30,8 @@ case class WebSocketRawConnectionInfo(
 )
 case class WebSocketConnectedData(
   webSocketActor: ActorRef,
-  receiverActor: ActorRef
+  packetReceiver: ChatReceiver,
+  handlerActor: ActorRef
 )
 
 class WebSocketProtocolHandler(webSocketRawConnectionInfo: WebSocketRawConnectionInfo)
@@ -62,11 +63,12 @@ class WebSocketProtocolHandler(webSocketRawConnectionInfo: WebSocketRawConnectio
     case Event(data: ByteString, connectionInfo: ConnectionInfo) =>
       if (data.length >= 2) {
         if (data(0) == INIT6_CHAT && data(1) == INIT6_CHAT_1) {
-          val receiverActor = context.actorOf(Chat1Receiver(connectionInfo.copy(actor = self)))
+          val packetReceiver = new ChatReceiver
+          val handlerActor = context.actorOf(Chat1Handler(connectionInfo.copy(actor = self)))
           if (data.length > 2) {
-            receiverActor ! Received(data.drop(2))
+            packetReceiver.parsePacket(data.drop(2)).foreach(handlerActor ! _)
           }
-          goto(ExpectingData) using WebSocketConnectedData(connectionInfo.actor, receiverActor)
+          goto(ExpectingData) using WebSocketConnectedData(connectionInfo.actor, packetReceiver, handlerActor)
         } else {
           stop()
         }
@@ -78,10 +80,10 @@ class WebSocketProtocolHandler(webSocketRawConnectionInfo: WebSocketRawConnectio
   }
 
   when(ExpectingData) {
-    case Event(data: ByteString, WebSocketConnectedData(_, receiverActor)) =>
-      receiverActor ! Received(data)
+    case Event(data: ByteString, WebSocketConnectedData(_, packetReceiver, handlerActor)) =>
+      packetReceiver.parsePacket(data).foreach(handlerActor ! Received(_))
       stay()
-    case Event(WriteOut(data), WebSocketConnectedData(webSocketActor, _)) =>
+    case Event(WriteOut(data), WebSocketConnectedData(webSocketActor, _, handlerActor)) =>
       webSocketActor ! data
       sender() ! WrittenOut
       stay()

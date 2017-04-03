@@ -59,7 +59,7 @@ class TopCommandActor extends Init6Actor {
               case TelnetProtocol => "OLD CHAT"
               case _ => user.client.reverse
             }
-            sender() ! UserInfo(TOP_LIST(i + 1, user.name, client, connectionInfo.connectedTime, joinedPlace, user.inChannel))
+            sender() ! UserInfo(TOP_LIST(i + 1, user.name, client, connectionInfo.connectedTime, connectionInfo.firstPacketReceivedTime, joinedPlace, user.inChannel))
         }
   }
 }

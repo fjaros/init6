@@ -98,10 +98,10 @@ object Constants {
 
   val WHOAMI = (username: String, clientIp: String, client: String, channel: String, serverIp: String) => s"You are $username ($clientIp), using $client in the channel $channel on server $serverIp."
   val TOP_INFO = (number: Int, protocol: String, serverIp: String) => s"Showing the top $number $protocol connections on $serverIp:"
-  val TOP_LIST = (number: Int, username: String, client: String, connectedTime: Long, channelPlace: Int, channel: String) =>
+  val TOP_LIST = (number: Int, username: String, client: String, connectedTime: Long, firstPacketReceivedTime: Long, channelPlace: Int, channel: String) =>
     String.format(
-      "%1$-3s| %2$-16s| %3$-9s| %4$-10s| %5$-3s| %6$s",
-      number.toString, username, client, formatNanos(connectedTime), channelPlace.toString, channel
+      "%1$-3s| %2$-16s| %3$-9s| %4$-10s| %5$-10s| %6$-3s| %7$s",
+      number.toString, username, client, formatNanos(connectedTime), formatNanos(firstPacketReceivedTime), channelPlace.toString, channel
     )
 
   val THE_VOID = "The Void"

@@ -28,14 +28,14 @@ case class AuthenticatedUser(actor: ActorRef, user: User, packetsToProcess: muta
 /**
  * Created by filip on 9/19/15.
  */
-object TelnetMessageReceiver {
-  def apply(connectionInfo: ConnectionInfo) = Props(classOf[TelnetMessageReceiver], connectionInfo)
-}
-
-class TelnetMessageReceiver(override val connectionInfo: ConnectionInfo) extends ChatReceiver {
-
-  override val handler = context.actorOf(TelnetMessageHandler(connectionInfo))
-}
+//object TelnetMessageReceiver {
+//  def apply(connectionInfo: ConnectionInfo) = Props(classOf[TelnetMessageReceiver], connectionInfo)
+//}
+//
+//class TelnetMessageReceiver(override val connectionInfo: ConnectionInfo) extends ChatReceiver {
+//
+//  override val handler = context.actorOf(TelnetMessageHandler(connectionInfo))
+//}
 
 object TelnetMessageHandler {
   def apply(connectionInfo: ConnectionInfo) = Props(classOf[TelnetMessageHandler], connectionInfo)
@@ -56,12 +56,12 @@ class TelnetMessageHandler(connectionInfo: ConnectionInfo)
   }
 
   when (ExpectingUsername) {
-    case Event(Received(data), _) =>
+    case Event(data: ByteString, _) =>
       goto(ExpectingPassword) using UnauthenticatedUser(data.utf8String)
   }
 
   when (ExpectingPassword) {
-    case Event(Received(data), buffer: UnauthenticatedUser) =>
+    case Event(data: ByteString, buffer: UnauthenticatedUser) =>
       DAO.getUser(buffer.user).fold({
         connectionInfo.actor ! WriteOut(TelnetEncoder(TELNET_INCORRECT_USERNAME))
         stop()
@@ -86,7 +86,7 @@ class TelnetMessageHandler(connectionInfo: ConnectionInfo)
   }
 
   when (StoreExtraData) {
-    case Event(Received(data), buffer: UnauthenticatedUser) =>
+    case Event(data: ByteString, buffer: UnauthenticatedUser) =>
       buffer.packetsToProcess += data
       stay()
     case Event(UsersUserAdded(actor, user), buffer: UnauthenticatedUser) =>
@@ -99,14 +99,14 @@ class TelnetMessageHandler(connectionInfo: ConnectionInfo)
   }
 
   when (LoggedIn) {
-    case Event(Received(data), buffer: AuthenticatedUser) =>
+    case Event(data: ByteString, buffer: AuthenticatedUser) =>
       keptAlive = 0
       buffer.actor ! Received(data)
       stay()
   }
 
   when (ExpectingAckOfLoginMessages) {
-    case Event(Received(data), buffer: AuthenticatedUser) =>
+    case Event(data: ByteString, buffer: AuthenticatedUser) =>
       buffer.packetsToProcess += data
       stay()
     case Event(WrittenOut, buffer: AuthenticatedUser) =>

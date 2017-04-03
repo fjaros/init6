@@ -41,9 +41,9 @@ trait ChannelsPriorityGenerator extends Comparator[Envelope] {
       val m2 = o2.message.asInstanceOf[UserSwitchedChat]
 
       if (m1.connectionTimestamp > m2.connectionTimestamp) {
-        3
+        1
       } else {
-        2
+        -1
       }
     } else {
       gen(o1.message) - gen(o2.message)
