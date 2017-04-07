@@ -49,7 +49,7 @@ class Chat1Handler(connectionInfo: ConnectionInfo) extends Init6KeepAliveActor w
   startWith(LoggingInChat1State, UserCredentials())
 
   when (LoggingInChat1State) {
-    case Event(data: Array[ByteString], userCredentials: UserCredentials) =>
+    case Event(data: Seq[ByteString], userCredentials: UserCredentials) =>
       log.debug(">> {} Chat1 LoggingInChat1State", connectionInfo.actor)
       val result = data.foldLeft((userCredentials, false)) {
         case ((result, gotLogin), data) =>

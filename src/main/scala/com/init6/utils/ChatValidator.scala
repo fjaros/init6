@@ -12,4 +12,10 @@ object ChatValidator {
       b < 0 || b >= 32
     })
   }
+
+  def apply(data: Traversable[Byte]) = {
+    data.forall(b => {
+      b < 0 || b >= 32
+    })
+  }
 }

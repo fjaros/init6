@@ -12,42 +12,35 @@ import scala.collection.mutable.ArrayBuffer
   */
 trait PacketReceiver[T] {
 
-  val buffer = ArrayBuffer[Byte]()
+  var buffer = Vector[Byte]()
 
-  def parsePacket(data: ByteString): Array[T]
+  def parsePacket(data: ByteString): Seq[T] = {
+    buffer ++= data
+    parsePacketInternal(new ArrayBuffer)
+  }
+
+  protected def parsePacketInternal(result: ArrayBuffer[T]): ArrayBuffer[T]
 }
 
 class ChatReceiver extends PacketReceiver[ByteString] {
 
-  def parsePacket(data: ByteString): Array[ByteString] = {
-    @tailrec
-    def parsePacketInternal(data: ByteString, result: ArrayBuffer[ByteString]): ArrayBuffer[ByteString] = {
-      val readData = data.takeWhile(b => b != '\r' && b != '\n')
-      // sanity check
-      if (!ChatValidator(readData)) {
-        throw new IllegalArgumentException("Message contains illegal characters")
-      }
-
-      if (data.length == readData.length) {
-        // Split packet
-        buffer ++= readData
-      } else {
-        // End of packet found
-        if (buffer.nonEmpty) {
-          result += ByteString(buffer.toArray[Byte] ++ readData.toArray[Byte])
-          buffer.clear()
-        } else if (readData.nonEmpty) {
-          result += readData
-        }
-      }
-      val restOfData = data.drop(readData.length).dropWhile(b => b == '\r' || b == '\n')
-      if (restOfData.nonEmpty) {
-        parsePacketInternal(restOfData, result)
-      } else {
-        result
-      }
+  @tailrec
+  override final protected def parsePacketInternal(result: ArrayBuffer[ByteString]): ArrayBuffer[ByteString] = {
+    val packet = buffer.takeWhile(b => b != '\r' && b != '\n')
+    // sanity check
+    if (!ChatValidator(packet)) {
+      throw new IllegalArgumentException("Message contains illegal characters")
     }
-    parsePacketInternal(data, new ArrayBuffer()).toArray
+
+    if (buffer.length > packet.length) {
+      buffer = buffer.drop(packet.length).dropWhile(b => b == '\r' || b == '\n')
+      if (packet.nonEmpty) {
+        result += ByteString(packet.toArray)
+      }
+      parsePacketInternal(result)
+    } else {
+      result
+    }
   }
 }
 
@@ -56,33 +49,32 @@ class BinaryReceiver extends PacketReceiver[BinaryPacket] {
   val HEADER_BYTE = 0xFF.toByte
   val HEADER_SIZE = 4
 
-  def parsePacket(data: ByteString): Array[BinaryPacket] = {
-    @tailrec
-    def parsePacketInternal(data: ByteString, result: ArrayBuffer[BinaryPacket]): ArrayBuffer[BinaryPacket] = {
-      val dataLen = data.length
-      if (dataLen >= HEADER_SIZE) {
-        if (data.head == HEADER_BYTE) {
-          val packetId = data(1)
-          val length = (data(3) << 8 & 0xFF00 | data(2) & 0xFF).toShort
+  @tailrec
+  override final protected def parsePacketInternal(result: ArrayBuffer[BinaryPacket]): ArrayBuffer[BinaryPacket] = {
+    if (buffer.length >= HEADER_SIZE) {
+      if (buffer.head == HEADER_BYTE) {
+        val packetId = buffer(1)
+        val length = (buffer(3) << 8 & 0xFF00 | buffer(2) & 0xFF).toShort
 
-          if (dataLen >= length) {
-            val packet = data.slice(HEADER_SIZE, length)
+        if (buffer.length >= length) {
+          val packet = buffer.slice(HEADER_SIZE, length)
 
-            result += BinaryPacket(packetId, packet)
+          result += BinaryPacket(packetId, ByteString(packet.toArray))
 
-            parsePacketInternal(data.drop(length), result)
+          buffer = buffer.drop(length)
+          if (buffer.nonEmpty) {
+            parsePacketInternal(result)
           } else {
-            buffer ++= data
             result
           }
         } else {
-          throw new IllegalArgumentException("Header identifier is invalid")
+          result
         }
       } else {
-        buffer ++= data
-        result
+        throw new IllegalArgumentException("Header identifier is invalid")
       }
+    } else {
+      result
     }
-    parsePacketInternal(data, new ArrayBuffer()).toArray
   }
 }
