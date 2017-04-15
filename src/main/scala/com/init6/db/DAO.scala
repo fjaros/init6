@@ -52,7 +52,9 @@ object DAO {
       rs.get[Array[Byte]](4),
       rs.get[Array[Byte]](5),
       rs.boolean(6),
-      rs.string(7)
+      rs.string(7),
+      rs.long(8),
+      rs.long(9)
     )
   }
 
@@ -66,7 +68,8 @@ object DAO {
     password_hash: Option[Array[Byte]] = None,
     flags: Option[Int] = None,
     closed: Option[Boolean] = None,
-    closed_reason: Option[String] = None
+    closed_reason: Option[String] = None,
+    last_logged_in: Option[Long] = None
   ) = {
     getUser(username).foreach(dbUser => {
       userCache.update(username, dbUser.copy(
@@ -74,7 +77,8 @@ object DAO {
         password_hash = password_hash.getOrElse(dbUser.password_hash),
         flags = flags.getOrElse(dbUser.flags),
         closed = closed.getOrElse(dbUser.closed),
-        closed_reason = closed_reason.getOrElse(dbUser.closed_reason)
+        closed_reason = closed_reason.getOrElse(dbUser.closed_reason),
+        last_logged_in = last_logged_in.getOrElse(dbUser.last_logged_in)
       ))
     })
   }
@@ -90,14 +94,18 @@ object DAO {
               DbUser.column.username -> sqls.?,
               DbUser.column.alias_id -> sqls.?,
               DbUser.column.password_hash -> sqls.?,
-              DbUser.column.flags -> sqls.?
+              DbUser.column.flags -> sqls.?,
+              DbUser.column.created -> sqls.?,
+              DbUser.column.last_logged_in -> sqls.?
             )
         }.batch(inserted.map(
           dbUser => Seq(
             dbUser.username,
             dbUser.alias_id,
             dbUser.password_hash,
-            dbUser.flags
+            dbUser.flags,
+            dbUser.created,
+            dbUser.last_logged_in
           )
         ).toSeq: _*)
           .apply()
@@ -116,7 +124,9 @@ object DAO {
               DbUser.column.password_hash -> sqls.?,
               DbUser.column.flags -> sqls.?,
               DbUser.column.closed -> sqls.?,
-              DbUser.column.closed_reason -> sqls.?
+              DbUser.column.closed_reason -> sqls.?,
+              DbUser.column.created -> sqls.?,
+              DbUser.column.last_logged_in -> sqls.?
             )
               .where.eq(DbUser.column.column("id"), sqls.?) // applyDynamic does not support passing a vararg parameter?
         }.batch(
@@ -128,6 +138,8 @@ object DAO {
               dbUser.flags,
               dbUser.closed,
               dbUser.closed_reason,
+              dbUser.created,
+              dbUser.last_logged_in,
               dbUser.id
             )
           ).toSeq: _*)

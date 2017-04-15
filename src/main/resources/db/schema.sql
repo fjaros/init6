@@ -14,6 +14,8 @@ CREATE TABLE IF NOT EXISTS users (
     flags BIT(32) NOT NULL DEFAULT 0,
     closed BOOLEAN DEFAULT FALSE,
     closed_reason VARCHAR(255),
+    created BIGINT NOT NULL,
+    last_logged_in BIGINT NOT NULL,
     PRIMARY KEY(id),
     UNIQUE KEY(username)
 );

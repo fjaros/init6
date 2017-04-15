@@ -44,8 +44,10 @@ private[db] class UserCache(dbUsers: List[DbUser]) {
   def get(username: String) = cache.get(username)
 
   def insert(username: String, password_hash: Array[Byte]) = {
+    val now = System.currentTimeMillis
     val newUser = username.toLowerCase
-    cache += newUser -> DbUser(username = newUser, password_hash = password_hash)
+    cache += newUser -> DbUser(username = newUser, password_hash = password_hash,
+      created = now, last_logged_in = now)
     inserted += username.toLowerCase
   }
 

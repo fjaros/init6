@@ -10,7 +10,9 @@ case class DbUser(
   password_hash: Array[Byte],
   flags: Int = 0,
   closed: Boolean = false,
-  closed_reason: String = ""
+  closed_reason: String = "",
+  created: Long,
+  last_logged_in: Long
 )
 
 
