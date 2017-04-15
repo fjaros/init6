@@ -6,6 +6,7 @@ import com.init6.Config
 import com.init6.utils.CaseInsensitiveHashMap
 
 import scala.collection.mutable
+import scala.concurrent.duration.Duration
 import scala.util.Try
 
 /**

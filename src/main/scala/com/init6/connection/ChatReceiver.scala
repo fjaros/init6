@@ -12,11 +12,11 @@ import scala.collection.mutable.ArrayBuffer
   */
 trait PacketReceiver[T] {
 
-  var buffer = Vector[Byte]()
+  var buffer = Vector.empty[Byte]
 
   def parsePacket(data: ByteString): Seq[T] = {
     buffer ++= data
-    parsePacketInternal(new ArrayBuffer)
+    parsePacketInternal(ArrayBuffer.empty)
   }
 
   protected def parsePacketInternal(result: ArrayBuffer[T]): ArrayBuffer[T]
@@ -51,28 +51,26 @@ class BinaryReceiver extends PacketReceiver[BinaryPacket] {
 
   @tailrec
   override final protected def parsePacketInternal(result: ArrayBuffer[BinaryPacket]): ArrayBuffer[BinaryPacket] = {
-    if (buffer.length >= HEADER_SIZE) {
-      if (buffer.head == HEADER_BYTE) {
-        val packetId = buffer(1)
-        val length = (buffer(3) << 8 & 0xFF00 | buffer(2) & 0xFF).toShort
+    if (buffer.length < HEADER_SIZE) {
+      return result
+    }
 
-        if (buffer.length >= length) {
-          val packet = buffer.slice(HEADER_SIZE, length)
+    if (buffer.head != HEADER_BYTE) {
+      throw new IllegalArgumentException("Header identifier is invalid")
+    }
+    
+    val length = (buffer(3) << 8 & 0xFF00 | buffer(2) & 0xFF).toShort
+    if (buffer.length < length) {
+      return result
+    }
 
-          result += BinaryPacket(packetId, ByteString(packet.toArray))
+    val packetId = buffer(1)
+    val packet = buffer.slice(HEADER_SIZE, length)
 
-          buffer = buffer.drop(length)
-          if (buffer.nonEmpty) {
-            parsePacketInternal(result)
-          } else {
-            result
-          }
-        } else {
-          result
-        }
-      } else {
-        throw new IllegalArgumentException("Header identifier is invalid")
-      }
+    result += BinaryPacket(packetId, ByteString(packet.toArray))
+    buffer = buffer.drop(length)
+    if (buffer.nonEmpty) {
+      parsePacketInternal(result)
     } else {
       result
     }

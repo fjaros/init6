@@ -26,7 +26,7 @@ ssh -p22022 -f i6serverhost@205.234.159.242 "./k.sh"
 
 #ssh -p22022 -f i6serverhost@50.2.212.132 "./k.sh"
 
-sleep 10
+sleep 15
 
 for i in $(seq 1 1 3|sort -R); do
     if [ $i -eq 1 ]; then
@@ -36,7 +36,7 @@ for i in $(seq 1 1 3|sort -R); do
     elif [ $i -eq 3 ]; then
         ssh -p22022 -f i6serverhost@dal.wserv.org "cp init6.jar.new init6/init6.jar; cd init6; ./start.sh &> /dev/null"
     fi
-    sleep 20
+    sleep 12
 done
 
 ssh -p22022 -f i6serverhost@chat.wserv.org "cp init6.jar.new init6/init6.jar; cd init6; ./start.sh &> /dev/null"

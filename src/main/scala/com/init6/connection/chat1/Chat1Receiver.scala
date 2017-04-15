@@ -65,7 +65,7 @@ class Chat1Handler(connectionInfo: ConnectionInfo) extends Init6KeepAliveActor w
             case _ => (result, gotLogin)
           }
       }
-      println(result._1)
+
       if (result._2) {
         login(result._1)
       } else {

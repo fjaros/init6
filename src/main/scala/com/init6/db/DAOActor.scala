@@ -38,7 +38,7 @@ case class DAOFriendsListToMsg(userId: Long, msg: String) extends Command
 case class DAOFriendsListToMsgResponse(friends: Seq[DbFriend], msg: String) extends Command
 case class DAOFriendsRemove(userId: Long, who: String) extends Command
 case class DAOFriendsRemoveResponse(friends: Seq[DbFriend], removedFriend: DbFriend) extends Command
-case class DAOUpdateLoggedInTime(userId: Long) extends Command
+case class DAOUpdateLoggedInTime(username: String) extends Command
 
 class DAOActor extends Init6RemotingActor {
 
@@ -140,5 +140,8 @@ class DAOActor extends Init6RemotingActor {
             }
           })
         })
+
+    case DAOUpdateLoggedInTime(username) =>
+      DAO.updateUser(username, last_logged_in = Some(System.currentTimeMillis))
   }
 }

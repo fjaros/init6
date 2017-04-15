@@ -92,7 +92,7 @@ class UsersActor extends Init6RemotingActor with Init6LoggingActor {
 
     remoteActors.foreach(_ ! RemoteAdd(userActor, user.name))
     if (user.id != 0) {
-      daoActor ! DAOUpdateLoggedInTime(user.id)
+      daoActor ! DAOUpdateLoggedInTime(user.name)
     }
 
     // reply to sender
