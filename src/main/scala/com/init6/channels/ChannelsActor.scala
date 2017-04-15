@@ -132,7 +132,7 @@ class ChannelsActor extends Init6RemotingActor {
       //println(getAcceptingUptime.toNanos + " - " + user.name)
       val userActor = sender()
       Try {
-        Await.result(getOrCreate(channel) ? AddUser(actor, user), timeout.duration) match {
+        Await.result(getOrCreate(channel) ? AddUser(actor, user, connectionTimestamp), timeout.duration) match {
           case reply: UserAddedToChannel =>
             if (!user.inChannel.equalsIgnoreCase(channel)) {
               channels.get(user.inChannel).foreach {
@@ -221,11 +221,11 @@ class ChannelsActor extends Init6RemotingActor {
       //println("##RemUser " + c + " - " + sender() + " - " + remoteActors)
       channels.values.map(_._2).foreach(_ ! c)
 
-    case StartRP =>
-      channels.values.map(_._2).foreach(_ ! StartRP)
-
-    case EndRP =>
-      channels.values.map(_._2).foreach(_ ! EndRP)
+//    case StartRP =>
+//      channels.values.map(_._2).foreach(_ ! StartRP)
+//
+//    case EndRP =>
+//      channels.values.map(_._2).foreach(_ ! EndRP)
   }
 
   def getChannel(name: String): Option[ActorRef] = {

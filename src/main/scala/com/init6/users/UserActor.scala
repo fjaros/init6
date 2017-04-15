@@ -337,10 +337,10 @@ class UserActor(connectionInfo: ConnectionInfo, var user: User, encoder: Encoder
           ipLimiterActor ! PrintConnectionLimit
         case PrintLoginLimit =>
           usersActor ! PrintLoginLimit
-        case StartRP =>
-          channelsActor ! StartRP
-        case EndRP =>
-          channelsActor ! EndRP
+//        case StartRP =>
+//          channelsActor ! StartRP
+//        case EndRP =>
+//          channelsActor ! EndRP
         case c : RepeatingAnnoucement =>
           serverAnnouncementActor ! c
         case _ =>

@@ -17,7 +17,7 @@ ssh -p22022 -f i6serverhost@dal.wserv.org "crontab -r"
 ssh -p22022 -f i6serverhost@chat.wserv.org "crontab -r"
 ssh -p22022 -f i6serverhost@205.234.159.242 "crontab -r"
 
-sleep 1
+sleep 2
 
 ssh -p22022 -f i6serverhost@216.244.82.98 "./k.sh"
 ssh -p22022 -f i6serverhost@dal.wserv.org "./k.sh"

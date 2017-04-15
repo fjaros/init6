@@ -12,11 +12,36 @@ import com.typesafe.config.Config
   */
 class ChannelMailbox(settings: ActorSystem.Settings, config: Config)
   extends UnboundedStablePriorityMailbox(
-    PriorityGenerator {
+    ChannelPriorityGenerator {
       case ChatCommand | EmoteCommand => 1
       case _ => 2
     }
   )
+
+object ChannelPriorityGenerator {
+  def apply(priorityFunction: Any => Int): ChannelsPriorityGenerator =
+    (message: Any) => priorityFunction(message)
+}
+
+trait ChannelPriorityGenerator extends Comparator[Envelope] {
+  def gen(message: Any): Int
+
+  override def compare(o1: Envelope, o2: Envelope) = {
+    if (o1.message.isInstanceOf[AddUser] && o2.message.isInstanceOf[AddUser]) {
+      val m1 = o1.message.asInstanceOf[AddUser]
+      val m2 = o2.message.asInstanceOf[AddUser]
+
+      if (m1.connectionTimestamp > m2.connectionTimestamp) {
+        1
+      } else {
+        -1
+      }
+    } else {
+      gen(o1.message) - gen(o2.message)
+    }
+  }
+}
+
 
 class ChannelsMailbox(settings: ActorSystem.Settings, config: Config)
   extends UnboundedStablePriorityMailbox(

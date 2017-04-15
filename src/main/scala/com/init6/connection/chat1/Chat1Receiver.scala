@@ -18,15 +18,6 @@ import scala.util.Random
 /**
   * Created by filip on 1/10/16.
   */
-//object Chat1Receiver {
-//  def apply(connectionInfo: ConnectionInfo) = Props(classOf[Chat1Receiver], connectionInfo)
-//}
-//
-//class Chat1Receiver(override val connectionInfo: ConnectionInfo) extends ChatReceiver {
-//
-//  override val handler = context.actorOf(Props(classOf[Chat1Handler], connectionInfo))
-//}
-
 object Chat1Handler {
 
   def apply(connectionInfo: ConnectionInfo) = Props(classOf[Chat1Handler], connectionInfo)

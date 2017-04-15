@@ -57,7 +57,7 @@ case class TopicExchange(
   timestamp: Long = 0
 ) extends Command
 
-case class AddUser(actor: ActorRef, user: User) extends Command
+case class AddUser(actor: ActorRef, user: User, connectionTimestamp: Long) extends Command
 case class RemUser(actor: ActorRef) extends Command with Remotable
 case class UserAddedToChannel(user: User, channelName: String, channelFlags: Long, channelActor: ActorRef, topicExchange: TopicExchange, channelSize: Int)
 case object CheckSize extends Command
@@ -285,7 +285,7 @@ trait ChannelActor extends Init6RemotingActor {
         .values
         .foreach(userActor ! UserIn(_))
 
-    case c@ AddUser(actor, user) => add(actor, user)
+    case c@ AddUser(actor, user, _) => add(actor, user)
     case RemUser(actor) => rem(actor)
     case CheckSize => sender() ! ChannelSize(self, name, users.size)
     case ChannelsCommand => sender() ! ChannelInfo(name, users.size, topicExchange.topic, creationTime)

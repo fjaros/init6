@@ -117,8 +117,8 @@ object CommandDecoder {
           // Admin commands
           case "broadcast" | "bcast" => BroadcastCommand(message)
           case "rbroadcast" | "rbcast" => RepeatingBroadcast(message)
-          case "diabot" => StartRP
-          case "quitdiabot" => EndRP
+//          case "diabot" => StartRP
+//          case "quitdiabot" => EndRP
           case "closeaccount" => CloseAccountCommand(user, message)
           case "openaccount" => OpenAccountCommand(user, message)
           case "disconnect" | "dc" => DisconnectCommand(message)
