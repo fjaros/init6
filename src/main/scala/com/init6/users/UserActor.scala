@@ -278,6 +278,12 @@ class UserActor(connectionInfo: ConnectionInfo, var user: User, encoder: Encoder
           } else {
             topCommandActor ! command
           }
+        case command: GetRankingCommand =>
+          if (command.serverIp != Config().Server.host) {
+            system.actorSelection(remoteAddress(command.serverIp, INIT6_RANKING_PATH)) ! command
+          } else {
+            rankingActor ! command
+          }
         case PlaceOfSelfCommand => encodeAndSend(UserInfo(PLACED(connectionInfo.place, Config().Server.host)))
         case command @ PlaceOnServerCommand(serverIp) =>
           if (command.serverIp != Config().Server.host) {

@@ -40,6 +40,20 @@ class Chat1Handler(connectionInfo: ConnectionInfo) extends Init6KeepAliveActor w
   startWith(LoggingInChat1State, UserCredentials())
 
   when (LoggingInChat1State) {
+    case Event(data: ByteString, userCredentials: UserCredentials) =>
+      log.debug(">> {} Chat1 LoggingInChat1State", connectionInfo.actor)
+      val splt = data.utf8String.split(" ", 2)
+      val (command, value) = (splt.head, splt.last)
+
+      command match {
+        case "ACCT" => stay using userCredentials.copy(username = value)
+        case "AS" => stay using userCredentials.copy(alias = value)
+        case "PASS" => stay using userCredentials.copy(password = value)
+        case "HOME" => stay using userCredentials.copy(home = value)
+        case "LOGIN" => login(userCredentials)
+        case _ => stop()
+      }
+
     case Event(data: Seq[ByteString], userCredentials: UserCredentials) =>
       log.debug(">> {} Chat1 LoggingInChat1State", connectionInfo.actor)
       val result = data.foldLeft((userCredentials, false)) {
@@ -61,19 +75,6 @@ class Chat1Handler(connectionInfo: ConnectionInfo) extends Init6KeepAliveActor w
         login(result._1)
       } else {
         stay() using result._1
-      }
-    case Event(data: ByteString, userCredentials: UserCredentials) =>
-      log.debug(">> {} Chat1 LoggingInChat1State", connectionInfo.actor)
-      val splt = data.utf8String.split(" ", 2)
-      val (command, value) = (splt.head, splt.last)
-
-      command match {
-        case "ACCT" => stay using userCredentials.copy(username = value)
-        case "AS" => stay using userCredentials.copy(alias = value)
-        case "PASS" => stay using userCredentials.copy(password = value)
-        case "HOME" => stay using userCredentials.copy(home = value)
-        case "LOGIN" => login(userCredentials)
-        case _ => stop()
       }
   }
 

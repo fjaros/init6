@@ -3,6 +3,8 @@ package com.init6
 import java.net.InetSocketAddress
 import java.text.DecimalFormat
 
+import com.init6.db.DAO.Ranking
+
 /**
  * Created by filip on 10/2/15.
  */
@@ -24,6 +26,7 @@ object Constants {
   val INIT6_CHANNELS_PATH = "Channels"
   val INIT6_USERS_PATH = "Users"
   val INIT6_IP_LIMITER_PATH = "IpLimiter"
+  val INIT6_RANKING_PATH = "Ranking"
   val INIT6_TOP_COMMAND_PATH = "TopCommand"
   val INIT6_SERVER_ANNOUNCEMENT_PATH = "ServerAnnouncement"
   val CHANNEL_DISPATCHER = "channel-dispatcher"
@@ -145,6 +148,18 @@ object Constants {
 
   val ROLL_FORMAT = "Roll command format is /roll min-max"
   val ROLL_INFO = (name: String, roll: Int, minRoll: Int, maxRoll: Int) => s"$name rolls $roll ($minRoll-$maxRoll)"
+
+  val RANKINGS_NOT_YET_READY = "Rankings are not calculated yet. Try again in 30 seconds."
+  val RANKINGS_NOT_AVAILABLE = (channel: String) => s"Channel $channel has no rankings."
+  val RANKINGS_HEADER = (channel: String, serverIp: String) => Array(
+    s"Rankings for channel $channel on $serverIp:",
+    "Rank | Account         | Times On Ops"
+  )
+  val RANKING_FORMAT = (rank: Int, rankings: Ranking) =>
+    String.format(
+      "%1$-5s| %2$-16s| %3$-12s",
+      rank.toString, rankings.account_name, rankings.times_grabbed.toString
+    )
 
   def isChatProtocol(client: String) = {
     client match {

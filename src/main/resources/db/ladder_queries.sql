@@ -53,14 +53,15 @@ SELECT tbl.* FROM (
         WHEN server_id=3 THEN 'seattle'
         END as server,
         channel,
-        accounts.username as account,
+        user_id,
+        accounts.username as account_name,
         SUM(is_operator) as times_grabbed
 
     FROM channel_joins
     JOIN users accounts
     ON channel_joins.alias_id = accounts.id
 
-    WHERE channel in ('dark','dark realm','hell','war','sex','war room','bar','warez')
+    WHERE channel in ('dark','dark realm','hell','war','sex','war room','bar','warez','dark gates')
     AND server_id in (1,2,3)
 
     GROUP BY accounts.username, channel
@@ -74,6 +75,7 @@ SELECT tbl.* FROM (
         WHEN server_id=3 THEN 'seattle'
         END as server,
         channel,
+        user_id,
         accounts.username as account,
         SUM(is_operator) as times_grabbed
 
@@ -86,5 +88,5 @@ SELECT tbl.* FROM (
     AND channel_joins.alias_id IS NULL
 
     GROUP BY accounts.username, channel
-) tbl WHERE times_grabbed > 0
+) tbl WHERE times_grabbed > 1
 ORDER BY channel, times_grabbed DESC;

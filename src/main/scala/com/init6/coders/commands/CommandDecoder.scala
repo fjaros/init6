@@ -5,6 +5,7 @@ import com.init6.Constants._
 import com.init6.ReloadConfig
 import com.init6.channels._
 import com.init6.db.ReloadDb
+import com.init6.users.GetRankingCommand
 
 /**
   * Created by filip on 9/21/15.
@@ -92,6 +93,7 @@ object CommandDecoder {
         case "ops" => OneCommand(WhoCommand(user, message, opsOnly = true), WhoCommand(user, user.inChannel, opsOnly = true))
         case "place" => PlaceCommand(user, message)
         case "pong" => PongCommand(message)
+        case "rank" => RankCommand(user, message)
         case "rejoin" | "rj" => RejoinCommand
         case "reply" | "r" => ReplyCommand(message)
         case "roll" => RollCommand(user, message)

@@ -8,7 +8,7 @@ import com.init6.connection.websocket.WebSocketConnectionHandler
 import com.init6.connection.{ConnectionHandler, IpLimitActor}
 import com.init6.db.{DAO, DAOActor}
 import com.init6.servers.{ServerAnnouncementActor, ServerRegistry}
-import com.init6.users.{TopCommandActor, UsersActor}
+import com.init6.users.{RankingActor, TopCommandActor, UsersActor}
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
@@ -27,6 +27,7 @@ object Init6 extends App with Init6Component {
   UsersActor()
   ChannelsActor()
   TopCommandActor()
+  RankingActor()
   ServerAnnouncementActor(args(0).toLong)
 
   val random = new Random(System.nanoTime())

@@ -242,4 +242,49 @@ object DAO {
         .apply()
     }
   }
+
+  case class Ranking(server_id: Int, channel: String, user_id: Long, account_name: String, times_grabbed: Int)
+  def getRankings: Seq[Ranking] = {
+    DB localTx { implicit session =>
+      sql"""
+           SELECT tbl.* FROM (
+               SELECT
+                   server_id,
+                   channel,
+                   user_id,
+                   accounts.username,
+                   SUM(is_operator) as times_grabbed
+
+               FROM channel_joins
+               JOIN users accounts
+               ON channel_joins.alias_id = accounts.id
+
+               WHERE server_id = ${Config().Server.serverId}
+
+               GROUP BY accounts.username, channel
+
+               UNION ALL
+
+               SELECT
+                   server_id,
+                   channel,
+                   user_id,
+                   accounts.username,
+                   SUM(is_operator) as times_grabbed
+
+               FROM channel_joins
+               JOIN users accounts
+               ON channel_joins.user_id = accounts.id
+
+               WHERE server_id = ${Config().Server.serverId}
+               AND channel_joins.alias_id IS NULL
+
+               GROUP BY accounts.username, channel
+           ) tbl WHERE times_grabbed > 0
+           ORDER BY times_grabbed DESC
+      """.map(rs => {
+        Ranking(rs.int(1), rs.string(2), rs.long(3), rs.string(4), rs.int(5))
+      }).list().apply()
+    }
+  }
 }
