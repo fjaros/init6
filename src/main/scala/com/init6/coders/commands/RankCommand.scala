@@ -1,7 +1,7 @@
 package com.init6.coders.commands
 
 import com.init6.Config
-import com.init6.channels.{User, UserError}
+import com.init6.channels.User
 import com.init6.users.GetRankingCommand
 
 /**

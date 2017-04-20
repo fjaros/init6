@@ -38,11 +38,11 @@ class RankingActor extends Init6Actor {
           result
             .get(ranking.channel)
             .fold({
-              val channelRankings = new ArrayBuffer[Ranking](10)
+              val channelRankings = new ArrayBuffer[Ranking](20)
               channelRankings += ranking
               result + (ranking.channel -> channelRankings)
             })(channelRankings => {
-              if (channelRankings.length < 10) {
+              if (channelRankings.length < 20) {
                 channelRankings += ranking
               }
               result
