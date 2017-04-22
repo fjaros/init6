@@ -62,11 +62,25 @@ trait BannableChannelActor extends ChannelActor {
     .orElse(super.receiveEvent)
 
   override def add(actor: ActorRef, user: User): User = {
-    if (isLocal(actor) && !Flags.isAdmin(user) && bannedUsers(user.name)) {
-      if (isLocal()) {
-        sender() ! UserError(YOU_BANNED)
+    if (isLocal(actor) && !Flags.isAdmin(user)) {
+      val bannedBy = bannedUsers(user.name)
+        .filter(actor => {
+          if (users.contains(actor)) {
+            true
+          } else {
+            bannedUsers -= actor
+            false
+          }
+        })
+
+      if (bannedBy.nonEmpty) {
+        if (isLocal()) {
+          sender() ! UserError(YOU_BANNED)
+        }
+        user
+      } else {
+        super.add(actor, user)
       }
-      user
     } else {
       super.add(actor, user)
     }
@@ -135,7 +149,7 @@ trait BannableChannelActor extends ChannelActor {
     users.get(unbanningActor)
       .map(_.name)
       .foreach(unbanning => {
-        if (bannedUsers(unbanned)) {
+        if (bannedUsers(unbanned).nonEmpty) {
           bannedUsers -= unbanned
           localUsers ! UserInfo(USER_UNBANNED(unbanning, unbanned))
         } else {
@@ -166,7 +180,7 @@ trait BannableChannelActor extends ChannelActor {
   }
 
   override def whoCommand(actor: ActorRef, user: User, opsOnly: Boolean) = {
-    if (Flags.isAdmin(user) || !bannedUsers(user.name)) {
+    if (Flags.isAdmin(user) || bannedUsers(user.name).isEmpty) {
       super.whoCommand(actor, user, opsOnly)
     } else {
       actor ! WhoCommandError(NOT_ALLOWED_TO_VIEW)

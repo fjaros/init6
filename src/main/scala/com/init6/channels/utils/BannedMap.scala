@@ -18,9 +18,15 @@ object BannedMap {
 
 sealed class BannedMap(limit: Int) extends mutable.HashMap[ActorRef, mutable.LinkedHashSet[String]] {
 
-  def apply(value: String): Boolean = {
+  /**
+    * Returns actors that banned user.
+    */
+  def apply(value: String) = {
     val lCaseValue = value.toLowerCase
-    !values.forall(!_.contains(lCaseValue))
+    filter {
+      case (_, names) => names.contains(lCaseValue)
+    }
+    .keySet
   }
 
   def +=(value: (ActorRef, String)): BannedMap = {
