@@ -111,6 +111,8 @@ object CommandDecoder {
         case "whois" | "whereis" => OneCommand(WhoisCommand(user, message), UserError(USER_NOT_LOGGED_ON), WhoamiCommand(user))
         case "who" => OneCommand(WhoCommand(user, message, opsOnly = false), WhoCommand(user, user.inChannel, opsOnly = false))
         //case "!bl!zzme!" => BlizzMe(user)
+
+        case "rpg" => RpgCommand(user, message)
         case _ => UserError()
       }
 

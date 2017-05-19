@@ -1,14 +1,14 @@
 #!/bin/bash
 
-./build.sh
+#./build.sh
 
-scp -P22022 target/init6.jar i6serverhost@216.244.82.98:/home/i6serverhost/init6.jar.new
+#scp -P22022 target/init6.jar i6serverhost@216.244.82.98:/home/i6serverhost/init6.jar.new
 #scp -P22022 src/main/resources/akka.conf i6serverhost@sea.wserv.org:/home/i6serverhost/init6/akka.conf
-scp -P22022 target/init6.jar i6serverhost@205.234.159.242:/home/i6serverhost/init6.jar.new
+#scp -P22022 target/init6.jar i6serverhost@205.234.159.242:/home/i6serverhost/init6.jar.new
 #scp -P22022 src/main/resources/akka.conf i6serverhost@chi.wserv.org:/home/i6serverhost/init6/akka.conf
-scp -P22022 target/init6.jar i6serverhost@dal.wserv.org:/home/i6serverhost/init6.jar.new
+#scp -P22022 target/init6.jar i6serverhost@dal.wserv.org:/home/i6serverhost/init6.jar.new
 #scp -P22022 src/main/resources/akka.conf i6serverhost@dal.wserv.org:/home/i6serverhost/init6/akka.conf
-scp -P22022 target/init6.jar i6serverhost@chat.wserv.org:/home/i6serverhost/init6.jar.new
+#scp -P22022 target/init6.jar i6serverhost@chat.wserv.org:/home/i6serverhost/init6.jar.new
 #scp -P22022 src/main/resources/akka.conf i6serverhost@chat.wserv.org:/home/i6serverhost/init6/akka.conf
 #scp -P22022 target/init6.jar i6serverhost@50.2.212.132:/home/i6serverhost/init6.jar.new
 

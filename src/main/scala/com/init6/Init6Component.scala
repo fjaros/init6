@@ -20,6 +20,7 @@ private[init6] trait Init6Component {
   val usersActor = system.actorSelection(s"/user/$INIT6_USERS_PATH")
   val ipLimiterActor = system.actorSelection(s"/user/$INIT6_IP_LIMITER_PATH")
   val rankingActor = system.actorSelection(s"/user/$INIT6_RANKING_PATH")
+  val rpgActor = system.actorSelection(s"/user/$INIT6_RPG_PATH")
   val topCommandActor = system.actorSelection(s"/user/$INIT6_TOP_COMMAND_PATH")
   val serverRegistry = system.actorSelection(s"/user/$INIT6_SERVER_REGISTRY_PATH")
   val serverAnnouncementActor = system.actorSelection(s"/user/$INIT6_SERVER_ANNOUNCEMENT_PATH")

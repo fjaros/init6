@@ -16,6 +16,7 @@ import com.init6.coders.commands._
 import com.init6.coders.telnet._
 import com.init6.connection.{ConnectionInfo, IpBan, WriteOut}
 import com.init6.db._
+import com.init6.rpg.RpgCommand
 import com.init6.servers.{RepeatingAnnoucement, SendBirth, SplitMe}
 import com.init6.utils.FutureCollector.futureSeqToFutureCollector
 import com.init6.utils.{CaseInsensitiveHashSet, ChatValidator}
@@ -349,6 +350,8 @@ class UserActor(connectionInfo: ConnectionInfo, var user: User, encoder: Encoder
 //          channelsActor ! EndRP
         case c : RepeatingAnnoucement =>
           serverAnnouncementActor ! c
+        case c : RpgCommand =>
+          rpgActor ! c
         case _ =>
       }
 

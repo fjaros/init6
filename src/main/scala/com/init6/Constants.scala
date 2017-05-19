@@ -27,6 +27,7 @@ object Constants {
   val INIT6_USERS_PATH = "Users"
   val INIT6_IP_LIMITER_PATH = "IpLimiter"
   val INIT6_RANKING_PATH = "Ranking"
+  val INIT6_RPG_PATH = "Rpg"
   val INIT6_TOP_COMMAND_PATH = "TopCommand"
   val INIT6_SERVER_ANNOUNCEMENT_PATH = "ServerAnnouncement"
   val CHANNEL_DISPATCHER = "channel-dispatcher"
