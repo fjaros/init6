@@ -7,7 +7,6 @@ import com.init6.channels.ChannelsActor
 import com.init6.connection.websocket.WebSocketConnectionHandler
 import com.init6.connection.{ConnectionHandler, IpLimitActor}
 import com.init6.db.{DAO, DAOActor}
-import com.init6.rpg.RpgActor
 import com.init6.servers.{ServerAnnouncementActor, ServerRegistry}
 import com.init6.users.{RankingActor, TopCommandActor, UsersActor}
 
@@ -23,14 +22,12 @@ object Init6 extends App with Init6Component {
   DAO
   ServerRegistry()
   DAOActor()
-  //ServerPantyDropper(Config().Server.host)
   IpLimitActor(Config().Accounts.connectionLimit)
   UsersActor()
   ChannelsActor()
   TopCommandActor()
   RankingActor()
   ServerAnnouncementActor(args(0).toLong)
-  RpgActor()
 
   val random = new Random(System.nanoTime())
   val delay =

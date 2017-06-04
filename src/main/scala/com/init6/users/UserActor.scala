@@ -16,8 +16,7 @@ import com.init6.coders.commands._
 import com.init6.coders.telnet._
 import com.init6.connection.{ConnectionInfo, IpBan, WriteOut}
 import com.init6.db._
-import com.init6.rpg.RpgCommand
-import com.init6.servers.{RepeatingAnnoucement, SendBirth, SplitMe}
+import com.init6.servers.RepeatingAnnoucement
 import com.init6.utils.FutureCollector.futureSeqToFutureCollector
 import com.init6.utils.{CaseInsensitiveHashSet, ChatValidator}
 import com.init6.{Config, Init6Actor, Init6LoggingActor, ReloadConfig}
@@ -313,14 +312,6 @@ class UserActor(connectionInfo: ConnectionInfo, var user: User, encoder: Encoder
           handleFriendsCommand(command)
 
         //ADMIN
-        case SplitMe =>
-          if (Flags.isAdmin(user)) {
-//                  publish(TOPIC_SPLIT, SplitMe)
-          }
-        case SendBirth =>
-          if (Flags.isAdmin(user)) {
-//                  publish(TOPIC_ONLINE, ServerOnline)
-          }
         case command @ BroadcastCommand(message) =>
           usersActor ! command
         case command @ DisconnectCommand(user) =>
@@ -344,14 +335,8 @@ class UserActor(connectionInfo: ConnectionInfo, var user: User, encoder: Encoder
           ipLimiterActor ! PrintConnectionLimit
         case PrintLoginLimit =>
           usersActor ! PrintLoginLimit
-//        case StartRP =>
-//          channelsActor ! StartRP
-//        case EndRP =>
-//          channelsActor ! EndRP
         case c : RepeatingAnnoucement =>
           serverAnnouncementActor ! c
-        case c : RpgCommand =>
-          rpgActor ! c
         case _ =>
       }
 

@@ -20,21 +20,6 @@ CREATE TABLE IF NOT EXISTS users (
     UNIQUE KEY(username)
 );
 
-CREATE TABLE IF NOT EXISTS rpg (
-    user_id INT(11) NOT NULL,
-    username VARCHAR(16) NOT NULL,
-    level INT NOT NULL,
-    experience INT NOT NULL,
-    hp INT NOT NULL,
-    action INT NOT NULL,
-    action_start_time BIGINT,
-    action_end_time BIGINT,
-    from_area INT,
-    to_area INT,
-    item INT,
-    PRIMARY KEY(user_id)
-);
-
 CREATE TABLE IF NOT EXISTS channel_joins (
     id INT(11) NOT NULL AUTO_INCREMENT,
     server_id TINYINT NOT NULL,

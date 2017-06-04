@@ -49,8 +49,6 @@ class ServerRegistry extends Init6Actor {
   val subscribers = mutable.HashSet[ActorRef]()
   val keepAlives = mutable.HashMap[ActorRef, Long]()
 
-  var isSplit = false
-
   override def preStart() = {
     super.preStart()
 
@@ -112,15 +110,6 @@ class ServerRegistry extends Init6Actor {
 
     case Terminated(actor) =>
       unsubscribe(actor)
-
-    // Handling of split events
-    case SplitMe =>
-      // split. Stop responding to events
-      isSplit = true
-
-    case SendBirth =>
-      // reconnected. Start responding to events
-      isSplit = false
   }
 
   def subscribe(subscriber: ActorRef) = {

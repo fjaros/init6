@@ -45,20 +45,6 @@ class ChannelsActor extends Init6RemotingActor {
 
   val channels = RealKeyedCaseInsensitiveHashMap[ActorRef]()
 
-//  system.scheduler.schedule(
-//    Timeout(1, TimeUnit.SECONDS).duration, Timeout(1, TimeUnit.SECONDS).duration, self, MrCleanChannelEraser
-//  )
-
-//  override def preStart() = {
-//    super.preStart()
-//
-//    getOrCreate("Deckard Cain")
-//    getOrCreate("Andariel")
-//    getOrCreate("Duriel")
-//    getOrCreate("Belial")
-//    getOrCreate("Azmodan")
-//  }
-
   private def sendGetChannels(address: Address): Unit = {
     import context.dispatcher
 
@@ -100,15 +86,6 @@ class ChannelsActor extends Init6RemotingActor {
     case KillChannel(actor, name) =>
       actor ? PoisonPill
       channels -= name
-
-    case SplitMe =>
-      if (isRemote()) {
-
-        //remoteChannelsActors -= sender().path.address
-      }
-
-    case ServerOnline =>
-      //publish(TOPIC_CHANNELS, GetChannels)
 
     case c@ GetChannels =>
       log.error(s"### $c $channels")
@@ -216,16 +193,11 @@ class ChannelsActor extends Init6RemotingActor {
         actor.tell(c, sender())
       })
 
-    // Need to get rid of this in the future. Puts too much strain on the outbound queue
+    // This is complete aids but never had a chance to fix it correctly.
+    // .. Obviously need to get rid of this in the future. Puts too much strain on the outbound queue
     case c @ RemUser(actor) =>
       //println("##RemUser " + c + " - " + sender() + " - " + remoteActors)
       channels.values.map(_._2).foreach(_ ! c)
-
-//    case StartRP =>
-//      channels.values.map(_._2).foreach(_ ! StartRP)
-//
-//    case EndRP =>
-//      channels.values.map(_._2).foreach(_ ! EndRP)
   }
 
   def getChannel(name: String): Option[ActorRef] = {

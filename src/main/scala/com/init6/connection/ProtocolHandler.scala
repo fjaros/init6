@@ -86,7 +86,6 @@ class ProtocolHandler(rawConnectionInfo: ConnectionInfo) extends Init6Actor with
     case Event(_: ConnectionClosed, _) =>
       stop()
     case Event(WriteOut(data), protocolData: ConnectionProtocolData) =>
-      ////log.error(s"### WriteOut1: $client ${data.utf8String}")
       rawConnectionInfo.actor ! Write(data, Ack)
       sender() ! WrittenOut
       goto (InitializedBuffering)
@@ -95,7 +94,6 @@ class ProtocolHandler(rawConnectionInfo: ConnectionInfo) extends Init6Actor with
       hasAccepted = true
       stay()
     case Event(x, protocolData: ConnectionProtocolData) =>
-      ////log.error(s"### RECEIVE3 connection $client message $x")
       protocolData.messageHandler ! x
       stop()
     case x =>
@@ -127,7 +125,6 @@ class ProtocolHandler(rawConnectionInfo: ConnectionInfo) extends Init6Actor with
       hasAccepted = true
       stay()
     case Event(x, protocolData: ConnectionProtocolData) =>
-      ////log.error(s"### RECEIVE3 connection $client message $x")
       protocolData.messageHandler ! x
       stop()
     case x =>

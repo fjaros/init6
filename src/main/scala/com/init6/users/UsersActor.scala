@@ -158,9 +158,6 @@ class UsersActor extends Init6RemotingActor with Init6LoggingActor {
   }
 
   override def loggedReceive: Receive = {
-    case ServerOnline =>
-//      publish(TOPIC_USERS, GetUsers)
-
     case GetUsers =>
       if (isRemote()) {
         sender() ! ReceivedUsers(
@@ -254,21 +251,6 @@ class UsersActor extends Init6RemotingActor with Init6LoggingActor {
   }
 
   def handleLocal: Receive = {
-    case SplitMe =>
-      if (isLocal()) {
-        users
-          .filterNot {
-            case (_, (_, actor)) =>
-              localUsers.contains(actor)
-          }
-          .foreach {
-            case (_, (_, actor)) =>
-              rem(actor)
-          }
-      } else {
-        removeAllRemote(sender().path.address)
-      }
-
     case Add(connectionInfo, user, protocol) =>
       // Check if limited
       if (addToLimiter(connectionInfo.ipAddress)) {

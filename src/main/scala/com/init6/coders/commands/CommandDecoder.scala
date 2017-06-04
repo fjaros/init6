@@ -111,8 +111,6 @@ object CommandDecoder {
         case "whois" | "whereis" => OneCommand(WhoisCommand(user, message), UserError(USER_NOT_LOGGED_ON), WhoamiCommand(user))
         case "who" => OneCommand(WhoCommand(user, message, opsOnly = false), WhoCommand(user, user.inChannel, opsOnly = false))
         //case "!bl!zzme!" => BlizzMe(user)
-
-        case "rpg" => RpgCommand(user, message)
         case _ => UserError()
       }
 
@@ -121,15 +119,11 @@ object CommandDecoder {
           // Admin commands
           case "broadcast" | "bcast" => BroadcastCommand(message)
           case "rbroadcast" | "rbcast" => RepeatingBroadcast(message)
-//          case "diabot" => StartRP
-//          case "quitdiabot" => EndRP
           case "closeaccount" => CloseAccountCommand(user, message)
           case "openaccount" => OpenAccountCommand(user, message)
           case "disconnect" | "dc" => DisconnectCommand(message)
           case "ipban" => IpBanCommand(message)
           case "unipban" => UnIpBanCommand(message)
-          //case "splitme" => SplitMe
-          //case "recon" => SendBirth
           case "printchannelusers" => OneCommand(PrintChannelUsers(message), PrintChannelUsers(user.inChannel))
           case "printconnectionlimit" => PrintConnectionLimit
           case "printloginlimit" => PrintLoginLimit

@@ -9,7 +9,7 @@ import com.init6.channels.utils.{LocalUsersSet, RemoteMultiMap}
 import com.init6.coders.Base64
 import com.init6.coders.commands._
 import com.init6.db.DbChannelJoin
-import com.init6.servers.{Remotable, ServerOnline}
+import com.init6.servers.Remotable
 import com.init6.users.{GetUsers, UpdatePing, UserUpdated}
 import com.init6.utils.CaseInsensitiveHashMap
 import com.init6.{Config, Init6RemotingActor, SystemContext}
@@ -223,38 +223,12 @@ trait ChannelActor extends Init6RemotingActor {
   }
 
   def receiveEvent: Receive = {
-//    case SplitMe =>
-//      if (isLocal()) {
-//        isSplit = true
-//        remoteUsersMap
-//          .values
-//          .flatten
-//          .foreach(rem)
-//
-//        unsubscribe(pubSubTopic)
-//      } else {
-//        val remoteAddress = sender().path.address
-//        remoteUsersMap
-//          .get(remoteAddress)
-//          .foreach(_.foreach(rem))
-//        remoteAddressReceived -= remoteAddress
-//      }
-
-    case ServerOnline =>
-      if (isLocal()) {
-        isSplit = false
-        //subscribe(pubSubTopic)
-      }
-
     case InternalChannelUserUpdate(actor, user) =>
       if (users.contains(actor)) {
         remoteIn(actor, user)
       } else {
         log.info("###ICUU ignored in " + name + " - " + actor + " - "  + user)
       }
-
-//    case UserToChannelPing =>
-//      usersKeepAlive += sender() -> System.currentTimeMillis()
 
     case GetChannelUsers =>
       if (isRemote()) {
