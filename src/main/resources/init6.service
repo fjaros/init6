@@ -1,0 +1,20 @@
+[Unit]
+Description=init6 server
+Documentation=https://github.com/fjaros/init6
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/init6/bin
+Environment=wait_time=604800
+ExecStart=/usr/bin/java \
+  -XX:+HeapDumpOnOutOfMemoryError \
+  -XX:+DisableExplicitGC \
+  -Dconfig=init6.conf \
+  -cp lib/*:init6.jar \
+  com.init6.Init6 $wait_time
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
