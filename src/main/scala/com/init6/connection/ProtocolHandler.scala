@@ -53,9 +53,15 @@ class ProtocolHandler(rawConnectionInfo: ConnectionInfo) extends Init6Actor with
         if (data.head == BINARY) {
           Some(ConnectionProtocolData(new BinaryReceiver, context.actorOf(BinaryMessageHandler(
             rawConnectionInfo.copy(actor = self, firstPacketReceivedTime = packetReceivedTime, protocol = BinaryProtocol))), data.drop(1)))
-        } else if (data(0) == TELNET && data(1) == TELNET_2) {
+        } else if (data(0) == TELNET) {
           Some(ConnectionProtocolData(new ChatReceiver, context.actorOf(TelnetMessageHandler(
-            rawConnectionInfo.copy(actor = self, firstPacketReceivedTime = packetReceivedTime, protocol = TelnetProtocol))), data.drop(2)))
+            rawConnectionInfo.copy(actor = self, firstPacketReceivedTime = packetReceivedTime, protocol = TelnetProtocol))), data.drop({
+              if (data(1) == TELNET_2) {
+                2
+              } else {
+                1
+              }
+          })))
         } else if (data(0) == INIT6_CHAT && data(1) == INIT6_CHAT_1) {
           isC1 = true
           Some(ConnectionProtocolData(new ChatReceiver, context.actorOf(Chat1Handler(
