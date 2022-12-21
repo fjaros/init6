@@ -3,7 +3,6 @@ package com.init6.connection.websocket
 import java.net.InetSocketAddress
 
 import akka.actor.{ActorRef, FSM, Props}
-import akka.io.Tcp.Received
 import akka.util.ByteString
 import com.init6.Init6Actor
 import com.init6.connection.chat1.Chat1Handler
@@ -81,7 +80,7 @@ class WebSocketProtocolHandler(webSocketRawConnectionInfo: WebSocketRawConnectio
 
   when(ExpectingData) {
     case Event(data: ByteString, WebSocketConnectedData(_, packetReceiver, handlerActor)) =>
-      packetReceiver.parsePacket(data).foreach(handlerActor ! Received(_))
+      packetReceiver.parsePacket(data).foreach(handlerActor ! _)
       stay()
     case Event(WriteOut(data), WebSocketConnectedData(webSocketActor, _, handlerActor)) =>
       webSocketActor ! data
