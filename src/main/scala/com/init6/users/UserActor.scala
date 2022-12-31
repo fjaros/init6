@@ -479,15 +479,19 @@ class UserActor(connectionInfo: ConnectionInfo, var user: User, encoder: Encoder
   }
 
   //var joiningTime: Long = -1
-  private def joinChannel(channel: String, forceJoin: Boolean = false) = {
+  private def joinChannel(channel: String, forceJoin: Boolean = false): Unit = {
+    val sanitizedChannel = channel.replaceAll("\\s+", " ").trim
+    if (sanitizedChannel.isEmpty) {
+      return
+    }
     if (Flags.isAdmin(user) ||
       !Config().Server.Chat.enabled ||
-      Config().Server.Chat.channels.contains(channel.toLowerCase)
+      Config().Server.Chat.channels.contains(sanitizedChannel.toLowerCase)
     ) {
       implicit val timeout = Timeout(2, TimeUnit.SECONDS)
       //println(user.name + " - " + self + " - SENDING JOIN")
       //if (joiningTime == -1) joiningTime = getAcceptingUptime.toNanos
-      Await.result(channelsActor ? UserSwitchedChat(self, user, channel, connectionInfo.connectedTime), timeout.duration) match {
+      Await.result(channelsActor ? UserSwitchedChat(self, user, sanitizedChannel, connectionInfo.connectedTime), timeout.duration) match {
         case ChannelJoinResponse(event) =>
           //println(user.name + " - " + self + " - RECEIVED JOIN")
           event match {
