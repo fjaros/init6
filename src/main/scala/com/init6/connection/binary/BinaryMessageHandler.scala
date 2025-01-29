@@ -105,6 +105,11 @@ class BinaryMessageHandler(connectionInfo: ConnectionInfo) extends Init6KeepAliv
           case SidFriendsList(packet) =>
             actor ! FriendsList()
         }
+      case SID_GETICONDATA =>
+        binaryPacket.packet match {
+          case SidGetIconData(packet) =>
+            send(SidGetIconData())
+        }
 //      case SID_LEAVECHAT =>
 //        binaryPacket.packet match {
 //          case SidLeaveChat(packet) =>

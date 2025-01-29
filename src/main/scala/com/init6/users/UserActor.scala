@@ -405,7 +405,7 @@ class UserActor(connectionInfo: ConnectionInfo, var user: User, encoder: Encoder
 
   private def handleFriendsCommand(friendsCommand: FriendsCommand): Unit = {
     if (user.id == 0) {
-      encodeAndSend(UserError("Due to a pending fix, new accounts cannot use the friends list until the next server restart."))
+//      encodeAndSend(UserError("Due to a pending fix, new accounts cannot use the friends list until the next server restart."))
       return
     }
 
