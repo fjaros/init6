@@ -9,6 +9,13 @@ import scala.annotation.switch
 
 /**
  * Created by filip on 9/20/15.
+ *
+ * Need to add a few packets?
+ * 1013: Event_CHANNELFULL
+ * 1014: Event_CHANNELDOESNOTEXIST
+ * 1015: Event_CHANNELRESTRICTED
+ *
+ * There are a couple other random ones. DARKONE 1/29/25
  */
 object TelnetEncoder extends Encoder {
 

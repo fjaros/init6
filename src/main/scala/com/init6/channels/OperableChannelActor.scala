@@ -94,7 +94,7 @@ trait OperableChannelActor extends ChannelActor {
 
   // In case of /rejoin as only channel member
   def shouldReceiveOps(actor: ActorRef, user: User) = {
-    Flags.isSpecialOp(user) ||
+    Flags.isSpecialGuest(user) ||
       (isLocal(actor) && (users.isEmpty || (users.size == 1 && users.head._1 == actor)))
   }
 

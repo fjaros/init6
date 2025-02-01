@@ -146,9 +146,9 @@ trait ChannelActor extends Init6RemotingActor {
             is_operator = Flags.isOp(user)
           )
         }
-        Flags.deSpecialOp(user.copy(inChannel = name, channelTimestamp = System.currentTimeMillis))
+        Flags.deSpecialGuest(user.copy(inChannel = name, channelTimestamp = System.currentTimeMillis))
       } else {
-        Flags.deSpecialOp(user.copy(inChannel = name))
+        Flags.deSpecialGuest(user.copy(inChannel = name))
       }
 
     log.info("#ADD " + actor + " - " + newUser)
