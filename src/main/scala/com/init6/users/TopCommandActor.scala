@@ -31,20 +31,18 @@ class TopCommandActor extends Init6Actor {
   override def receive: Receive = {
     case UserChannelJoined(connectionInfo, user, joinedPlace) =>
       // ignore chat
-      if (user.inChannel == "Chat") {
-        return receive
+      if (user.inChannel != "Chat") {
+        val topMapId =
+          if (isChatProtocol(user.client)) {
+            "chat"
+          } else {
+            "binary"
+          }
+
+        val topInfo = TopInfo(user, connectionInfo, joinedPlace)
+        topMap(topMapId) += topInfo
+        topMap("all") += topInfo
       }
-
-      val topMapId =
-        if (isChatProtocol(user.client)) {
-          "chat"
-        } else {
-          "binary"
-        }
-
-      val topInfo = TopInfo(user, connectionInfo, joinedPlace)
-      topMap(topMapId) += topInfo
-      topMap("all") += topInfo
 
     case TopCommand(_, which) =>
       val topList = topMap(which)

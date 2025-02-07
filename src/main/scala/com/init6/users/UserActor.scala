@@ -221,123 +221,121 @@ class UserActor(connectionInfo: ConnectionInfo, var user: User, encoder: Encoder
       if (!ChatValidator(data)) {
         connectionInfo.actor ! Abort
         self ! KillConnection
-        return receive
-      }
+      } else {
+        val command = CommandDecoder(user, data)
+        if (Config().AntiFlood.enabled && floodState(command, data.length)) {
+          // Handle AntiFlood
+          encodeAndSend(UserFlooded)
+          ipLimiterActor ! IpBan(
+            connectionInfo.ipAddress.getAddress.getAddress,
+            System.currentTimeMillis + (Config().AntiFlood.ipBanTime * 1000)
+          )
+          self ! KillConnection
+        } else {
+          //log.error(s"UserMessageDecoder $command")
+          command match {
+            case PongCommand(cookie) =>
+              handlePingResponse(cookie)
 
-      val command = CommandDecoder(user, data)
-      if (Config().AntiFlood.enabled && floodState(command, data.length)) {
-        // Handle AntiFlood
-        encodeAndSend(UserFlooded)
-        ipLimiterActor ! IpBan(
-          connectionInfo.ipAddress.getAddress.getAddress,
-          System.currentTimeMillis + (Config().AntiFlood.ipBanTime * 1000)
-        )
-        self ! KillConnection
-        return receive
-      }
+            /**
+             * The channel command and user command have two different flows.
+             * A user has to go through a middle-man users actor because there is no guarantee the receiving user is online.
+             * A command being sent to the user's channel can be done via actor selection, since we can guarantee the
+             * channel exists.
+             */
+            case c@JoinUserCommand(fromUser, channel) =>
+              if (ChannelJoinValidator(user.inChannel, channel)) {
+                joinChannel(channel)
+              }
+            case ResignCommand => resign()
+            case RejoinCommand => rejoin()
+            case command: ChannelCommand =>
+              if (channelActor != ActorRef.noSender) {
+                channelActor ! command
+              }
+            case ChannelsCommand => channelsActor ! ChannelsCommand
+            case command: ShowChannelBans => channelsActor ! command
+            case command: WhoCommand => channelsActor ! command
+            case command: PrintChannelUsers => channelsActor ! command
+            case command: OperableCommand =>
+              if (Flags.canBan(user)) {
+                usersActor ! command
+              } else {
+                encoder(UserError(NOT_OPERATOR)).foreach(connectionInfo.actor ! WriteOut(_))
+              }
+            case command: UserToChannelCommand => usersActor ! command
+            case command: UserCommand => usersActor ! command
+            case command: ReturnableCommand => encoder(command).foreach(connectionInfo.actor ! WriteOut(_))
+            case command@UsersCommand => usersActor ! command
+            case command@UptimeCommand => usersActor ! command
+            case command: TopCommand =>
+              if (command.serverIp != Config().Server.host) {
+                system.actorSelection(remoteAddress(command.serverIp, INIT6_TOP_COMMAND_PATH)) ! command
+              } else {
+                topCommandActor ! command
+              }
+            case command: GetRankingCommand =>
+              if (command.serverIp != Config().Server.host) {
+                system.actorSelection(remoteAddress(command.serverIp, INIT6_RANKING_PATH)) ! command
+              } else {
+                rankingActor ! command
+              }
+            case PlaceOfSelfCommand => encodeAndSend(UserInfo(PLACED(connectionInfo.place, Config().Server.host)))
+            case command@PlaceOnServerCommand(serverIp) =>
+              if (command.serverIp != Config().Server.host) {
+                system.actorSelection(remoteAddress(command.serverIp, INIT6_USERS_PATH)) ! command
+              } else {
+                encodeAndSend(UserInfo(SERVER_PLACE(getPlace, Config().Server.host)))
+              }
+            case AwayCommand(message) => awayAvailablity.enableAction(message)
+            case DndCommand(message) => dndAvailablity.enableAction(message)
+            case ReplyCommand(message) =>
+              replyToUser.fold({
+                encodeAndSend(UserError(NO_WHISPER_USER_INPUT))
+              })(replyToUser => {
+                usersActor ! WhisperMessage(user, replyToUser, message, sendNotification = true)
+              })
+            case AccountMade(username, passwordHash) =>
+              daoActor ! CreateAccount(username, passwordHash)
+            case ChangePasswordCommand(newPassword) =>
+              daoActor ! UpdateAccountPassword(user.name, newPassword)
+            case AliasCommand(alias) =>
+              daoActor ! DAOAliasCommand(user, alias)
+            case AliasToCommand(alias) =>
+              daoActor ! DAOAliasToCommand(user, alias)
 
-      //log.error(s"UserMessageDecoder $command")
-      command match {
-        case PongCommand(cookie) =>
-          handlePingResponse(cookie)
+            case command: FriendsCommand =>
+              handleFriendsCommand(command)
 
-        /**
-          * The channel command and user command have two different flows.
-          * A user has to go through a middle-man users actor because there is no guarantee the receiving user is online.
-          * A command being sent to the user's channel can be done via actor selection, since we can guarantee the
-          * channel exists.
-          */
-        case c @ JoinUserCommand(fromUser, channel) =>
-          if (ChannelJoinValidator(user.inChannel, channel)) {
-            joinChannel(channel)
-          }
-        case ResignCommand => resign()
-        case RejoinCommand => rejoin()
-        case command: ChannelCommand =>
-          if (channelActor != ActorRef.noSender) {
-            channelActor ! command
-          }
-        case ChannelsCommand => channelsActor ! ChannelsCommand
-        case command: ShowChannelBans => channelsActor ! command
-        case command: WhoCommand => channelsActor ! command
-        case command: PrintChannelUsers => channelsActor ! command
-        case command: OperableCommand =>
-          if (Flags.canBan(user)) {
-            usersActor ! command
-          } else {
-            encoder(UserError(NOT_OPERATOR)).foreach(connectionInfo.actor ! WriteOut(_))
-          }
-        case command: UserToChannelCommand => usersActor ! command
-        case command: UserCommand => usersActor ! command
-        case command: ReturnableCommand => encoder(command).foreach(connectionInfo.actor ! WriteOut(_))
-        case command@UsersCommand => usersActor ! command
-        case command @ UptimeCommand => usersActor ! command
-        case command: TopCommand =>
-          if (command.serverIp != Config().Server.host) {
-            system.actorSelection(remoteAddress(command.serverIp, INIT6_TOP_COMMAND_PATH)) ! command
-          } else {
-            topCommandActor ! command
-          }
-        case command: GetRankingCommand =>
-          if (command.serverIp != Config().Server.host) {
-            system.actorSelection(remoteAddress(command.serverIp, INIT6_RANKING_PATH)) ! command
-          } else {
-            rankingActor ! command
-          }
-        case PlaceOfSelfCommand => encodeAndSend(UserInfo(PLACED(connectionInfo.place, Config().Server.host)))
-        case command @ PlaceOnServerCommand(serverIp) =>
-          if (command.serverIp != Config().Server.host) {
-            system.actorSelection(remoteAddress(command.serverIp, INIT6_USERS_PATH)) ! command
-          } else {
-            encodeAndSend(UserInfo(SERVER_PLACE(getPlace, Config().Server.host)))
-          }
-        case AwayCommand(message) => awayAvailablity.enableAction(message)
-        case DndCommand(message) => dndAvailablity.enableAction(message)
-        case ReplyCommand(message) =>
-          replyToUser.fold({
-            encodeAndSend(UserError(NO_WHISPER_USER_INPUT))
-          })(replyToUser => {
-            usersActor ! WhisperMessage(user, replyToUser, message, sendNotification = true)
-          })
-        case AccountMade(username, passwordHash) =>
-          daoActor ! CreateAccount(username, passwordHash)
-        case ChangePasswordCommand(newPassword) =>
-          daoActor ! UpdateAccountPassword(user.name, newPassword)
-        case AliasCommand(alias) =>
-          daoActor ! DAOAliasCommand(user, alias)
-        case AliasToCommand(alias) =>
-          daoActor ! DAOAliasToCommand(user, alias)
+            //ADMIN
+            case command@BroadcastCommand(message) =>
+              usersActor ! command
+            case command@DisconnectCommand(user) =>
+              usersActor ! command
+            case command@IpBanCommand(ipAddress, until) =>
+              ipLimiterActor ! IpBan(ipAddress, until)
+              usersActor ! command
+            case command@UnIpBanCommand(ipAddress) =>
+              ipLimiterActor ! command
+            case command@CloseAccountCommand(account, reason) =>
+              daoActor ! CloseAccount(account, reason)
+            case command@OpenAccountCommand(account) =>
+              daoActor ! OpenAccount(account)
+            case ReloadConfig =>
+              Config.reload()
+              self ! UserInfo(s"$INIT6_SPACE configuration reloaded.")
+            case ReloadDb =>
+              daoActor ! ReloadDb
 
-        case command: FriendsCommand =>
-          handleFriendsCommand(command)
-
-        //ADMIN
-        case command @ BroadcastCommand(message) =>
-          usersActor ! command
-        case command @ DisconnectCommand(user) =>
-          usersActor ! command
-        case command @ IpBanCommand(ipAddress, until) =>
-          ipLimiterActor ! IpBan(ipAddress, until)
-          usersActor ! command
-        case command @ UnIpBanCommand(ipAddress) =>
-          ipLimiterActor ! command
-        case command @ CloseAccountCommand(account, reason) =>
-          daoActor ! CloseAccount(account, reason)
-        case command @ OpenAccountCommand(account) =>
-          daoActor ! OpenAccount(account)
-        case ReloadConfig =>
-          Config.reload()
-          self ! UserInfo(s"$INIT6_SPACE configuration reloaded.")
-        case ReloadDb =>
-          daoActor ! ReloadDb
-
-        case PrintConnectionLimit =>
-          ipLimiterActor ! PrintConnectionLimit
-        case PrintLoginLimit =>
-          usersActor ! PrintLoginLimit
-        case c : RepeatingAnnoucement =>
-          serverAnnouncementActor ! c
-        case _ =>
+            case PrintConnectionLimit =>
+              ipLimiterActor ! PrintConnectionLimit
+            case PrintLoginLimit =>
+              usersActor ! PrintLoginLimit
+            case c: RepeatingAnnoucement =>
+              serverAnnouncementActor ! c
+            case _ =>
+          }
+        }
       }
 
     case command: UserToChannelCommandAck =>

@@ -63,29 +63,28 @@ class IpLimitActor(limit: Int) extends Init6RemotingActor {
         !Config().Accounts.ipWhitelist.contains(connectionInfo.ipAddress.getAddress.getHostAddress)
       ) {
         sender() ! NotAllowed(connectionInfo)
-        return receive
-      }
-
-      val addressInt = IPUtils.bytesToDword(connectionInfo.ipAddress.getAddress.getAddress)
-      val current = ipCount.getOrElse(addressInt, 0)
-      if (!addIpConnection(addressInt)) {
-        ipBanned += addressInt -> (System.currentTimeMillis() + (Config().AntiFlood.ReconnectLimit.ipBanTime * 1000))
-      }
-      val isIpBanned = ipBanned.get(addressInt).exists(until => {
-        if (System.currentTimeMillis >= until) {
-          ipBanned -= addressInt
-          false
-        } else {
-          true
-        }
-      })
-
-      if (limit > current && !isIpBanned) {
-        actorToIp += connectionInfo.actor -> addressInt
-        ipCount += addressInt -> (current + 1)
-        sender() ! Allowed(connectionInfo)
       } else {
-        sender() ! NotAllowed(connectionInfo)
+        val addressInt = IPUtils.bytesToDword(connectionInfo.ipAddress.getAddress.getAddress)
+        val current = ipCount.getOrElse(addressInt, 0)
+        if (!addIpConnection(addressInt)) {
+          ipBanned += addressInt -> (System.currentTimeMillis() + (Config().AntiFlood.ReconnectLimit.ipBanTime * 1000))
+        }
+        val isIpBanned = ipBanned.get(addressInt).exists(until => {
+          if (System.currentTimeMillis >= until) {
+            ipBanned -= addressInt
+            false
+          } else {
+            true
+          }
+        })
+
+        if (limit > current && !isIpBanned) {
+          actorToIp += connectionInfo.actor -> addressInt
+          ipCount += addressInt -> (current + 1)
+          sender() ! Allowed(connectionInfo)
+        } else {
+          sender() ! NotAllowed(connectionInfo)
+        }
       }
 
     case Disconnected(connectingActor) =>
