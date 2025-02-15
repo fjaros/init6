@@ -5,6 +5,7 @@ import akka.io.Tcp._
 import akka.util.ByteString
 import com.init6.Init6Actor
 import com.init6.connection.binary.BinaryMessageHandler
+import com.init6.connection.bnftp.BnFtpMessageHandler
 import com.init6.connection.chat1.Chat1Handler
 import com.init6.users.{BinaryProtocol, Chat1Protocol, TelnetProtocol}
 
@@ -31,6 +32,7 @@ case class ConnectionProtocolData(packetReceiver: PacketReceiver[_], messageHand
 class ProtocolHandler(rawConnectionInfo: ConnectionInfo) extends Init6Actor with FSM[ProtocolState, ProtocolData] {
 
   val BINARY: Byte = 0x01
+  val BNFTP: Byte = 0x02
   val TELNET: Byte = 0x03
   val TELNET_2: Byte = 0x04
   val INIT6_CHAT: Byte = 'C'.toByte
@@ -53,6 +55,8 @@ class ProtocolHandler(rawConnectionInfo: ConnectionInfo) extends Init6Actor with
         if (data.head == BINARY) {
           Some(ConnectionProtocolData(new BinaryReceiver, context.actorOf(BinaryMessageHandler(
             rawConnectionInfo.copy(actor = self, firstPacketReceivedTime = packetReceivedTime, protocol = BinaryProtocol))), data.drop(1)))
+        } else if (data(0) == BNFTP) {
+          Some(ConnectionProtocolData(new BnFtpReceiver, context.actorOf(BnFtpMessageHandler(rawConnectionInfo.copy(actor = self))), data.drop(1)))
         } else if (data(0) == TELNET) {
           Some(ConnectionProtocolData(new ChatReceiver, context.actorOf(TelnetMessageHandler(
             rawConnectionInfo.copy(actor = self, firstPacketReceivedTime = packetReceivedTime, protocol = TelnetProtocol))), data.drop({

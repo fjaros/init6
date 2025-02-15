@@ -2,6 +2,7 @@ package com.init6.connection
 
 import akka.util.ByteString
 import com.init6.connection.binary.BinaryPacket
+import com.init6.connection.bnftp.BnFtpPacket
 import com.init6.utils.ChatValidator
 
 import scala.annotation.tailrec
@@ -68,6 +69,34 @@ class BinaryReceiver extends PacketReceiver[BinaryPacket] {
     val packet = buffer.slice(HEADER_SIZE, length)
 
     result += BinaryPacket(packetId, ByteString(packet.toArray))
+    buffer = buffer.drop(length)
+    if (buffer.nonEmpty) {
+      parsePacketInternal(result)
+    } else {
+      result
+    }
+  }
+}
+
+class BnFtpReceiver extends PacketReceiver[BnFtpPacket] {
+
+  val HEADER_SIZE = 4
+
+  @tailrec
+  override final protected def parsePacketInternal(result: ArrayBuffer[BnFtpPacket]): ArrayBuffer[BnFtpPacket] = {
+    if (buffer.length < HEADER_SIZE) {
+      return result
+    }
+
+    val length = (buffer(1) << 8 & 0xFF00 | buffer(0) & 0xFF).toShort
+    if (buffer.length < length) {
+      return result
+    }
+
+    val protocolVersion = (buffer(3) << 8 & 0xFF00 | buffer(2) & 0xFF).toShort
+
+    val packet = buffer.slice(HEADER_SIZE, length)
+    result += BnFtpPacket(protocolVersion, ByteString(packet.toArray))
     buffer = buffer.drop(length)
     if (buffer.nonEmpty) {
       parsePacketInternal(result)
