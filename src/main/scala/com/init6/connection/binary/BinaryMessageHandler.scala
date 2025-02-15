@@ -100,6 +100,25 @@ class BinaryMessageHandler(connectionInfo: ConnectionInfo) extends Init6KeepAliv
           case SidGetChannelList(packet) =>
             send(SidGetChannelList())
         }
+      case SID_READUSERDATA =>
+        binaryPacket.packet match {
+          case SidReadUserData(packet) =>
+            // We currently don't store any profile information
+            val keys = (0 until packet.numAccounts).flatMap(_ => {
+              (0 until packet.numKeys).map(_ => "")
+            }).toArray
+            send(SidReadUserData(packet.numAccounts, packet.numKeys, packet.requestId, keys))
+        }
+      case SID_GETICONDATA =>
+        binaryPacket.packet match {
+          case SidGetIconData(packet) =>
+            send(SidGetIconData())
+        }
+      case SID_GETFILETIME =>
+        binaryPacket.packet match {
+          case SidGetFileTime(packet) =>
+            send(SidGetFileTime(packet.requestId, packet.fileName))
+        }
       case SID_FRIENDSLIST =>
         binaryPacket.packet match {
           case SidFriendsList(packet) =>
